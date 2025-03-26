@@ -1,0 +1,98 @@
+.storage-debugger {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.storage-debugger h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.debug-actions button {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.debug-actions button:hover {
+  background-color: #3367d6;
+}
+
+.debug-actions button:disabled {
+  background-color: #a1c0f7;
+  cursor: not-allowed;
+}
+
+.results {
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.results.success {
+  background-color: #e8f5e9;
+  border: 1px solid #c8e6c9;
+}
+
+.results.error {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+}
+
+.results pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.error-help {
+  margin-top: 15px;
+  background-color: #f5f5f5;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.error-help h4 {
+  margin-top: 0;
+  color: #d32f2f;
+}
+
+.manual-instructions {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.manual-instructions h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.manual-instructions ol {
+  padding-left: 20px;
+}
+
+.manual-instructions li {
+  margin-bottom: 8px;
+}
+
+.manual-instructions a {
+  color: #4285f4;
+  text-decoration: underline;
+}

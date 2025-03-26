@@ -1,0 +1,295 @@
+.class-list-container {
+  padding: 30px;
+  animation: fadeIn var(--anim-speed-medium) var(--anim-easing);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.class-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.class-list-header h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 2.2rem;
+  font-weight: 700;
+  position: relative;
+  display: inline-block;
+}
+
+.class-list-header h1::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40%;
+  height: 3px;
+  background-color: var(--color-primary);
+  border-radius: 2px;
+}
+
+.add-class-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--anim-speed-fast) var(--anim-easing);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.add-class-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: left 0.8s var(--anim-easing);
+}
+
+.add-class-button:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.add-class-button:hover::before {
+  left: 100%;
+}
+
+.add-class-button:active {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.class-card {
+  background-color: var(--color-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: transform var(--anim-speed-medium) var(--anim-easing),
+              box-shadow var(--anim-speed-medium) var(--anim-easing),
+              background-color var(--anim-speed-medium) var(--anim-easing);
+  position: relative;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeUp var(--anim-speed-slow) forwards;
+}
+
+/* Create staggered animation for cards */
+.class-card:nth-child(1) { animation-delay: 100ms; }
+.class-card:nth-child(2) { animation-delay: 200ms; }
+.class-card:nth-child(3) { animation-delay: 300ms; }
+.class-card:nth-child(4) { animation-delay: 400ms; }
+.class-card:nth-child(5) { animation-delay: 500ms; }
+.class-card:nth-child(6) { animation-delay: 600ms; }
+
+.class-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--anim-speed-medium) var(--anim-easing);
+}
+
+.class-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+.class-card:hover::before {
+  transform: scaleX(1);
+}
+
+.class-card-content {
+  padding: 25px;
+}
+
+.class-card h3 {
+  margin: 0 0 15px 0;
+  color: var(--color-text);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.class-date {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.empty-classes {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--color-text-secondary);
+  animation: fadeIn var(--anim-speed-medium) var(--anim-easing);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-classes svg {
+  width: 100px;
+  height: 100px;
+  color: var(--color-primary-light);
+  margin-bottom: 20px;
+  opacity: 0;
+  animation: fadeIn var(--anim-speed-slow) forwards;
+  animation-delay: 300ms;
+}
+
+.empty-classes p {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  opacity: 0;
+  animation: fadeIn var(--anim-speed-slow) forwards;
+  animation-delay: 500ms;
+}
+
+.start-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 15px;
+  cursor: pointer;
+  transition: all var(--anim-speed-fast) var(--anim-easing);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  animation: scaleIn var(--anim-speed-slow) forwards;
+  animation-delay: 700ms;
+}
+
+.start-button:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+}
+
+.loading-spinner:after {
+  content: '';
+  width: 50px;
+  height: 50px;
+  border: 3px solid var(--color-bg-secondary);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  animation: rotate 1s infinite linear;
+}
+
+.error-message {
+  background-color: rgba(var(--color-danger), 0.1);
+  color: var(--color-danger);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  text-align: center;
+  animation: fadeIn var(--anim-speed-medium) var(--anim-easing);
+  border-left: 4px solid var(--color-danger);
+}
+
+.error-container {
+  text-align: center;
+  padding: 50px 20px;
+}
+
+.retry-button {
+  margin-top: 20px;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--anim-speed-fast) var(--anim-easing);
+}
+
+.retry-button:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+  .class-list-container {
+    padding: 20px;
+  }
+  
+  .class-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .class-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  20% {
+    transform: scale(25, 25);
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(40, 40);
+  }
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
