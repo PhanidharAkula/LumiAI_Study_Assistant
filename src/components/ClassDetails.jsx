@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import FileViewer from "./FileViewer";
 import AddClassForm from "./AddClassForm";
+import ConfirmDialog from "./ConfirmDialog";
 import { getFilePublicUrl } from "../utils/storageUtils";
 import "./ClassDetails.css";
 
@@ -22,6 +23,25 @@ const ClassDetails = ({
   const [viewingFile, setViewingFile] = useState(null);
   const [fileUrl, setFileUrl] = useState("");
   const fileInputRef = useRef(null);
+  const [deleteConfirmData, setDeleteConfirmData] = useState({
+    isOpen: false,
+    hasFiles: false,
+    fileCount: 0,
+  });
+
+  const [fileDeleteConfirm, setFileDeleteConfirm] = useState({
+    isOpen: false,
+    fileId: null,
+    filePath: null,
+    fileName: "",
+  });
+
+  const [uploadConfirmData, setUploadConfirmData] = useState({
+    isOpen: false,
+    file: null,
+    pendingFiles: [],
+    currentIndex: 0,
+  });
 
   useEffect(() => {
     if (classData) {
@@ -50,17 +70,51 @@ const ClassDetails = ({
   };
 
   const confirmDelete = () => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete ${classData.name}? This action cannot be undone.`
-      )
-    ) {
-      onDelete(classData.id);
+    if (files.length > 0) {
+      setDeleteConfirmData({
+        isOpen: true,
+        hasFiles: true,
+        fileCount: files.length,
+      });
+    } else {
+      setDeleteConfirmData({
+        isOpen: true,
+        hasFiles: false,
+        fileCount: 0,
+      });
     }
   };
 
-  const handleFileDelete = async (fileId, filePath) => {
+  const handleConfirmDelete = () => {
+    setDeleteConfirmData({
+      isOpen: false,
+      hasFiles: false,
+      fileCount: 0,
+    });
+    onDelete(classData.id);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmData({
+      isOpen: false,
+      hasFiles: false,
+      fileCount: 0,
+    });
+  };
+
+  const handleFileDelete = (fileId, filePath, fileName) => {
+    setFileDeleteConfirm({
+      isOpen: true,
+      fileId,
+      filePath,
+      fileName: fileName || "this file",
+    });
+  };
+
+  const confirmFileDelete = async () => {
     try {
+      const { fileId, filePath } = fileDeleteConfirm;
+
       if (filePath) {
         await supabase.storage.from("files").remove([filePath]);
       }
@@ -72,7 +126,18 @@ const ClassDetails = ({
       setFiles((prev) => prev.filter((file) => file.id !== fileId));
     } catch (err) {
       console.error("Error deleting file:", err);
+    } finally {
+      cancelFileDelete();
     }
+  };
+
+  const cancelFileDelete = () => {
+    setFileDeleteConfirm({
+      isOpen: false,
+      fileId: null,
+      filePath: null,
+      fileName: "",
+    });
   };
 
   const handleFileView = async (file) => {
@@ -147,67 +212,123 @@ const ClassDetails = ({
         return;
       }
 
-      for (const file of filesToUpload) {
-        const existingFiles = await supabase
-          .from("files")
-          .select("name")
-          .eq("class_id", classData.id)
-          .eq("name", file.name);
+      setUploadConfirmData({
+        isOpen: false,
+        file: null,
+        pendingFiles: filesToUpload,
+        currentIndex: 0,
+      });
 
-        if (existingFiles.data && existingFiles.data.length > 0) {
-          const confirmUpload = window.confirm(
-            `A file named "${file.name}" already exists. Upload anyway?`
-          );
-          if (!confirmUpload) {
-            continue;
-          }
-        }
+      processNextFile(filesToUpload, 0, user);
+    } catch (error) {
+      console.error("Error in upload process:", error);
+      setUploading(false);
+    }
+  };
 
-        const filePath = `${classData.id}/${Date.now()}-${file.name.replace(
-          /\s+/g,
-          "_"
-        )}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("files")
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("File upload error:", uploadError);
-          continue;
-        }
-
-        const { error: dbError } = await supabase.from("files").insert({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          path: filePath,
-          class_id: classData.id,
-          user_id: user.id,
-        });
-
-        if (dbError) {
-          console.error("Database error:", dbError);
-
-          await supabase.storage
-            .from("files")
-            .remove([filePath])
-            .catch((err) => console.error("Error cleaning up file:", err));
-
-          continue;
-        }
-      }
-
-      fetchFiles();
-
+  const processNextFile = async (files, index, user) => {
+    if (index >= files.length) {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    } catch (error) {
-      console.error("Error in upload process:", error);
-    } finally {
+
+      fetchFiles();
       setUploading(false);
+      return;
     }
+
+    const currentFile = files[index];
+
+    try {
+      const { data: existingFiles } = await supabase
+        .from("files")
+        .select("name")
+        .eq("class_id", classData.id)
+        .eq("name", currentFile.name);
+
+      if (existingFiles && existingFiles.length > 0) {
+        setUploadConfirmData({
+          isOpen: true,
+          file: currentFile,
+          pendingFiles: files,
+          currentIndex: index,
+        });
+      } else {
+        await uploadSingleFile(currentFile, user);
+        processNextFile(files, index + 1, user);
+      }
+    } catch (error) {
+      console.error("Error processing file:", error);
+      processNextFile(files, index + 1, user);
+    }
+  };
+
+  const uploadSingleFile = async (file, user) => {
+    try {
+      const filePath = `${classData.id}/${Date.now()}-${file.name.replace(
+        /\s+/g,
+        "_"
+      )}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("files")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("File upload error:", uploadError);
+        return;
+      }
+
+      const { error: dbError } = await supabase.from("files").insert({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        path: filePath,
+        class_id: classData.id,
+        user_id: user.id,
+      });
+
+      if (dbError) {
+        console.error("Database error:", dbError);
+
+        await supabase.storage
+          .from("files")
+          .remove([filePath])
+          .catch((err) => console.error("Error cleaning up file:", err));
+      }
+    } catch (err) {
+      console.error("Error uploading file:", err);
+    }
+  };
+
+  const handleConfirmUpload = async () => {
+    const { file, pendingFiles, currentIndex } = uploadConfirmData;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setUploadConfirmData({
+      ...uploadConfirmData,
+      isOpen: false,
+    });
+
+    await uploadSingleFile(file, user);
+
+    processNextFile(pendingFiles, currentIndex + 1, user);
+  };
+
+  const handleCancelUpload = async () => {
+    const { pendingFiles, currentIndex } = uploadConfirmData;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setUploadConfirmData({
+      ...uploadConfirmData,
+      isOpen: false,
+    });
+
+    processNextFile(pendingFiles, currentIndex + 1, user);
   };
 
   const containerVariants = {
@@ -234,20 +355,19 @@ const ClassDetails = ({
   };
 
   const fileCardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i) => ({
+    hidden: { opacity: 0, y: 30 },
+    visible: ({ index, loaded }) => ({
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-        delay: i * 0.05,
+        duration: 0.15,
+        delay: index * 0.05,
+        when: "afterChildren",
       },
     }),
     hover: {
       y: -5,
-      scale: 1.02,
+      scale: 1.01,
       transition: {
         type: "spring",
         stiffness: 300,
@@ -371,7 +491,7 @@ const ClassDetails = ({
               strokeLinejoin="round"
             >
               <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1-2 2v2"></path>
             </svg>
             Delete
           </motion.button>
@@ -483,15 +603,18 @@ const ClassDetails = ({
             className="files-grid"
             variants={containerVariants}
             initial="hidden"
-            animate="visible"
+            animate={loading ? "hidden" : "visible"}
+            key="files-grid"
           >
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {files.map((file, i) => (
                 <motion.div
                   key={file.id}
                   className="file-card"
-                  custom={i}
+                  custom={{ index: i, loaded: !loading }}
                   variants={fileCardVariants}
+                  initial="hidden"
+                  animate="visible"
                   whileHover="hover"
                   whileTap="tap"
                 >
@@ -590,7 +713,9 @@ const ClassDetails = ({
                     </motion.button>
                     <motion.button
                       className="file-action-btn delete-btn"
-                      onClick={() => handleFileDelete(file.id, file.path)}
+                      onClick={() =>
+                        handleFileDelete(file.id, file.path, file.name)
+                      }
                       title="Delete file"
                       whileHover={{
                         scale: 1.1,
@@ -611,7 +736,7 @@ const ClassDetails = ({
                         strokeLinejoin="round"
                       >
                         <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1-2 2v2"></path>
                       </svg>
                     </motion.button>
                   </div>
@@ -630,6 +755,40 @@ const ClassDetails = ({
           />
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        isOpen={deleteConfirmData.isOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title={
+          deleteConfirmData.hasFiles ? "Delete Class and Files" : "Delete Class"
+        }
+        message={
+          deleteConfirmData.hasFiles
+            ? `This class contains ${deleteConfirmData.fileCount} file(s). Deleting the class will also delete all associated files. This action cannot be undone. Are you sure you want to proceed?`
+            : `Are you sure you want to delete ${classData?.name}? This action cannot be undone.`
+        }
+        confirmText={deleteConfirmData.hasFiles ? "Delete All" : "Delete"}
+        danger={true}
+      />
+      <ConfirmDialog
+        isOpen={fileDeleteConfirm.isOpen}
+        onClose={cancelFileDelete}
+        onConfirm={confirmFileDelete}
+        title="Delete File"
+        message={`Are you sure you want to delete "${fileDeleteConfirm.fileName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        danger={true}
+      />
+      <ConfirmDialog
+        isOpen={uploadConfirmData.isOpen}
+        onClose={handleCancelUpload}
+        onConfirm={handleConfirmUpload}
+        title="File Already Exists"
+        message={`A file named "${uploadConfirmData.file?.name}" already exists. Do you want to upload it anyway?`}
+        confirmText="Upload Anyway"
+        cancelText="Skip"
+        danger={false}
+      />
     </motion.div>
   );
 };

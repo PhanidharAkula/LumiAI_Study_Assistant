@@ -2,7 +2,6 @@
   width: 100%;
   height: 100%;
   padding-top: 30px;
-  /* border: 1px solid red; */
 }
 
 .class-header {
@@ -167,10 +166,9 @@
 
 .files-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   width: 100%;
-  margin-top: 20px;
 }
 
 .file-card {

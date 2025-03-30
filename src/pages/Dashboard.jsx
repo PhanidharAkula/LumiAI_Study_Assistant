@@ -156,6 +156,37 @@ const Dashboard = ({ session }) => {
 
   const handleDeleteClass = async (id) => {
     try {
+      const { data: files, error: filesError } = await supabase
+        .from("files")
+        .select("id, path")
+        .eq("class_id", id);
+
+      if (filesError) throw filesError;
+
+      if (files && files.length > 0) {
+        for (const file of files) {
+          if (file.path) {
+            await supabase.storage
+              .from("files")
+              .remove([file.path])
+              .catch((err) =>
+                console.error("Error deleting file from storage:", err)
+              );
+          }
+        }
+
+        const { error: filesDeleteError } = await supabase
+          .from("files")
+          .delete()
+          .eq("class_id", id);
+
+        if (filesDeleteError)
+          console.error(
+            "Error deleting files from database:",
+            filesDeleteError
+          );
+      }
+
       const { error } = await supabase.from("classes").delete().eq("id", id);
 
       if (error) throw error;
