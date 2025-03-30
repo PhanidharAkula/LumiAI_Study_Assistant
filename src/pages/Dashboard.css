@@ -244,6 +244,7 @@
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
+  width: 100%;
 }
 
 .classes-loading.full-page {
@@ -254,6 +255,10 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: var(--background-primary-color);
 }
 
 .spinner {
@@ -302,4 +307,82 @@
 .dashboard-background2 {
   bottom: -20px;
   right: -20px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-container {
+    padding: 0 30px 30px 30px;
+  }
+  
+  .classes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 0 20px 20px 20px;
+  }
+  
+  .classes-header {
+    padding: 30px 10px 10px 10px;
+    margin-bottom: 20px;
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .add-class-button {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  
+  .menu-popup {
+    width: 260px;
+    right: -20px;
+  }
+  
+  .class-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 0 15px 15px 15px;
+  }
+  
+  .classes-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 10px;
+  }
+  
+  .header-left h1 {
+    font-size: 24px;
+  }
+  
+  .user-email {
+    max-width: 140px;
+  }
+  
+  .dashboard-background {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .empty-classes h2 {
+    font-size: x-large;
+  }
+  
+  .create-first-class-btn {
+    padding: 12px 30px;
+    font-size: small;
+  }
 }

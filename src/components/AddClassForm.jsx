@@ -89,6 +89,7 @@ const AddClassForm = ({
         transition={{ duration: 0.3 }}
         exit={{ opacity: 0, y: 30 }}
         className="add-class-form"
+        style={{ marginTop: isEditing ? "200px" : "0" }}
       >
         <p className="form-title-text">
           {isEditing ? "Edit Class" : "Create New Class"}

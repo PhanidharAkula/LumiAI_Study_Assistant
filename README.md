@@ -2,6 +2,8 @@
 
 Lumi AI is an intelligent study assistant designed to help students learn more effectively by leveraging AI to provide insights, summaries, and answer questions about their study materials.
 
+![Lumi AI](./src/assets/home.png)
+
 ## Features
 
 - **AI-powered Chat**: Ask questions about your study materials and get intelligent responses

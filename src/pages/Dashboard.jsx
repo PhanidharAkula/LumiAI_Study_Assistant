@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import ClassDetails from "../components/ClassDetails";
 import AddClassForm from "../components/AddClassForm";
+import ConfirmDialog from "../components/ConfirmDialog";
 import "./Dashboard.css";
 
 const Dashboard = ({ session }) => {
@@ -25,6 +26,7 @@ const Dashboard = ({ session }) => {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const fetchingByUrlRef = useRef(false);
+  const [signOutConfirm, setSignOutConfirm] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -212,6 +214,11 @@ const Dashboard = ({ session }) => {
     } catch (error) {
       console.error("Error signing out:", error.message);
     }
+  };
+
+  const confirmSignOut = () => {
+    setShowMenu(false);
+    setSignOutConfirm(true);
   };
 
   const handleBackToClasses = () => {
@@ -556,7 +563,7 @@ const Dashboard = ({ session }) => {
 
                               <motion.button
                                 className="sign-out-button"
-                                onClick={handleSignOut}
+                                onClick={confirmSignOut}
                                 whileTap={{ scale: 0.98 }}
                               >
                                 <svg
@@ -637,6 +644,17 @@ const Dashboard = ({ session }) => {
           className="dashboard-background dashboard-background2"
         />
       </div>
+
+      <ConfirmDialog
+        isOpen={signOutConfirm}
+        onClose={() => setSignOutConfirm(false)}
+        onConfirm={handleSignOut}
+        title="Sign Out"
+        message="Are you sure you want to sign out of your account?"
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        danger={true}
+      />
     </>
   );
 };

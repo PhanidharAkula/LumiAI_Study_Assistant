@@ -301,12 +301,51 @@
   transition: all 0.2s ease;
 }
 
-/* .back-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0px 4px 0 var(--text-primary-color);
-} */
+@media (max-width: 768px) {
+  .auth-background {
+    width: 250px;
+    height: 250px;
+  }
+  
+  .login-btn {
+    width: 300px;
+    padding: 0px 30px;
+  }
+  
+  .auth-card {
+    padding: 25px;
+  }
+  
+  .back-navigation {
+    top: 30px;
+    left: 30px;
+  }
+}
 
-/* .back-link:active {
-  transform: translateY(0px);
-  box-shadow: 0px 1px 0 var(--text-primary-color);
-} */
+@media (max-width: 480px) {
+  .auth-background {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .login-btn {
+    width: 240px;
+    padding: 0px 20px;
+    font-size: small;
+  }
+  
+  .back-navigation {
+    top: 20px;
+    left: 20px;
+  }
+  
+  .back-button {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .welcome-logo-name {
+    font-size: 40px;
+    margin-top: 30px;
+  }
+}
