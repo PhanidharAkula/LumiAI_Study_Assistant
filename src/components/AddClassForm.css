@@ -1,61 +1,102 @@
-.add-class-form {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin-bottom: 30px;
+.add-class-form-container {
+  height: 70vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.add-class-form h2 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #333;
+.add-class-form {
+  width: 100%;
+  background-color: white;
+  border-radius: 10px;
+  padding: 30px;
+  animation: fadeIn 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.form-title-text {
+  font-size: x-large;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .form-error {
-  background-color: #ffebee;
-  color: #d32f2f;
-  padding: 10px;
-  border-radius: 4px;
-  margin-bottom: 20px;
+  background-color: #FEE2E2;
+  border: 1.5px solid #EF4444;
+  color: #B91C1C;
+  padding: 12px;
+  border-radius: 10px;
   text-align: center;
+  font-weight: 500;
+}
+
+.form-group {
+  width: 100%;
+  max-width: 500px;
+}
+
+.form-text {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary-color);
+}
+
+.add-class-form .form-input {
+  width: 600px !important;
+  max-width: 500px;
+  padding: 12px 15px;
+  border: 1.5px solid var(--text-primary-color) !important;
+  border-radius: 10px;
+  font-size: 16px;
+  background-color: var(--background-secondary-color) !important;
+  color: var(--text-primary-color);
+  transition: all 0.2s ease-in-out;
+  display: block;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-input::placeholder {
+  color: var(--text-primary-color);
+  opacity: 0.6;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--text-primary-color) !important;
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 20px;
+}
+
+.cancel-button, .submit-button {
+  padding: 12px 30px;
+  border-radius: 100px;
+  border: 1.5px solid var(--text-primary-color);
+  font-size: medium;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  transition: none;
 }
 
 .cancel-button {
-  padding: 10px 20px;
-  background-color: #e8eaed;
-  color: #555;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.cancel-button:hover {
-  background-color: #dadce0;
+  background-color: white;
 }
 
 .submit-button {
-  padding: 10px 20px;
-  background-color: #4285f4;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.submit-button:hover {
-  background-color: #3367d6;
+  min-width: 160px;
+  background-color: var(--background-secondary-color);
 }
 
 .cancel-button:disabled,

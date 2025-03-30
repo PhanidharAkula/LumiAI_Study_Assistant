@@ -1,13 +1,30 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables! Check your .env file.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    storageKey: 'lumi-ai-auth',
-    storage: localStorage, // Explicitly use localStorage instead of the default
-    autoRefreshToken: true,
-  },
-})
+    storage: localStorage
+  }
+});
+
+export const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('classes').select('count');
+    if (error) {
+      console.error('Database connection test error:', error);
+      return { success: false, error };
+    }
+    console.log('Database connection successful!', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Unexpected error testing connection:', err);
+    return { success: false, error: err };
+  }
+};

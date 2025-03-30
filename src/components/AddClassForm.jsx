@@ -1,11 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import "./AddClassForm.css";
 
-const AddClassForm = ({ onSuccess, onCancel }) => {
+const AddClassForm = ({
+  onCancel,
+  onClassCreated,
+  isEditing = false,
+  initialData = { name: "" },
+  onClassUpdated,
+}) => {
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isEditing && initialData) {
+      setName(initialData.name);
+    }
+  }, [isEditing, initialData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,65 +28,138 @@ const AddClassForm = ({ onSuccess, onCancel }) => {
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
+    setIsSubmitting(true);
+    setError("");
 
+    try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const { data, error: insertError } = await supabase
-        .from("classes")
-        .insert([{ name, user_id: user.id }])
-        .select();
+      if (!user) throw new Error("You must be logged in");
 
-      if (insertError) throw insertError;
+      if (isEditing) {
+        // Update existing class
+        if (onClassUpdated) {
+          onClassUpdated({
+            ...initialData,
+            name: name.trim(),
+          });
+        }
+      } else {
+        // Create new class
+        const { data, error: insertError } = await supabase
+          .from("classes")
+          .insert([
+            {
+              name: name.trim(),
+              user_id: user.id,
+            },
+          ])
+          .select();
 
-      onSuccess(data);
+        if (insertError) throw insertError;
+
+        if (typeof onClassCreated === "function") {
+          onClassCreated(data[0]);
+        } else {
+          console.warn("onClassCreated is not a function or not provided");
+        }
+      }
     } catch (error) {
-      console.error("Error creating class:", error);
-      setError("Failed to create class. Please try again.");
+      console.error(
+        `Error ${isEditing ? "updating" : "creating"} class:`,
+        error
+      );
+      setError(
+        `Failed to ${isEditing ? "update" : "create"} class: ${
+          error.message || "Unknown error"
+        }`
+      );
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="add-class-form">
-      <h2>Add New Class</h2>
+    <div className="add-class-form-container">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        exit={{ opacity: 0, y: 30 }}
+        className="add-class-form"
+      >
+        <p className="form-title-text">
+          {isEditing ? "Edit Class" : "Create New Class"}
+        </p>
 
-      {error && <div className="form-error">{error}</div>}
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="className">Class Name</label>
-          <input
-            id="className"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter class name"
-            disabled={loading}
-            autoFocus
-          />
-        </div>
-
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="cancel-button"
-            disabled={loading}
+        {error && (
+          <motion.div
+            className="form-error"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
           >
-            Cancel
-          </button>
+            {error}
+          </motion.div>
+        )}
 
-          <button type="submit" className="submit-button" disabled={loading}>
-            {loading ? "Creating..." : "Create Class"}
-          </button>
-        </div>
-      </form>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-text" htmlFor="className">
+              Class Name
+            </label>
+            <input
+              className="form-input"
+              id="className"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter class name"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="form-actions">
+            <motion.button
+              type="button"
+              className="cancel-button"
+              onClick={onCancel}
+              disabled={isSubmitting}
+              whileHover={{
+                scale: 1.03,
+                y: -3,
+                transition: { type: "spring", stiffness: 300, damping: 5 },
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Cancel
+            </motion.button>
+
+            <motion.button
+              type="submit"
+              className="submit-button"
+              disabled={isSubmitting || !name.trim()}
+              whileHover={{
+                scale: 1.03,
+                y: -3,
+                transition: { type: "spring", stiffness: 300, damping: 5 },
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {isSubmitting
+                ? isEditing
+                  ? "Saving..."
+                  : "Creating..."
+                : isEditing
+                ? "Save Changes"
+                : "Create Class"}
+            </motion.button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 };

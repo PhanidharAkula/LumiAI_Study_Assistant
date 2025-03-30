@@ -1,104 +1,69 @@
 import { useState, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./lib/supabaseClient";
-import { ThemeProvider } from "./context/ThemeContext";
-import { setupSessionSync, updateLastActivity } from "./utils/sessionSync";
-
-// Pages
-import WelcomePage from "./pages/WelcomePage";
-import LoginPage from "./pages/auth/LoginPage";
-import SignupPage from "./pages/auth/SignupPage";
-import AuthErrorPage from "./pages/auth/AuthErrorPage";
-import AuthRedirect from "./pages/auth/AuthRedirect";
-import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
-
-// Styles
+import WelcomePage from "./pages/WelcomePage";
+import Login from "./pages/auth/Login";
+import Dashboard from "./pages/Dashboard";
+import AuthRedirect from "./pages/auth/AuthRedirect";
 import "./App.css";
-import "./styles/animations.css"; // Import the animations
 
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initial session check
-    const checkSession = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log(
+        "Initial auth session:",
+        session ? "Logged in" : "No session"
+      );
+      setSession(session);
+      setLoading(false);
+    });
 
-        if (error) {
-          console.error("Session check error:", error);
-          throw error;
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(
+        "Auth event:",
+        event,
+        session ? "User session updated" : "User logged out"
+      );
+      setSession(session);
+    });
 
-        setSession(session);
-
-        // Update activity timestamp whenever session is retrieved
-        if (session) updateLastActivity();
-      } catch (error) {
-        console.error("Session check failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    // Setup session sync across tabs
-    const cleanup = setupSessionSync(setSession);
-
-    // Page visibility handling to refresh session on tab focus
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        supabase.auth.getSession().then(({ data }) => {
-          if (data.session) {
-            setSession(data.session);
-            updateLastActivity();
-          }
-        });
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      cleanup();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    return () => subscription.unsubscribe();
   }, []);
+
+  const LoginRoute = () => {
+    return session ? <Navigate to="/dashboard" /> : <Login />;
+  };
 
   if (loading) {
     return (
-      <div className="loading-container">
+      <div className="loading-screen">
         <div className="spinner"></div>
+        <p>Loading...</p>
       </div>
     );
   }
 
   return (
-    <ThemeProvider>
-      <div className="app-container">
-        <Routes>
-          <Route path="/" element={<WelcomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/auth/callback" element={<AuthRedirect />} />
-          <Route path="/auth/error" element={<AuthErrorPage />} />
-          <Route
-            path="/dashboard/*"
-            element={
-              <ProtectedRoute session={session}>
-                <Dashboard session={session} />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </div>
-    </ThemeProvider>
+    <Routes>
+      <Route path="/" element={<WelcomePage session={session} />} />
+      <Route path="/login" element={<LoginRoute />} />
+      <Route path="/auth/callback" element={<AuthRedirect />} />
+      <Route
+        path="/dashboard/*"
+        element={
+          <ProtectedRoute session={session}>
+            <Dashboard session={session} />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }
 
