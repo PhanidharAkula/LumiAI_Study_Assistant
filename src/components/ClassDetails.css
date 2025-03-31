@@ -166,7 +166,7 @@
 
 .files-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 20px;
   width: 100%;
 }
@@ -188,10 +188,65 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background-color: var(--background-secondary-color);
   border: 1.5px solid var(--text-primary-color);
   box-shadow: 0px 2px 0 var(--text-primary-color);
   margin-bottom: 15px;
+  transition: all 0.2s ease;
+}
+
+/* Image files - Green theme */
+.file-icon-image {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: #10B981;
+  box-shadow: 0px 2px 0 #10B981;
+}
+
+.file-icon-image svg {
+  color: #10B981;
+}
+
+/* PDF files - Red theme */
+.file-icon-pdf {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #EF4444;
+  box-shadow: 0px 2px 0 #EF4444;
+}
+
+.file-icon-pdf svg {
+  color: #EF4444;
+}
+
+/* Document files - Blue theme */
+.file-icon-doc {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3B82F6;
+  box-shadow: 0px 2px 0 #3B82F6;
+}
+
+.file-icon-doc svg {
+  color: #3B82F6;
+}
+
+/* Spreadsheet files - Lime yellow theme */
+.file-icon-sheet {
+  background-color: #FEF3C7;
+  border-color: #D97706;
+  box-shadow: 0px 2px 0 #D97706;
+}
+
+.file-icon-sheet svg {
+  color: #D97706;
+}
+
+/* Default/Other files - Purple theme */
+.file-icon-default {
+  background-color: rgba(139, 92, 246, 0.1);
+  border-color: #8B5CF6;
+  box-shadow: 0px 2px 0 #8B5CF6;
+}
+
+.file-icon-default svg {
+  color: #8B5CF6;
 }
 
 .file-details {
@@ -378,4 +433,105 @@
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
+}
+
+.class-menu-container {
+  position: relative;
+}
+
+.class-menu-button {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-primary-color);
+  background-color: var(--background-secondary-color);
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+}
+
+.class-menu-popup {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 250px;
+  background-color: var(--background-primary-color);
+  border: 1.5px solid var(--text-primary-color);
+  border-radius: 12px;
+  padding: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.study-tool-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 30px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.study-tool-button-text {
+  font-size: medium;
+  font-weight: 500;
+}
+
+.flashcards-button:hover {
+  background-color: #3B82F6;
+  color: white;
+}
+
+.flashcards-button:hover svg {
+  color: white;
+}
+
+.quiz-button:hover {
+  background-color: #8B5CF6;
+  color: white;
+}
+
+.quiz-button:hover svg {
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .class-menu-popup {
+    width: 180px;
+    padding: 10px;
+  }
+  
+  .study-tool-button {
+    padding: 10px;
+  }
+  
+  .study-tool-button-text {
+    font-size: small;
+  }
+}
+
+@media (max-width: 480px) {
+  .class-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  
+  .class-menu-button {
+    width: 40px;
+    height: 40px;
+  }
 }

@@ -1,22 +1,47 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import "./FileViewer.css";
 
 const FileViewer = ({ file, url, onClose }) => {
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+  const isGenericFile = file
+    ? !(
+        file.type?.includes("image") ||
+        file.type?.includes("pdf") ||
+        file.type?.includes("text") ||
+        file.name.endsWith(".txt")
+      )
+    : false;
 
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleSmallButtonDownload = async () => {
+    if (!url || !file?.name) return;
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      const blob = await response.blob();
+      const objectURL = URL.createObjectURL(blob);
+
+      const tempLink = document.createElement("a");
+      tempLink.href = objectURL;
+      tempLink.download = file.name;
+
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      document.body.removeChild(tempLink);
+      URL.revokeObjectURL(objectURL);
+    } catch (error) {
+      console.error("Download failed:", error);
+    }
+  };
 
   const renderFileContent = () => {
     if (!file || !url) return null;
 
-    // Handle different file types
     if (file.type?.includes("image")) {
       return (
         <div className="file-image-container">
@@ -28,7 +53,9 @@ const FileViewer = ({ file, url, onClose }) => {
           />
         </div>
       );
-    } else if (file.type?.includes("pdf")) {
+    }
+
+    if (file.type?.includes("pdf")) {
       return (
         <iframe
           src={`${url}#toolbar=0`}
@@ -37,7 +64,9 @@ const FileViewer = ({ file, url, onClose }) => {
           title={file.name}
         />
       );
-    } else if (file.type?.includes("text") || file.name.endsWith(".txt")) {
+    }
+
+    if (file.type?.includes("text") || file.name.endsWith(".txt")) {
       return (
         <iframe
           src={url}
@@ -46,7 +75,10 @@ const FileViewer = ({ file, url, onClose }) => {
           title={file.name}
         />
       );
-    } else {
+    }
+
+    if (isGenericFile) {
+      if (loading) return null;
       return (
         <div className="file-download-container">
           <div className="file-icon-large">
@@ -75,6 +107,9 @@ const FileViewer = ({ file, url, onClose }) => {
             className="download-button"
             target="_blank"
             rel="noreferrer"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             whileHover={{
               scale: 1.05,
               y: -3,
@@ -122,30 +157,60 @@ const FileViewer = ({ file, url, onClose }) => {
       >
         <div className="file-viewer-header">
           <h3 className="file-viewer-title">{file?.name}</h3>
-          <motion.button
-            className="file-viewer-close-btn"
-            onClick={onClose}
-            whileHover={{
-              scale: 1.1,
-              transition: { type: "spring", stiffness: 400, damping: 10 },
-            }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div className="file-viewer-actions">
+            {!isGenericFile && (
+              <motion.button
+                className="file-viewer-close-btn small-download-btn"
+                onClick={handleSmallButtonDownload}
+                whileHover={{
+                  scale: 1.1,
+                  transition: { type: "spring", stiffness: 400, damping: 10 },
+                }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </motion.button>
+            )}
+
+            <motion.button
+              className="file-viewer-close-btn"
+              onClick={onClose}
+              whileHover={{
+                scale: 1.1,
+                transition: { type: "spring", stiffness: 400, damping: 10 },
+              }}
+              whileTap={{ scale: 0.9 }}
             >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </motion.button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </motion.button>
+          </div>
         </div>
 
         <div className="file-viewer-body">

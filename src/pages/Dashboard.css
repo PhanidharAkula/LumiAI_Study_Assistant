@@ -3,7 +3,9 @@
   width: 100%;
   padding: 0 50px 50px 50px;
   overflow: hidden;
+  padding-bottom: 100px;
 }
+
 
 .menu-popup {
   position: absolute;
@@ -75,6 +77,7 @@
   background: transparent;
   border: 1.5px solid var(--text-primary-color);
   box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 }
@@ -93,6 +96,33 @@
   flex-shrink: 0;
 }
 
+.delete-account-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  margin-top: 10px;
+}
+
+.delete-account-button:hover {
+  background: #EF4444;
+  color: white;
+}
+
+.delete-account-button-text {
+  font-size: medium;
+  font-weight: 500;
+}
+
 .dashboard-content {
   width: 100%;
   overflow-y: auto;
@@ -103,7 +133,6 @@
   justify-content: space-between;
   align-items: center;
   padding: 50px 20px 10px 20px;
-  margin-bottom: 30px;
 }
 
 .header-left h1 {
@@ -133,6 +162,7 @@
   background-color: var(--background-secondary-color);
   border: 1.5px solid var(--text-primary-color);
   box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
 }
 
 .menu-container {
@@ -146,15 +176,16 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-primary-color);
   background-color: var(--background-secondary-color);
   border: 1.5px solid var(--text-primary-color);
-  cursor: pointer;
   box-shadow: 0px 2px 0 var(--text-primary-color);
 }
 
 .classes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 30px;
   padding: 20px;
 }
@@ -282,31 +313,38 @@
   }
 }
 
-.dashboard-background-container {
+.bottom-navbar {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
-  z-index: -1;
+  z-index: 100;
 }
 
-.dashboard-background {
-  background: url("../assets/background.png") no-repeat center center / cover;
-  position: absolute;
-  width: 350px;
-  height: 350px;
-  z-index: -1;
+.bottom-navbar-container {
+  padding: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
 }
 
-.dashboard-background1 {
-  bottom: -20px;
-  left: -20px;
-}
-
-.dashboard-background2 {
-  bottom: -20px;
-  right: -20px;
+.ai-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 50px;
+  border-radius: 100px;
+  border: 1.5px solid;
+  box-shadow: 0px 2px 0;
+  font-size: medium;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--background-secondary-color);
+  border: 1.5px solid var(--text-primary-color);
+  color: var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
 }
 
 @media (max-width: 1024px) {
@@ -345,17 +383,31 @@
   
   .menu-popup {
     width: 260px;
-    right: -20px;
+    right: 0px;
   }
   
   .class-card {
     padding: 20px;
+  }
+  
+  .bottom-navbar {
+    padding: 15px;
+  }
+  
+  .bottom-navbar-container {
+    padding: 0 10px;
+  }
+  
+  .ai-action-button {
+    padding: 12px 20px;
+    font-size: small;
   }
 }
 
 @media (max-width: 480px) {
   .dashboard-container {
     padding: 0 15px 15px 15px;
+    padding-bottom: 80px;
   }
   
   .classes-grid {
@@ -373,8 +425,7 @@
   }
   
   .dashboard-background {
-    width: 200px;
-    height: 200px;
+    display: none;
   }
   
   .empty-classes h2 {
@@ -384,5 +435,23 @@
   .create-first-class-btn {
     padding: 12px 30px;
     font-size: small;
+  }
+  
+  .bottom-navbar {
+    padding: 12px;
+  }
+  
+  .bottom-navbar-container {
+    gap: 10px;
+  }
+  
+  .ai-action-button {
+    padding: 10px 15px;
+    font-size: small;
+  }
+  
+  .ai-action-button svg {
+    width: 18px;
+    height: 18px;
   }
 }

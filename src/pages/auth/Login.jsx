@@ -19,7 +19,6 @@ const Login = () => {
         }
       }
     );
-
     return () => {
       authListener?.subscription?.unsubscribe();
     };
@@ -36,7 +35,6 @@ const Login = () => {
           redirectTo: `${window.location.origin}/dashboard`,
         },
       });
-
       if (error) throw error;
     } catch (error) {
       setError(error.message);
@@ -44,6 +42,7 @@ const Login = () => {
     }
   };
 
+  // Animations
   const bgVariants = {
     hidden: (custom) => ({
       scale: 0.5,
@@ -106,38 +105,6 @@ const Login = () => {
   return (
     <>
       <motion.div
-        custom={{ rotate: 135, x: -40, y: -40 }}
-        variants={bgVariants}
-        initial="hidden"
-        animate="visible"
-        className="auth-background auth-background1"
-      />
-
-      <motion.div
-        custom={{ rotate: -135, x: 40, y: -40, opacity: 0.2 }}
-        variants={bgVariants}
-        initial="hidden"
-        animate="visible"
-        className="auth-background auth-background2"
-      />
-
-      <motion.div
-        custom={{ rotate: 45, x: -40, y: 40 }}
-        variants={bgVariants}
-        initial="hidden"
-        animate="visible"
-        className="auth-background auth-background3"
-      />
-
-      <motion.div
-        custom={{ rotate: -45, x: 40, y: 40, opacity: 0.2 }}
-        variants={bgVariants}
-        initial="hidden"
-        animate="visible"
-        className="auth-background auth-background4"
-      />
-
-      <motion.div
         className="welcome-container"
         initial="hidden"
         animate="visible"
@@ -145,6 +112,7 @@ const Login = () => {
       >
         <motion.button
           className="back-button"
+          id="back-button"
           onClick={() => navigate("/")}
           variants={itemBackVariants}
           whileHover={{
@@ -168,6 +136,7 @@ const Login = () => {
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
         </motion.button>
+
         <motion.p className="welcome-logo-name" variants={itemVariants}>
           Lumi AI
         </motion.p>

@@ -43,11 +43,25 @@ const ClassDetails = ({
     currentIndex: 0,
   });
 
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
   useEffect(() => {
     if (classData) {
       fetchFiles();
     }
   }, [classData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchFiles = async () => {
     if (!classData?.id) return;
@@ -331,6 +345,22 @@ const ClassDetails = ({
     processNextFile(pendingFiles, currentIndex + 1, user);
   };
 
+  const toggleMenu = () => {
+    setShowMenu(!showMenu);
+  };
+
+  const handleFlashcards = () => {
+    setShowMenu(false);
+    console.log("Flashcards for", classData.name);
+    // Implement flashcards functionality
+  };
+
+  const handleQuiz = () => {
+    setShowMenu(false);
+    console.log("Quiz for", classData.name);
+    // Implement quiz functionality
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -375,6 +405,26 @@ const ClassDetails = ({
       },
     },
     tap: { scale: 0.98 },
+  };
+
+  const menuVariants = {
+    hidden: { opacity: 0, y: -20, scale: 0.8 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+      },
+    },
+    exit: {
+      opacity: 0,
+      y: -20,
+      scale: 0.8,
+      transition: { duration: 0.2 },
+    },
   };
 
   if (!classData) return null;
@@ -495,6 +545,104 @@ const ClassDetails = ({
             </svg>
             Delete
           </motion.button>
+
+          <div className="class-menu-container" ref={menuRef}>
+            <motion.button
+              className="class-menu-button"
+              onClick={toggleMenu}
+              whileHover={{
+                scale: 1.05,
+                transition: {
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 5,
+                },
+              }}
+              whileTap={{ scale: 0.98 }}
+              title="Study tools"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </motion.button>
+
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  className="class-menu-popup"
+                  variants={menuVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <motion.button
+                    className="study-tool-button flashcards-button"
+                    onClick={handleFlashcards}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect
+                        x="2"
+                        y="3"
+                        width="20"
+                        height="14"
+                        rx="2"
+                        ry="2"
+                      ></rect>
+                      <line x1="8" y1="21" x2="16" y2="21"></line>
+                      <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <p className="study-tool-button-text">Flashcards</p>
+                  </motion.button>
+
+                  <motion.button
+                    className="study-tool-button quiz-button"
+                    onClick={handleQuiz}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <p className="study-tool-button-text">Quiz</p>
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
       </motion.div>
 
@@ -618,7 +766,22 @@ const ClassDetails = ({
                   whileHover="hover"
                   whileTap="tap"
                 >
-                  <div className="file-icon">
+                  <div
+                    className={`file-icon ${
+                      file.type?.includes("image")
+                        ? "file-icon-image"
+                        : file.type?.includes("pdf")
+                        ? "file-icon-pdf"
+                        : file.type?.includes("word") ||
+                          file.type?.includes("doc")
+                        ? "file-icon-doc"
+                        : file.type?.includes("spreadsheet") ||
+                          file.type?.includes("excel") ||
+                          file.type?.includes("csv")
+                        ? "file-icon-sheet"
+                        : "file-icon-default"
+                    }`}
+                  >
                     {file.type?.includes("image") ? (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"

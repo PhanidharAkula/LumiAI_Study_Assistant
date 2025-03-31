@@ -27,6 +27,7 @@ const Dashboard = ({ session }) => {
   const [initialLoading, setInitialLoading] = useState(true);
   const fetchingByUrlRef = useRef(false);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -219,6 +220,80 @@ const Dashboard = ({ session }) => {
   const confirmSignOut = () => {
     setShowMenu(false);
     setSignOutConfirm(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    setShowMenu(false);
+    setDeleteAccountConfirm(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.error("No user found to delete");
+        return;
+      }
+
+      const { data: classes, error: classesError } = await supabase
+        .from("classes")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (classesError) {
+        console.error("Error fetching classes:", classesError);
+      } else if (classes && classes.length > 0) {
+        for (const classObj of classes) {
+          const { data: files, error: filesError } = await supabase
+            .from("files")
+            .select("id, path")
+            .eq("class_id", classObj.id);
+
+          if (files && files.length > 0) {
+            for (const file of files) {
+              if (file.path) {
+                await supabase.storage
+                  .from("files")
+                  .remove([file.path])
+                  .catch((err) =>
+                    console.error("Error deleting file from storage:", err)
+                  );
+              }
+            }
+
+            await supabase
+              .from("files")
+              .delete()
+              .eq("class_id", classObj.id)
+              .catch((err) =>
+                console.error("Error deleting files from database:", err)
+              );
+          }
+        }
+
+        await supabase
+          .from("classes")
+          .delete()
+          .eq("user_id", user.id)
+          .catch((err) => console.error("Error deleting classes:", err));
+      }
+
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (error) {
+      console.error("Error deleting account:", error.message);
+      await supabase.auth.signOut();
+      navigate("/");
+    }
   };
 
   const handleBackToClasses = () => {
@@ -583,6 +658,33 @@ const Dashboard = ({ session }) => {
                                 </svg>
                                 <p className="sign-out-button-text">Sign Out</p>
                               </motion.button>
+
+                              <motion.button
+                                className="delete-account-button"
+                                onClick={confirmDeleteAccount}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="18"
+                                  height="18"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M3 6h18"></path>
+                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                                <p className="delete-account-button-text">
+                                  Delete Account
+                                </p>
+                              </motion.button>
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -627,23 +729,74 @@ const Dashboard = ({ session }) => {
         )}
       </div>
 
-      <div className="dashboard-background-container">
+      {!selectedClass && hasLoaded && (
         <motion.div
-          custom={{ rotate: 45, x: -40, y: 40 }}
-          variants={bgVariants}
-          initial="hidden"
-          animate="visible"
-          className="dashboard-background dashboard-background1"
-        />
+          className="bottom-navbar"
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{
+            type: "spring",
+            stiffness: 200,
+            damping: 20,
+            delay: 0.5,
+          }}
+        >
+          <div className="bottom-navbar-container">
+            <motion.button
+              className="ai-action-button chat-ai-button"
+              whileHover={{
+                scale: 1.03,
+                y: -5,
+                transition: { type: "spring", stiffness: 300, damping: 8 },
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              Chat with AI
+            </motion.button>
 
-        <motion.div
-          custom={{ rotate: -45, x: 40, y: 40, opacity: 0.2 }}
-          variants={bgVariants}
-          initial="hidden"
-          animate="visible"
-          className="dashboard-background dashboard-background2"
-        />
-      </div>
+            <motion.button
+              className="ai-action-button talk-ai-button"
+              whileHover={{
+                scale: 1.03,
+                y: -5,
+                transition: { type: "spring", stiffness: 300, damping: 8 },
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              Talk with AI
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
 
       <ConfirmDialog
         isOpen={signOutConfirm}
@@ -652,6 +805,17 @@ const Dashboard = ({ session }) => {
         title="Sign Out"
         message="Are you sure you want to sign out of your account?"
         confirmText="Sign Out"
+        cancelText="Cancel"
+        danger={true}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteAccountConfirm}
+        onClose={() => setDeleteAccountConfirm(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete Account"
+        message="Are you sure you want to permanently delete your account? This action cannot be undone and will delete all your classes and files."
+        confirmText="Delete Account"
         cancelText="Cancel"
         danger={true}
       />

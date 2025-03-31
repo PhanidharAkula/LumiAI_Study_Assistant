@@ -72,22 +72,6 @@ const WelcomePage = ({ session }) => {
   return (
     <>
       <motion.div
-        custom={{ rotate: 135, x: -40, y: -40 }}
-        variants={bgVariants}
-        initial="hidden"
-        animate="visible"
-        className="welcome-background welcome-background1"
-      />
-
-      <motion.div
-        custom={{ rotate: -135, x: 40, y: -40, opacity: 0.2 }}
-        variants={bgVariants}
-        initial="hidden"
-        animate="visible"
-        className="welcome-background welcome-background2"
-      />
-
-      <motion.div
         className="welcome-container"
         initial="hidden"
         animate="visible"
@@ -99,7 +83,7 @@ const WelcomePage = ({ session }) => {
         <motion.p className="welcome-sub-logo" variants={itemVariants}>
           Your AI Study Assistant
         </motion.p>
-        <motion.p variants={itemVariants}>
+        <motion.p variants={itemVariants} className="welcome-description">
           Upload your study materials and get instant help, summaries, and study
           tools powered by AI.
         </motion.p>
