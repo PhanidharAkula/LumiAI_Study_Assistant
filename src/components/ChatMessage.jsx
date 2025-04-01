@@ -108,7 +108,7 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                     <div className="code-block-wrapper">
                       <div className="code-block-header">
                         <span className="code-language">{match[1]}</span>
-                        <button
+                        <motion.button
                           className="copy-code-button"
                           onClick={() => {
                             setCopyingCode(match[1]);
@@ -116,6 +116,13 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                             setTimeout(() => setCopyingCode(null), 2000);
                           }}
                           aria-label="Copy code"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 15,
+                          }}
                         >
                           {copyingCode === match[1] ? (
                             <svg
@@ -154,7 +161,7 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
                           )}
-                        </button>
+                        </motion.button>
                       </div>
                       <pre className={className} {...props}>
                         <code className={className} {...props}>
@@ -242,10 +249,17 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
             {renderContent()}
             {isAI && message && (
               <div className="message-actions">
-                <button
+                <motion.button
                   className="copy-message-button"
                   onClick={handleCopyFullResponse}
                   title="Copy full response"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 15,
+                  }}
                 >
                   {copySuccess ? (
                     <span className="copy-success">
@@ -290,7 +304,7 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                       Copy
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
             )}
           </div>

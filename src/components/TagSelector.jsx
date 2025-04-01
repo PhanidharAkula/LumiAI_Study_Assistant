@@ -153,7 +153,13 @@ const TagSelector = ({
       <div className="tag-selector-container">
         <div className="tag-selector-header">
           <h2>Select Study Material</h2>
-          <button className="close-button" onClick={onClose}>
+          <motion.button
+            className="close-button"
+            onClick={onClose}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 500, damping: 15 }}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -168,7 +174,7 @@ const TagSelector = ({
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
-          </button>
+          </motion.button>
         </div>
 
         <div className="tag-selector-search">
@@ -203,9 +209,12 @@ const TagSelector = ({
             filteredClasses.map((classItem) => (
               <div key={classItem.id} className="tag-class-item">
                 <div className="tag-class-header">
-                  <div
+                  <motion.div
                     className="tag-checkbox"
                     onClick={() => handleClassToggle(classItem.id)}
+                    whileHover={{ backgroundColor: "rgba(0, 0, 0, 0.03)" }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
                   >
                     <input
                       type="checkbox"
@@ -213,13 +222,23 @@ const TagSelector = ({
                       readOnly
                     />
                     <label>{classItem.name}</label>
-                  </div>
+                  </motion.div>
 
                   {classItem.files && classItem.files.length > 0 && (
-                    <button
+                    <motion.button
                       type="button"
                       className="expand-button"
                       onClick={(e) => toggleExpand(classItem.id, e)}
+                      whileHover={{
+                        scale: 1.1,
+                        backgroundColor: "var(--background-secondary-color)",
+                      }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 15,
+                      }}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -240,7 +259,7 @@ const TagSelector = ({
                       >
                         <polyline points="6 9 12 15 18 9"></polyline>
                       </svg>
-                    </button>
+                    </motion.button>
                   )}
                 </div>
 
@@ -270,12 +289,26 @@ const TagSelector = ({
             <span>{selectedFiles.length} files selected</span>
           </div>
           <div className="tag-actions">
-            <button type="button" className="cancel-button" onClick={onClose}>
+            <motion.button
+              type="button"
+              className="cancel-button"
+              onClick={onClose}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            >
               Cancel
-            </button>
-            <button type="button" className="apply-button" onClick={handleSave}>
+            </motion.button>
+            <motion.button
+              type="button"
+              className="apply-button"
+              onClick={handleSave}
+              whileHover={{ scale: 1.05, y: -3 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            >
               Apply
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
@@ -283,28 +316,30 @@ const TagSelector = ({
   );
 };
 
-// New FileItem component for better isolation and debugging
+// New FileItem component with Framer Motion
 function FileItem({ file, classId, isSelected, onSelect }) {
   const handleClick = (e) => {
-    e.stopPropagation(); // Stop event propagation
-    console.log(
-      `FileItem clicked: file=${file.id}, class=${classId}, currently selected=${isSelected}`
-    );
+    e.stopPropagation();
     onSelect(file.id, classId);
   };
 
   const handleCheckboxClick = (e) => {
-    e.stopPropagation(); // Prevent double event firing
-    console.log(`FileItem checkbox clicked: file=${file.id}, class=${classId}`);
+    e.stopPropagation();
     onSelect(file.id, classId);
   };
 
   return (
-    <div
+    <motion.div
       className={`tag-file-item ${isSelected ? "selected" : ""}`}
       onClick={handleClick}
       data-fileid={file.id}
       data-classid={classId}
+      whileHover={{
+        backgroundColor: isSelected ? "rgba(139, 92, 246, 0.15)" : "#f5f5f5",
+        scale: 1.01,
+      }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ type: "spring", stiffness: 400, damping: 15 }}
     >
       <div className="file-checkbox-wrapper">
         <input
@@ -333,7 +368,7 @@ function FileItem({ file, classId, isSelected, onSelect }) {
         </svg>
         <span className="file-name">{file.name}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

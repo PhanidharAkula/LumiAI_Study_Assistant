@@ -67,10 +67,11 @@ const ChatComponent = ({
           selectedClasses,
           selectedFiles,
           timestamp: Date.now(),
+          conversationId: currentConversationId,
         })
       );
     }
-  }, [messages, selectedClasses, selectedFiles]);
+  }, [messages, selectedClasses, selectedFiles, currentConversationId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -95,7 +96,25 @@ const ChatComponent = ({
             selectedClasses: savedClasses,
             selectedFiles: savedFiles,
             timestamp,
+            conversationId: savedConversationId,
           } = JSON.parse(savedChat);
+
+          if (savedConversationId) {
+            validateConversationExists(savedConversationId).then((exists) => {
+              if (exists) {
+                setMessages(savedMessages);
+                setSelectedClasses(savedClasses);
+                setSelectedFiles(savedFiles);
+                setCurrentConversationId(savedConversationId);
+                setInitialLoading(false);
+              } else {
+                localStorage.removeItem(storageKey);
+                fetchClassData(initialClassId);
+              }
+            });
+            return;
+          }
+
           if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
@@ -120,7 +139,26 @@ const ChatComponent = ({
             selectedClasses: savedClasses,
             selectedFiles: savedFiles,
             timestamp,
+            conversationId: savedConversationId,
           } = JSON.parse(savedChat);
+
+          if (savedConversationId) {
+            validateConversationExists(savedConversationId).then((exists) => {
+              if (exists) {
+                setMessages(savedMessages);
+                setSelectedClasses(savedClasses);
+                setSelectedFiles(savedFiles);
+                setCurrentConversationId(savedConversationId);
+                setInitialLoading(false);
+              } else {
+                localStorage.removeItem(storageKey);
+                setInitialLoading(false);
+                setMessages([]);
+              }
+            });
+            return;
+          }
+
           if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
@@ -161,6 +199,28 @@ const ChatComponent = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showHistory]);
+
+  const validateConversationExists = async (id) => {
+    if (!id) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error validating conversation:", error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error("Exception validating conversation:", error);
+      return false;
+    }
+  };
 
   const fetchClassData = async (classId) => {
     try {
@@ -221,7 +281,6 @@ const ChatComponent = ({
         return;
       }
 
-      // Get all conversations
       let query = supabase
         .from("conversations")
         .select(
@@ -248,13 +307,10 @@ const ChatComponent = ({
 
       if (error) throw error;
 
-      // Process conversations for display
       const processedHistory = data.map((conv) => {
-        // Count questions in this conversation (each separated by \n\n)
         const questions = conv.question.split("\n\n").filter(Boolean);
         const messageCount = questions.length;
 
-        // Get the first question for display
         const firstQuestion = questions[0] || "";
 
         return {
@@ -289,11 +345,9 @@ const ChatComponent = ({
       if (error) throw error;
 
       if (data) {
-        // Parse the messages from the stored conversation
         const questionParts = data.question.split("\n\n").filter(Boolean);
         const answerParts = data.answer.split("\n\n").filter(Boolean);
 
-        // Create a properly interleaved conversation
         const messageArray = [];
         const maxParts = Math.max(questionParts.length, answerParts.length);
 
@@ -399,7 +453,6 @@ const ChatComponent = ({
       scrollToBottom();
       setLoading(true);
 
-      // Create a new AbortController for this request
       const controller = new AbortController();
       setAbortController(controller);
 
@@ -432,13 +485,10 @@ const ChatComponent = ({
         controller.signal
       );
 
-      // Clear the controller after the response is complete
       setAbortController(null);
 
       if (response.error) {
-        // Handle error but don't return right away if it's aborted
         if (response.error === "aborted") {
-          // We still want to save the aborted response, so don't return
         } else {
           setMessages((prev) => prev.filter((msg) => msg.id !== aiMessageId));
           setMessages((prev) => [
@@ -450,25 +500,22 @@ const ChatComponent = ({
               errorType: response.errorType || "general",
             },
           ]);
-          return; // Only return for non-abort errors
+          return;
         }
       }
 
-      // Update UI to show it's no longer streaming even for aborted responses
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === aiMessageId ? { ...msg, isStreaming: false } : msg
         )
       );
 
-      // Always save conversation, even if aborted
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (user) {
         try {
-          // Extract all user messages and AI responses
           const userMessages = messages
             .filter((msg) => msg.type === "user")
             .map((msg) => msg.content);
@@ -477,28 +524,23 @@ const ChatComponent = ({
             .filter((msg) => msg.type === "assistant" && !msg.isStreaming)
             .map((msg) => msg.content);
 
-          // Add the current message and response
           userMessages.push(message);
           aiResponses.push(fullResponse);
 
-          // Combine all messages with newlines for storage
           const allUserMessages = userMessages.join("\n\n");
           const allAiResponses = aiResponses.join("\n\n");
 
-          // If this is the first message in a new conversation
           if (!currentConversationId) {
-            // Generate title for new conversation
             const title = await generateConversationTitle(
               message,
               fullResponse
             );
 
-            // Create a new conversation record
             const newConversation = {
               class_id: initialClassId || null,
               user_id: user.id,
-              question: message, // Start with just the first message
-              answer: fullResponse, // Start with just the first response
+              question: message,
+              answer: fullResponse,
               document_ids: selectedDocs,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -516,11 +558,9 @@ const ChatComponent = ({
             if (error) {
               console.error("Error saving conversation:", error);
             } else {
-              // Save the conversation ID for future updates
               setCurrentConversationId(data[0].id);
             }
           } else {
-            // We're continuing an existing conversation
             const { data: existingConversation, error: fetchError } =
               await supabase
                 .from("conversations")
@@ -536,7 +576,6 @@ const ChatComponent = ({
               return;
             }
 
-            // Update the existing conversation with all messages
             const updatedConversation = {
               question: allUserMessages,
               answer: allAiResponses,
@@ -553,7 +592,6 @@ const ChatComponent = ({
             }
           }
 
-          // Refresh chat history to show updated conversation
           setHistoryFetched(false);
           fetchChatHistory();
         } catch (error) {
@@ -562,7 +600,6 @@ const ChatComponent = ({
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      // Don't show an error message if the request was aborted
       if (error.name !== "AbortError") {
         setMessages((prev) => [
           ...prev,
@@ -580,12 +617,10 @@ const ChatComponent = ({
     }
   };
 
-  // Function to stop the AI response generation
   const handleStopGeneration = () => {
     if (abortController) {
       abortController.abort();
       setAbortController(null);
-      // Update the streaming message to not show streaming anymore
       setMessages((prev) =>
         prev.map((msg) =>
           msg.isStreaming ? { ...msg, isStreaming: false } : msg
@@ -635,13 +670,11 @@ const ChatComponent = ({
     setCurrentConversationId(conversationPair.id);
     setCurrentSessionId(conversationPair.session_id || `session-${Date.now()}`);
 
-    // Parse the messages from the stored conversation
     const questionParts = conversationPair.question
       .split("\n\n")
       .filter(Boolean);
     const answerParts = conversationPair.answer.split("\n\n").filter(Boolean);
 
-    // Create a properly interleaved conversation
     const messageArray = [];
     const maxParts = Math.max(questionParts.length, answerParts.length);
 
@@ -678,17 +711,14 @@ const ChatComponent = ({
   };
 
   const handleNewConversation = () => {
-    // Clear localStorage for this conversation
     const storageKey = `${STORAGE_KEY_PREFIX}${initialClassId || "global"}`;
     localStorage.removeItem(storageKey);
 
-    // Reset the chat state
     setMessages([]);
     setCurrentConversationId(null);
     setCurrentSessionId(`session-${Date.now()}`);
     setSelectedDocs([]);
 
-    // Reset the class and file selections based on context
     if (!initialClassId) {
       setSelectedClasses([]);
       setSelectedFiles([]);
@@ -697,23 +727,19 @@ const ChatComponent = ({
       setSelectedFiles([]);
     }
 
-    // Update URL if needed
     if (window.history && window.history.replaceState) {
       const url = new URL(window.location.href);
       url.searchParams.delete("conversationId");
       window.history.replaceState({}, "", url.toString());
     }
 
-    // Close the history panel if it's open
     if (showHistory) {
       setShowHistory(false);
     }
 
-    // Refresh the chat history
     setHistoryFetched(false);
     fetchChatHistory();
 
-    // Scroll to bottom
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -760,21 +786,43 @@ const ChatComponent = ({
   const deleteConversation = async () => {
     if (!deleteConfirm) return;
     try {
+      const deletedConversationId = deleteConfirm.id;
+
       const { error } = await supabase
         .from("conversations")
         .delete()
-        .eq("id", deleteConfirm.id);
+        .eq("id", deletedConversationId);
 
       if (error) throw error;
 
       const newChatHistory = chatHistory.filter(
-        (conv) => conv.id !== deleteConfirm.id
+        (conv) => conv.id !== deletedConversationId
       );
 
       setChatHistory(newChatHistory);
 
-      if (currentConversationId === deleteConfirm.id) {
+      if (currentConversationId === deletedConversationId) {
+        const storageKey = `${STORAGE_KEY_PREFIX}${initialClassId || "global"}`;
+        localStorage.removeItem(storageKey);
+
         handleNewConversation();
+      } else {
+        const storageKeysToCheck = [
+          `${STORAGE_KEY_PREFIX}global`,
+          ...allClasses.map((c) => `${STORAGE_KEY_PREFIX}${c.id}`),
+        ];
+
+        for (const key of storageKeysToCheck) {
+          const savedChat = localStorage.getItem(key);
+          if (savedChat) {
+            try {
+              const { conversationId: savedId } = JSON.parse(savedChat);
+              if (savedId === deletedConversationId) {
+                localStorage.removeItem(key);
+              }
+            } catch (e) {}
+          }
+        }
       }
     } catch (error) {
       console.error("Error deleting conversation:", error);
@@ -818,9 +866,15 @@ const ChatComponent = ({
       >
         <div className="header-actions">
           <div className="history-dropdown-container">
-            <button
+            <motion.button
               className={`history-button ${showHistory ? "active" : ""}`}
               onClick={toggleHistory}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1, transition: { delay: 0.3 } }}
+              exit={{ opacity: 0, scale: 0.9, transition: { delay: 0 } }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 5 }}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -836,7 +890,7 @@ const ChatComponent = ({
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
-            </button>
+            </motion.button>
             <AnimatePresence>
               {showHistory && (
                 <motion.div
@@ -874,14 +928,25 @@ const ChatComponent = ({
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1-2 2z"></path>
                           </svg>
                         </div>
                         <p>No conversation history yet</p>
                       </div>
                     ) : (
                       chatHistory.map((conv) => (
-                        <div key={conv.id} className="history-item">
+                        <motion.div
+                          key={conv.id}
+                          className="history-item"
+                          onClick={() => loadConversation(conv)}
+                          whileHover={{ scale: 1.02, y: -3 }}
+                          whileTap={{ scale: 0.98 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 15,
+                          }}
+                        >
                           {editingTitle === conv.id ? (
                             <div className="history-item-edit">
                               <input
@@ -898,30 +963,39 @@ const ChatComponent = ({
                             </div>
                           ) : (
                             <>
-                              <div
+                              <motion.div
                                 className="history-item-content"
                                 onClick={() => loadConversation(conv)}
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 300,
+                                  damping: 15,
+                                }}
                               >
                                 <p className="history-title">
                                   {conv.title || "New Conversation"}
-                                  {/* {conv.hasMultipleMessages && (
-                                    <span className="message-count">
-                                      {conv.messageCount} messages
-                                    </span>
-                                  )} */}
                                 </p>
                                 <p className="history-question">
                                   {conv.displayQuestion}
                                 </p>
-                              </div>
+                              </motion.div>
                               <div className="history-item-actions">
-                                <button
+                                <motion.button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleTitleEdit(conv);
                                   }}
                                   className="history-action-button"
                                   title="Edit title"
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 300,
+                                    damping: 15,
+                                  }}
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -937,14 +1011,26 @@ const ChatComponent = ({
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                   </svg>
-                                </button>
-                                <button
+                                </motion.button>
+                                <motion.button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteConfirm(conv);
                                   }}
                                   className="history-action-button delete"
                                   title="Delete conversation"
+                                  whileHover={{
+                                    scale: 1.1,
+                                    backgroundColor: "#FEE2E2",
+                                    borderColor: "#EF4444",
+                                    color: "#EF4444",
+                                  }}
+                                  whileTap={{ scale: 0.9 }}
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 300,
+                                    damping: 15,
+                                  }}
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -960,7 +1046,7 @@ const ChatComponent = ({
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                   </svg>
-                                </button>
+                                </motion.button>
                               </div>
                               <div className="history-meta">
                                 <span className="history-time">
@@ -979,7 +1065,7 @@ const ChatComponent = ({
                               </div>
                             </>
                           )}
-                        </div>
+                        </motion.div>
                       ))
                     )}
                   </div>
@@ -989,10 +1075,13 @@ const ChatComponent = ({
           </div>
 
           {messages.length > 0 && (
-            <button
+            <motion.button
               className="new-conversation-button"
               onClick={handleNewConversation}
               title="New conversation"
+              whileHover={{ scale: 1.05, y: -3 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 10 }}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1005,17 +1094,23 @@ const ChatComponent = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1-2 2z"></path>
                 <line x1="12" y1="7" x2="12" y2="13"></line>
                 <line x1="9" y1="10" x2="15" y2="10"></line>
               </svg>
-            </button>
+            </motion.button>
           )}
         </div>
 
         <div className="chat-title"></div>
 
-        <button className="back-button" onClick={handleClose}>
+        <motion.button
+          className="back-button"
+          onClick={handleClose}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -1030,7 +1125,7 @@ const ChatComponent = ({
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
-        </button>
+        </motion.button>
       </motion.div>
 
       <AnimatePresence>
@@ -1143,7 +1238,7 @@ const ChatComponent = ({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1-2 2z"></path>
                   </svg>
                 </div>
                 <h3>Start a conversation</h3>

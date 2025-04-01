@@ -82,10 +82,13 @@ const ChatInput = ({
           disabled={loading}
         />
 
-        <button
+        <motion.button
           type="button"
           className="tag-button-bottom"
           onClick={onShowTagSelector}
+          whileHover={{ scale: 1.05, y: -3 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 300, damping: 10 }}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -101,15 +104,16 @@ const ChatInput = ({
             <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
             <path d="M7 7h.01"></path>
           </svg>
-        </button>
+        </motion.button>
 
         {isGenerating ? (
           <motion.button
             type="button"
             className="stop-button"
             onClick={onStopGeneration}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.05, y: -3 }}
             whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 10 }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -130,8 +134,9 @@ const ChatInput = ({
             type="submit"
             className="send-button"
             disabled={!message.trim() || loading}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.05, y: -3 }}
             whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 10 }}
           >
             {loading ? (
               <div className="button-spinner"></div>

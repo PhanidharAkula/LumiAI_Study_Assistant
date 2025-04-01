@@ -38,7 +38,13 @@ const ContextTags = ({
     <div className="context-tags-container">
       <div className="context-tags-header">
         <h4>Active Context</h4>
-        <button className="tag-edit-button" onClick={onShowTagSelector}>
+        <motion.button
+          className="tag-edit-button"
+          onClick={onShowTagSelector}
+          whileHover={{ opacity: 1 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="14"
@@ -54,7 +60,7 @@ const ContextTags = ({
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
           Edit
-        </button>
+        </motion.button>
       </div>
 
       <div className="context-tags-list">
@@ -83,6 +89,8 @@ const ContextTags = ({
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
+                whileHover={{ scale: 1.03 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
                 <span className="tag-icon">
                   <svg
@@ -101,9 +109,15 @@ const ContextTags = ({
                   </svg>
                 </span>
                 <span className="tag-text">{classItem.name}</span>
-                <button
+                <motion.button
                   className="tag-remove-button"
                   onClick={() => onRemoveTag("class", classItem.id)}
+                  whileHover={{
+                    scale: 1.1,
+                    backgroundColor: "rgba(0, 0, 0, 0.1)",
+                  }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -119,7 +133,7 @@ const ContextTags = ({
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
-                </button>
+                </motion.button>
               </motion.div>
             );
           })}
@@ -131,6 +145,8 @@ const ContextTags = ({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
               <span className="tag-icon">
                 <svg
@@ -152,9 +168,15 @@ const ContextTags = ({
                 <span className="tag-text">{file.name}</span>
                 <span className="tag-subtext">{file.className}</span>
               </div>
-              <button
+              <motion.button
                 className="tag-remove-button"
                 onClick={() => onRemoveTag("file", file.id)}
+                whileHover={{
+                  scale: 1.1,
+                  backgroundColor: "rgba(0, 0, 0, 0.1)",
+                }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 500, damping: 15 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -170,7 +192,7 @@ const ContextTags = ({
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </motion.button>
             </motion.div>
           ))}
         </AnimatePresence>

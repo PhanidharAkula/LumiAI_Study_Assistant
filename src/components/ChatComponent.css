@@ -62,7 +62,7 @@
   font-size: 14px;
 }
 
-.history-button, .new-conversation-button {
+.history-button {
   height: 45px;
   width: 45px;
   border-radius: 50%;
@@ -73,32 +73,33 @@
   box-shadow: 0px 2px 0 var(--text-primary-color);
   border: 1.5px solid var(--text-primary-color);
   cursor: pointer;
-  transition: transform 0.2s ease;
   color: var(--text-primary-color);
   padding: 0;
 }
 
-/* .history-button:hover {
-  transform: rotate(-15deg);
-} */
-
 .history-button.active {
   background-color: var(--background-secondary-color);
-  color: #8B5CF6; /* Purple highlight for active state */
-  transform: rotate(0);
-}
-
-.history-button.active:hover {
-  transform: rotate(0);
-}
-
-.new-conversation-button:hover {
-  transform: translateY(-2px);
+  color: #8B5CF6;
 }
 
 .history-button svg, .new-conversation-button svg {
   width: 20px;
   height: 20px;
+}
+
+.new-conversation-button {
+  height: 45px;
+  width: 45px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: white;
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  border: 1.5px solid var(--text-primary-color);
+  cursor: pointer;
+  color: var(--text-primary-color);
+  padding: 0;
 }
 
 .chat-messages {
@@ -262,24 +263,32 @@
 .history-item {
   background-color: white;
   border-radius: 10px;
-  /* border: 1.5px solid var(--text-primary-color); */
   background: rgba(0, 0, 0, 0.1);
   margin-bottom: 10px;
   padding: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
   position: relative;
-  /* border: 1px solid red; */
 }
 
-.history-item:hover {
-  transform: translateY(-3px);
-  scale: 1.01;
-}
-
-.history-item-content {
+.history-item-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
   display: flex;
-  flex-direction: column;
+  gap: 8px;
+}
+
+.history-action-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--background-secondary-color);
+  border: 1px solid var(--text-primary-color);
+  box-shadow: 0px 1.5px 0 var(--text-primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .history-title {
@@ -297,44 +306,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.history-item-actions {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.history-item:hover .history-item-actions {
-  opacity: 1;
-}
-
-.history-action-button {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: var(--background-secondary-color);
-  border: 1px solid var(--text-primary-color);
-  box-shadow: 0px 1.5px 0 var(--text-primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.history-action-button:hover {
-  background-color: var(--background-primary-color);
-}
-
-.history-action-button.delete:hover {
-  background-color: #FEE2E2;
-  border-color: #EF4444;
-  color: #EF4444;
 }
 
 .history-item-edit {
@@ -515,7 +486,7 @@
   bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
-  width: auto; /* Allow button to expand for text */
+  width: auto;
   min-width: 40px;
   height: 40px;
   padding: 0 12px;
@@ -529,12 +500,6 @@
   gap: 6px;
   cursor: pointer;
   z-index: 10;
-  transition: all 0.2s ease;
-}
-
-.scroll-to-bottom-button:hover {
-  transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .scroll-to-bottom-button svg {
@@ -590,6 +555,48 @@
     transform: scale(1);
     opacity: 0;
   }
+}
+
+/* Add a notice style for deleted conversations */
+.deleted-conversation-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  margin: 20px;
+  text-align: center;
+  background-color: #FEF9C3;
+  border: 1.5px solid #EAB308;
+  border-radius: 12px;
+  color: #854D0E;
+}
+
+.deleted-conversation-notice svg {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 10px;
+  color: #EAB308;
+}
+
+.deleted-conversation-notice h3 {
+  margin: 5px 0;
+  font-weight: 600;
+}
+
+.deleted-conversation-notice p {
+  margin: 5px 0 15px;
+}
+
+.start-new-chat-btn {
+  padding: 8px 16px;
+  background-color: white;
+  border: 1.5px solid #EAB308;
+  border-radius: 20px;
+  font-weight: 600;
+  color: #854D0E;
+  cursor: pointer;
+  box-shadow: 0px 2px 0 #EAB308;
 }
 
 /* Responsive adjustments */

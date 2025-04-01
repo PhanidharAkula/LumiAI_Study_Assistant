@@ -113,7 +113,7 @@
   cursor: pointer;
 }
 
-/* Improved expand button styles */
+/* Remove hover styles from expand button */
 .expand-button {
   min-width: 32px;
   height: 32px;
@@ -128,16 +128,7 @@
   margin-left: 8px;
 }
 
-.expand-button:hover {
-  background-color: var(--background-secondary-color);
-  transform: translateY(-2px);
-}
-
-.expand-button:active {
-  transform: translateY(0);
-}
-
-/* Improved expand button with text for better visibility */
+/* Remove hover styles from prominent expand button */
 .expand-button-prominent {
   display: flex;
   align-items: center;
@@ -150,12 +141,6 @@
   font-weight: 500;
   color: var(--text-primary-color);
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.expand-button-prominent:hover {
-  background-color: var(--background-secondary-color);
-  transform: translateY(-1px);
 }
 
 .expand-button-prominent svg {
@@ -189,7 +174,7 @@
   margin-top: 5px;
 }
 
-/* Clearer and more distinct file items */
+/* Remove hover styles from file items */
 .tag-file-item {
   display: flex;
   align-items: center;
@@ -199,11 +184,6 @@
   background-color: white;
   border: 1px solid rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
-}
-
-.tag-file-item:hover {
-  background-color: #f5f5f5;
-  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .tag-file-item.selected {
@@ -279,12 +259,12 @@
   gap: 10px;
 }
 
+/* Remove hover styles from cancel and apply buttons */
 .cancel-button, .apply-button {
   padding: 8px 16px;
   border-radius: 100px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .cancel-button {
@@ -298,9 +278,4 @@
   border: 1.5px solid var(--text-primary-color);
   color: var(--text-primary-color);
   box-shadow: 0px 2px 0 var(--text-primary-color);
-}
-
-.apply-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0px 4px 0 var(--text-primary-color);
 }

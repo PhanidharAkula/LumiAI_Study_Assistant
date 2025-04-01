@@ -36,10 +36,6 @@
   transition: opacity 0.2s;
 }
 
-.tag-edit-button:hover {
-  opacity: 1;
-}
-
 .context-tags-list {
   display: flex;
   flex-wrap: wrap;
@@ -95,11 +91,6 @@
   padding: 0;
   cursor: pointer;
   color: var(--text-primary-color);
-  transition: background-color 0.2s;
-}
-
-.tag-remove-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .tag-select-button {
@@ -114,12 +105,6 @@
   font-weight: 500;
   cursor: pointer;
   color: var(--text-primary-color);
-  transition: all 0.2s;
-}
-
-.tag-select-button:hover {
-  background-color: var(--background-secondary-color);
-  transform: translateY(-1px);
 }
 
 /* When used at the bottom of the chat */
