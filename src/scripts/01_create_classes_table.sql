@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS public.classes (
+CREATE TABLE public.classes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id),
   name TEXT NOT NULL,

@@ -1,0 +1,482 @@
+.chat-message {
+  margin-bottom: 20px;
+  max-width: 85%;
+  animation: fadeIn 0.3s ease-in-out;
+  /* border: 1px solid red; */
+}
+
+/* Fix user message layout and appearance */
+.user-message {
+  align-self: flex-end;
+  max-width: 70%; /* Constrain maximum width */
+  width: auto;
+}
+
+/* Properly align the user icon and message */
+.user-message .message-container {
+  justify-content: flex-end; /* Keep right alignment for user messages */
+  align-items: center;
+  gap: 12px;
+  width: 100%; /* Use full width of container */
+}
+
+/* Remove background from user message */
+.user-message-text {
+  color: var(--text-primary-color);
+  font-size: 16px;
+  white-space: pre-wrap; /* Changed from normal to pre-wrap to preserve line breaks */
+  background-color: white;
+  border: none;
+  box-shadow: none;
+  padding: 20px;
+  border-radius: 20px;
+  overflow: visible; /* Change from auto to ensure all content is visible */
+  max-width: 100%;
+  display: block;
+}
+
+/* No need for scrollbar-related styles for text that wraps */
+.user-message-text::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure content has proper width and wrapping */
+.user-message .message-content {
+  max-width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  overflow: visible; /* Change from auto to ensure all content is visible */
+  width: 100%;
+}
+
+.ai-message {
+  align-self: flex-start;
+}
+
+.error-message {
+  align-self: center;
+  width: 80%;
+}
+
+.message-container {
+  display: flex;
+  gap: 12px;
+}
+
+.message-avatar,
+.ai-avatar,
+.user-avatar {
+  display: none;
+}
+
+.message-content {
+  position: relative;
+  padding: 12px 0;
+  max-width: 100%; /* Expand to full width now that avatars are gone */
+}
+
+.ai-content {
+  margin-left: 0; /* Remove left margin previously used for avatar spacing */
+}
+
+.user-content {
+  margin-right: 0; /* Remove right margin previously used for avatar spacing */
+}
+
+.markdown-container {
+  color: black;
+  font-size: 16px;
+  line-height: 1.5;
+  position: relative;
+  padding: 0;
+}
+
+/* Markdown styling */
+.markdown-container h1,
+.markdown-container h2,
+.markdown-container h3,
+.markdown-container h4,
+.markdown-container h5,
+.markdown-container h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: black;
+}
+
+.markdown-container h1 {
+  font-size: 1.5em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 0.3em;
+}
+
+.markdown-container h2 {
+  font-size: 1.25em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 0.3em;
+}
+
+.markdown-container h3 {
+  font-size: 1.1em;
+  color: black;
+}
+
+.markdown-container p {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: black;
+}
+
+.markdown-container ul,
+.markdown-container ol {
+  padding-left: 2em;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-container li {
+  margin-top: 0.25em;
+}
+
+.markdown-container pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 5px;
+  padding: 16px;
+  overflow: auto;
+  margin-bottom: 16px;
+  font-family: monospace;
+}
+
+.markdown-container code {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: monospace;
+}
+
+.markdown-container pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.cursor-blink {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background-color: var(--text-primary-color);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-content {
+  padding: 10px 16px;
+  min-width: 60px;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background-color: var(--text-secondary-color);
+  border-radius: 50%;
+  display: inline-block;
+  animation: bounce 1.5s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.error-content {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #B91C1C;
+}
+
+.error-content svg {
+  flex-shrink: 0;
+}
+
+.error-content p {
+  margin: 0;
+}
+
+.error-content.quota-error {
+  color: #B91C1C;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 5px;
+}
+
+.error-content.quota-error svg {
+  margin-bottom: 10px;
+  width: 30px;
+  height: 30px;
+}
+
+.quota-error-content {
+  background-color: #FEE2E2;
+  border: 1.5px solid #EF4444;
+  box-shadow: 0px 2px 0 #EF4444;
+}
+
+@keyframes bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-message {
+    max-width: 95%;
+  }
+}
+
+/* Copy button styling */
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.copy-message-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  /* color: var(--text-secondary-color); */
+  background: transparent;
+  border: none;
+  /* border-radius: 6px; */
+  /* padding: 5px 10px; */
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  display: none;
+}
+
+.copy-message-button:hover {
+  background-color: var(--background-primary-color);
+  transform: translateY(-4px);
+}
+
+.copy-success {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  /* color: #10B981; */
+}
+
+/* Code block styling enhancements */
+.code-block-wrapper {
+  position: relative;
+  margin: 16px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.code-language {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary-color);
+  text-transform: uppercase;
+}
+
+.copy-code-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.copy-code-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.code-block-wrapper pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 0 0 6px 6px;
+}
+
+/* Enhanced link styling */
+.markdown-link {
+  color: #2563eb;
+  text-decoration: none;
+  border-bottom: none;
+  padding-bottom: 1px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-link:hover {
+  color: #2563eb;
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.external-link-icon {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.markdown-link:hover .external-link-icon {
+  opacity: 1;
+}
+
+/* Ensure hashtags and mentions are black */
+.hashtag, .mention {
+  color: black;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.hashtag:hover, .mention:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+/* Special keyword styling for AI responses - make black */
+.ai-content strong {
+  color: black;
+  font-weight: 600;
+}
+
+.ai-content em {
+  color: black;
+}
+
+/* Reset any colored headers or text */
+.markdown-container h3,
+.markdown-container h4 {
+  color: black;
+  margin-top: 20px;
+}
+
+.markdown-container blockquote {
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  padding-left: 15px;
+  color: black;
+  font-style: italic;
+  margin: 15px 0;
+}
+
+.markdown-container table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 15px 0;
+}
+
+.markdown-container th {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: black;
+  font-weight: 600;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+}
+
+.markdown-container td {
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.markdown-container tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+/* Ensure syntax highlighting correctly shows comments in gray */
+.hljs-comment, 
+.hljs-quote {
+  color: #708090;
+}
+
+/* Reset any other syntax highlighting colors to ensure readability but maintain black text */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: black;
+}
+
+.hljs-function .hljs-keyword {
+  color: black;
+}
+
+.hljs-subst {
+  color: black;
+}
+
+.hljs-string,
+.hljs-title,
+.hljs-name,
+.hljs-type,
+.hljs-attribute,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition,
+.hljs-template-tag,
+.hljs-template-variable {
+  color: black;
+}
+
+.hljs-title.function_ {
+  color: black;
+}

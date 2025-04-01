@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabaseClient";
 import ClassDetails from "../components/ClassDetails";
 import AddClassForm from "../components/AddClassForm";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ChatComponent from "../components/ChatComponent";
 import "./Dashboard.css";
 
 const Dashboard = ({ session }) => {
@@ -28,6 +29,9 @@ const Dashboard = ({ session }) => {
   const fetchingByUrlRef = useRef(false);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatClassId, setChatClassId] = useState(null);
+  const [chatConversationId, setChatConversationId] = useState(null);
 
   useEffect(() => {
     if (!loading) {
@@ -49,6 +53,22 @@ const Dashboard = ({ session }) => {
   useEffect(() => {
     isMounted.current = true;
 
+    // Check URL for chat parameter
+    const searchParams = new URLSearchParams(location.search);
+    const chatParam = searchParams.get("chat");
+    const classIdParam = searchParams.get("classId");
+    const conversationIdParam = searchParams.get("conversationId");
+
+    if (chatParam === "true") {
+      setChatOpen(true);
+      if (classIdParam) {
+        setChatClassId(classIdParam);
+      }
+      if (conversationIdParam) {
+        setChatConversationId(conversationIdParam);
+      }
+    }
+
     if (!hasInitialFetch.current || session?.user?.id !== user?.id) {
       fetchClasses();
       hasInitialFetch.current = true;
@@ -59,7 +79,7 @@ const Dashboard = ({ session }) => {
     return () => {
       isMounted.current = false;
     };
-  }, [session]);
+  }, [session, location.search]);
 
   useEffect(() => {
     if (classes.length > 0 && classIdFromUrl && !selectedClass) {
@@ -303,6 +323,42 @@ const Dashboard = ({ session }) => {
 
   const toggleMenu = () => {
     setShowMenu(!showMenu);
+  };
+
+  const handleChatWithAI = (classId = null, conversationId = null) => {
+    setChatClassId(classId);
+    setChatConversationId(conversationId);
+    setChatOpen(true);
+
+    // Update URL to reflect state (without page refresh)
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set("chat", "true");
+    if (classId) {
+      searchParams.set("classId", classId);
+    } else {
+      searchParams.delete("classId");
+    }
+
+    if (conversationId) {
+      searchParams.set("conversationId", conversationId);
+    } else {
+      searchParams.delete("conversationId");
+    }
+
+    navigate(`?${searchParams.toString()}`, { replace: true });
+  };
+
+  const handleCloseChat = () => {
+    setChatOpen(false);
+    setChatConversationId(null);
+
+    // Update URL to reflect state (without page refresh)
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.delete("chat");
+    searchParams.delete("classId");
+    searchParams.delete("conversationId");
+
+    navigate(`?${searchParams.toString()}`, { replace: true });
   };
 
   const containerVariants = {
@@ -729,6 +785,19 @@ const Dashboard = ({ session }) => {
         )}
       </div>
 
+      {/* Add chat component with AnimatePresence for smooth transitions */}
+      <AnimatePresence>
+        {chatOpen && (
+          <ChatComponent
+            isOpen={chatOpen}
+            onClose={handleCloseChat}
+            initialClassId={chatClassId}
+            allClasses={classes}
+            conversationId={chatConversationId}
+          />
+        )}
+      </AnimatePresence>
+
       {!selectedClass && hasLoaded && (
         <motion.div
           className="bottom-navbar"
@@ -744,6 +813,7 @@ const Dashboard = ({ session }) => {
           <div className="bottom-navbar-container">
             <motion.button
               className="ai-action-button chat-ai-button"
+              onClick={() => handleChatWithAI(selectedClass?.id)}
               whileHover={{
                 scale: 1.03,
                 y: -5,

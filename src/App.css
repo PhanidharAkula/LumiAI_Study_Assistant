@@ -8,9 +8,10 @@
   font-weight: 300;
   letter-spacing: 1px;
   scroll-behavior: smooth;
-  -webkit-user-select: none;
+  color: var(--text-primary-color);
+  /* -webkit-user-select: none;
   -ms-user-select: none;
-  user-select: none;
+  user-select: none; */
   /* outline: 1px solid red; */
 }
 
@@ -18,13 +19,13 @@ p, h1, h2, h3, h4, h5, h6, span, label, a, button, input, textarea {
   cursor: pointer;
 }
 
-input, 
+/* input, 
 textarea, 
 [contenteditable="true"] {
   -webkit-user-select: text;
   -ms-user-select: text;
   user-select: text;
-}
+} */
 
 :root {
   --text-primary-color: #000000;
@@ -36,7 +37,6 @@ textarea,
 .link {
   text-decoration: none;
   background: transparent;
-  color: var(--text-primary-color);
 }
 
 .loading-screen {
