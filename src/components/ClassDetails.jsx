@@ -546,7 +546,7 @@ const ClassDetails = ({
             Delete
           </motion.button>
 
-          <div className="class-menu-container" ref={menuRef}>
+          {/* <div className="class-menu-container" ref={menuRef}>
             <motion.button
               className="class-menu-button"
               onClick={toggleMenu}
@@ -642,7 +642,7 @@ const ClassDetails = ({
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </div> */}
         </motion.div>
       </motion.div>
 
