@@ -32,7 +32,10 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: "https://studywithlumi.com/dashboard",
+          queryParams: {
+            hd: "studywithlumi.com",
+          },
         },
       });
       if (error) throw error;
@@ -40,29 +43,6 @@ const Login = () => {
       setError(error.message);
       setLoading(false);
     }
-  };
-
-  // Animations
-  const bgVariants = {
-    hidden: (custom) => ({
-      scale: 0.5,
-      opacity: 0,
-      x: custom.x ?? 0,
-      y: custom.y ?? 0,
-      rotate: custom.rotate ?? 0,
-    }),
-    visible: (custom) => ({
-      scale: 1,
-      opacity: custom.opacity ?? 0.3,
-      x: 0,
-      y: 0,
-      rotate: custom.rotate ?? 0,
-      transition: {
-        type: "spring",
-        stiffness: 150,
-        damping: 12,
-      },
-    }),
   };
 
   const containerVariants = {
