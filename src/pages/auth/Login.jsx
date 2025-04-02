@@ -32,7 +32,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: import.meta.env.VITE_AUTH_REDIRECT_URL,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) throw error;
