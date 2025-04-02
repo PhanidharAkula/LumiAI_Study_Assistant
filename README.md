@@ -9,7 +9,6 @@ Lumi AI is an intelligent study assistant designed to help students learn more e
 - **Contextual Understanding**: Lumi references your specific documents to provide relevant answers
 - **Conversation History**: Save and review your previous interactions with the AI
 - **Smart Responses**: Generate flashcards, summaries, and study outlines from your materials
-- **Dark/Light Mode**: Study comfortably in any environment with theme switching
 
 ## Recent Updates
 
