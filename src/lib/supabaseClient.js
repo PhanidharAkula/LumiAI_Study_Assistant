@@ -10,7 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    storage: localStorage
+    storage: localStorage,
+    // Add this configuration to use your custom domain
+    redirectTo: 'https://studywithlumi.com/auth/callback',
+    // Set this to match your custom domain
+    site: 'https://studywithlumi.com'
   }
 });
 
