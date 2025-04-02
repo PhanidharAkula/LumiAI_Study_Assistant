@@ -11,8 +11,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     storage: localStorage,
-    redirectTo: 'https://studywithlumi.com/auth/callback',
-    site: 'https://studywithlumi.com'
+    redirectTo: window.location.origin + '/auth/callback',  // Use dynamic origin instead of hardcoded URL
+    site: window.location.origin  // Use dynamic origin instead of hardcoded URL
   }
 });
 

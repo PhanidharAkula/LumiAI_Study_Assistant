@@ -32,7 +32,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "https://studywithlumi.com/dashboard",
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) throw error;

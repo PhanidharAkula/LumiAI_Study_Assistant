@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study with Lumi</title>
+  <!-- Add this script for SPA route handling -->
+  <script type="text/javascript">
+    // Handle redirects from 404 page or direct navigation
+    (function() {
+      // Parse the URL
+      var location = window.location;
+      var path = location.pathname;
+      var search = location.search;
+      var hash = location.hash;
+      
+      // Check if we're coming from a redirect with encoded path
+      if (search && search.indexOf('?/') === 0) {
+        var redirectPath = search.substring(2);
+        var redirectSearch = '';
+        var searchSplit = redirectPath.split('&');
+        if (searchSplit.length > 1) {
+          redirectPath = searchSplit[0];
+          redirectSearch = '?' + searchSplit.slice(1).join('&').replace(/~and~/g, '&');
+        }
+        
+        // Replace the URL with the decoded path
+        window.history.replaceState(null, null, 
+          location.protocol + '//' + location.host + '/' + redirectPath + redirectSearch + hash
+        );
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
