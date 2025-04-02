@@ -33,9 +33,6 @@ const Login = () => {
         provider: "google",
         options: {
           redirectTo: "https://studywithlumi.com/dashboard",
-          queryParams: {
-            hd: "studywithlumi.com",
-          },
         },
       });
       if (error) throw error;
