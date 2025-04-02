@@ -33,9 +33,6 @@ build/
 .output/
 public/build/
 
-# Documentation
-docs/
-
 # Coverage directory
 coverage/
 
