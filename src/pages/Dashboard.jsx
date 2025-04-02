@@ -837,7 +837,7 @@ const Dashboard = ({ session }) => {
               Chat with AI
             </motion.button>
 
-            {/* <motion.button
+            <motion.button
               className="ai-action-button talk-ai-button"
               whileHover={{
                 scale: 1.03,
@@ -863,7 +863,7 @@ const Dashboard = ({ session }) => {
                 <line x1="8" y1="23" x2="16" y2="23"></line>
               </svg>
               Talk with AI
-            </motion.button> */}
+            </motion.button>
           </div>
         </motion.div>
       )}
