@@ -1,12 +1,13 @@
 import { Navigate } from "react-router-dom";
-import { memo } from "react";
 
 const ProtectedRoute = ({ session, children }) => {
+  // If we don't have a session, redirect to login
   if (!session) {
     return <Navigate to="/login" replace />;
   }
 
+  // Session exists, render the protected component
   return children;
 };
 
-export default memo(ProtectedRoute);
+export default ProtectedRoute;
