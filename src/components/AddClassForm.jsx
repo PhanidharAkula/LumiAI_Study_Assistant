@@ -38,6 +38,33 @@ const AddClassForm = ({
 
       if (!user) throw new Error("You must be logged in");
 
+      // Check for duplicate class names (case-insensitive) for this user
+      const { data: existingClasses, error: fetchErr } = await supabase
+        .from("classes")
+        .select("id, name")
+        .eq("user_id", user.id);
+
+      if (fetchErr) throw fetchErr;
+
+      const cleanName = name.trim().toLowerCase();
+      const duplicate = (existingClasses || []).some((c) => {
+        // when editing, ignore the current class id
+        if (
+          isEditing &&
+          initialData &&
+          initialData.id &&
+          c.id === initialData.id
+        )
+          return false;
+        return (c.name || "").trim().toLowerCase() === cleanName;
+      });
+
+      if (duplicate) {
+        setError("A class with this name already exists.");
+        setIsSubmitting(false);
+        return;
+      }
+
       if (isEditing) {
         // Update existing class
         if (onClassUpdated) {

@@ -483,16 +483,16 @@
   color: var(--text-primary-color);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-}
-
-.study-tool-button-text {
   font-size: medium;
   font-weight: 500;
 }
 
+.study-tool-button-text {
+}
+
 .flashcards-button:hover {
   background-color: #3B82F6;
-  color: white;
+  /* color: white; */
 }
 
 .flashcards-button:hover svg {
@@ -501,7 +501,7 @@
 
 .quiz-button:hover {
   background-color: #8B5CF6;
-  color: white;
+  /* color: white; */
 }
 
 .quiz-button:hover svg {

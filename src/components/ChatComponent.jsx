@@ -1015,7 +1015,18 @@ const ChatComponent = ({
 
         <div className="chat-title"></div>
 
-        <button className="back-button" onClick={handleClose}>
+        <motion.button
+          className="back-button"
+          onClick={handleClose}
+          whileHover={{
+            scale: 1.05,
+            transition: {
+              type: "spring",
+              stiffness: 300,
+              damping: 5,
+            },
+          }}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -1030,7 +1041,7 @@ const ChatComponent = ({
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
-        </button>
+        </motion.button>
       </motion.div>
 
       <AnimatePresence>

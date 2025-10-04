@@ -16,6 +16,7 @@ const Dashboard = ({ session }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
   const isMounted = useRef(false);
@@ -105,11 +106,35 @@ const Dashboard = ({ session }) => {
       } = await supabase.auth.getUser();
 
       if (!user) {
+        // If the server no longer recognizes the user (deleted), clear
+        // any stale client session and force a full redirect to login.
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutErr) {
+          console.warn("Error signing out stale session:", signOutErr);
+        }
         navigate("/login");
         return;
       }
 
       setUser(user);
+
+      // fetch profile to determine admin flag
+      try {
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("id", user.id)
+          .limit(1)
+          .single();
+        if (!profileErr && profile && profile.is_admin === true) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (pe) {
+        setIsAdmin(false);
+      }
 
       const { data, error } = await supabase
         .from("classes")
@@ -690,6 +715,40 @@ const Dashboard = ({ session }) => {
                                     </div>
                                   </div>
                                 </div>
+                              )}
+
+                              {isAdmin && (
+                                <motion.button
+                                  className="admin-button"
+                                  onClick={() => {
+                                    setShowMenu(false);
+                                    navigate("/admin");
+                                  }}
+                                  whileTap={{ scale: 0.98 }}
+                                >
+                                  {/* Lock icon for admin to indicate protected area */}
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <rect
+                                      x="3"
+                                      y="11"
+                                      width="18"
+                                      height="10"
+                                      rx="2"
+                                    ></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                  </svg>
+                                  <p className="sign-out-button-text">Admin</p>
+                                </motion.button>
                               )}
 
                               <motion.button

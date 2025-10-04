@@ -1,7 +1,9 @@
+
 .dashboard-container {
   min-height: 100vh;
   width: 100%;
   padding: 0 50px 50px 50px;
+  /* allow popups to overflow the container so the menu isn't clipped on short pages */
   overflow: hidden;
   padding-bottom: 100px;
 }
@@ -21,6 +23,7 @@
   flex-direction: column;
   gap: 10px;
   box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+  /* border: 1px solid red; */
 }
 
 .user-profile {
@@ -80,16 +83,200 @@
   color: var(--text-primary-color);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
+  margin-top: 5px;
 }
 
 .sign-out-button:hover {
-  background: #EF4444;
+  background: #F97316;
   color: white;
 }
 
 .sign-out-button-text {
   font-size: medium;
   font-weight: 500;
+}
+
+/* Admin button (matches sign-out/delete styles but with distinct accent) */
+.admin-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  /* transition: all 0.18s cubic-bezier(.2,.9,.2,1); */
+  transition: all 0.2s ease-in-out;
+}
+
+.admin-button:hover {
+  background: rgba(59,130,246,0.95); /* blue-ish tint */
+  color: white;
+  /* transform: translateY(-2px); */
+}
+
+.admin-button p {
+  font-size: medium;
+  font-weight: 500;
+}
+
+/* Admin page styles */
+.users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.96));
+  border-radius: 10px;
+  box-shadow: 0px 3px 0 rgba(0,0,0,0.04);
+  transition: transform 0.18s cubic-bezier(.2,.9,.2,1), box-shadow 0.18s;
+}
+
+.user-row:hover {
+  transform: translateY(-4px);
+  box-shadow: 0px 8px 20px rgba(0,0,0,0.06);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-info strong {
+  font-weight: 700;
+  color: var(--text-primary-color);
+}
+
+.user-info .muted {
+  font-size: 12px;
+  color: var(--text-secondary-color);
+}
+
+.admin-controls {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.users-list button {
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--text-primary-color);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.users-list button:hover {
+  background: var(--background-secondary-color);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* user card styles for admin */
+.user-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.98));
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+  transition: transform 0.18s, box-shadow 0.18s;
+  align-items: flex-start;
+}
+
+.user-card-left {
+  display: flex;
+  align-items: center;
+}
+
+.user-card-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 320px;
+  max-width: 560px;
+}
+
+.class-item {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.03);
+  margin-bottom: 8px;
+  background: white;
+}
+
+.class-name {
+  font-weight: 600;
+}
+
+.class-meta {
+  font-size: 13px;
+  color: var(--text-secondary-color);
+  margin-top: 6px;
+}
+
+.file-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.02);
+}
+
+.file-name {
+  font-size: 14px;
+}
+
+.file-size {
+  font-size: 12px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.stat-card {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.03);
+}
+
+.stat-value {
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.stat-label {
+  color: var(--text-secondary-color);
+  font-size: 12px;
 }
 
 .sign-out-icon {
@@ -110,7 +297,7 @@
   color: var(--text-primary-color);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  margin-top: 10px;
+  margin-top: 5px;
 }
 
 .delete-account-button:hover {
@@ -133,6 +320,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 50px 20px 10px 20px;
+  /* border: 1px solid red; */
+}
+
+/* Ensure the main classes container fills the viewport minus header/footer so vh-based min-heights behave as expected */
+.classes-container {
+  min-height: calc(100vh - 220px);
 }
 
 .header-left h1 {
@@ -141,6 +334,7 @@
   font-weight: 800;
   margin: 0;
   color: var(--text-primary-color);
+  /* border: 10px solid red; */
 }
 
 .header-right {
@@ -188,6 +382,9 @@
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 30px;
   padding: 20px;
+  min-height: 300px;
+  align-items: start;
+  align-content: start;
 }
 
 .class-card {
@@ -195,12 +392,19 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
+  align-self: start;
   gap: 15px;
   padding: 30px;
   border-radius: 10px;
   background-color: white;
   cursor: pointer;
 }
+
+/* @media (max-width: 768px) {
+  .classes-grid {
+    min-height: 220px;
+  }
+} */
 
 .class-card-icon {
   width: 50px;
@@ -305,6 +509,7 @@
 .add-class-container {
   max-width: 600px;
   margin: 0 auto;
+  /* border: 1px solid red; */
 }
 
 @keyframes spin {

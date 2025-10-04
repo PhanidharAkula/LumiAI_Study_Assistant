@@ -6,6 +6,7 @@ import Login from "./pages/auth/Login";
 import AuthRedirect from "./pages/auth/AuthRedirect";
 import WelcomePage from "./pages/WelcomePage";
 import Dashboard from "./pages/Dashboard";
+import Admin from "./pages/Admin";
 import "./App.css";
 
 function App() {
@@ -19,7 +20,30 @@ function App() {
         data: { session: activeSession },
       } = await supabase.auth.getSession();
 
-      setSession(activeSession);
+      // If there's a stored session, make sure the server still recognizes
+      // the user. If the user was deleted server-side, clear the stale
+      // client session to avoid stuck protected routes.
+      if (activeSession) {
+        try {
+          const {
+            data: { user },
+            error: getUserError,
+          } = await supabase.auth.getUser();
+          if (getUserError || !user) {
+            // Clear the client session
+            await supabase.auth.signOut();
+            setSession(null);
+          } else {
+            setSession(activeSession);
+          }
+        } catch (err) {
+          console.warn("Error validating stored session:", err);
+          setSession(activeSession);
+        }
+      } else {
+        setSession(activeSession);
+      }
+
       setLoading(false);
 
       // Set up the auth state listener for future changes
@@ -80,6 +104,14 @@ function App() {
         element={
           <ProtectedRoute session={session}>
             <Dashboard session={session} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute session={session}>
+            <Admin />
           </ProtectedRoute>
         }
       />

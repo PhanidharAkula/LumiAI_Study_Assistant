@@ -32,7 +32,11 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          // Send OAuth callbacks to the dedicated callback route where
+          // we exchange the URL params for a session and then redirect
+          // to the dashboard. This ensures new-user signups are handled
+          // correctly.
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (error) throw error;

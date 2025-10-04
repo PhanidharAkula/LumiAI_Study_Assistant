@@ -54,12 +54,12 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
     const systemPrompt = context 
       ? `You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. 
       
-The following is information about the student's study materials:
-${context}
+      The following is information about the student's study materials:
+      ${context}
 
-Use this information to provide helpful, accurate answers to the student's questions. 
-Format your responses using Markdown for better readability. Use headings, bullet points, 
-and code blocks as appropriate. If showing code examples, use proper syntax highlighting.`
+      Use this information to provide helpful, accurate answers to the student's questions. 
+      Format your responses using Markdown for better readability. Use headings, bullet points, 
+      and code blocks as appropriate. If showing code examples, use proper syntax highlighting.`
       : "You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. Format your responses using Markdown for better readability. Use headings, bullet points, and code blocks as appropriate.";
 
     const response = await fetch(API_URL, {
@@ -184,11 +184,11 @@ export const fetchAIResponse = async (userMessage, context = "") => {
     const systemPrompt = context 
       ? `You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. 
       
-The following is information about the student's study materials:
-${context}
+    The following is information about the student's study materials:
+    ${context}
 
-Use this information to provide helpful, accurate answers to the student's questions. If asked about class materials, file counts, or other details, refer to the information provided above. Be concise but thorough in your responses.`
-      : "You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. Provide concise, helpful answers to questions.";
+    Use this information to provide helpful, accurate answers to the student's questions. If asked about class materials, file counts, or other details, refer to the information provided above. Be concise but thorough in your responses.`
+    : "You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. Provide concise, helpful answers to questions.";
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -197,12 +197,12 @@ Use this information to provide helpful, accurate answers to the student's quest
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
         ],
-        temperature: 0.7,
+        temperature: 0.8,
         max_tokens: 500,
       }),
     });
@@ -260,7 +260,7 @@ export const generateFlashcards = async (content) => {
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           { 
             role: "system", 
@@ -313,17 +313,23 @@ export const generateConversationTitle = async (userMessage, aiResponse) => {
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo", // Using a smaller model for efficiency
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "Generate a short, concise title (maximum 6 words) for this conversation. Return only the title with no extra text, punctuation, or quotes."
+            content: `You are a concise title generator. 
+                      Given a user's question and the AI's reply, create a short but meaningful title that captures the main topic or purpose of the conversation.
+                      Rules:
+                      - Keep it under 7 words.
+                      - Use natural capitalization (e.g., "Understanding React Hooks").
+                      - Do NOT use quotes or punctuation at the ends.
+                      - Focus on clarity and relevance, not just generic terms.`
           },
           { role: "user", content: userMessage },
           { role: "assistant", content: aiResponse }
         ],
-        temperature: 0.7,
-        max_tokens: 15,
+        temperature: 0.8,
+        max_tokens: 25,
       }),
     });
 
