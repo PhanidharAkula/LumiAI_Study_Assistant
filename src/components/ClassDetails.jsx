@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import FileViewer from "./FileViewer";
 import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "./ConfirmDialog";
+import { useNavigate } from "react-router-dom";
 import { getFilePublicUrl } from "../utils/storageUtils";
 import "./ClassDetails.css";
 
@@ -16,6 +17,7 @@ const ClassDetails = ({
   onDelete,
   onBack,
 }) => {
+  const navigate = useNavigate();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -383,6 +385,61 @@ const ClassDetails = ({
     },
   };
 
+  // Small in-file components for the study buttons so they include navigation
+  function MotionFlashcardsButton() {
+    return (
+      <motion.button
+        className="study-tool-button flashcards-button"
+        whileTap={{ scale: 0.98 }}
+        // onClick={() => navigate(`/study/${classData.id}/flashcards`)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        Flashcards
+      </motion.button>
+    );
+  }
+
+  function MotionQuizButton() {
+    return (
+      <motion.button
+        className="study-tool-button quiz-button"
+        whileTap={{ scale: 0.98 }}
+        // onClick={() => navigate(`/study/${classData.id}/quiz`)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        Quiz
+      </motion.button>
+    );
+  }
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -502,213 +559,9 @@ const ClassDetails = ({
         </motion.div>
 
         <motion.div className="class-actions" variants={itemVariants}>
-          <motion.button
-            className="edit-button"
-            onClick={onEdit}
-            title="Edit class"
-            whileHover={{
-              scale: 1.05,
-              y: -3,
-              transition: { type: "spring", stiffness: 300, damping: 5 },
-            }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 20h9"></path>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
-            Edit
-          </motion.button>
-
-          <motion.button
-            className="delete-button"
-            onClick={confirmDelete}
-            title="Delete class"
-            whileHover={{
-              scale: 1.05,
-              y: -3,
-              transition: { type: "spring", stiffness: 300, damping: 5 },
-            }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#EF4444"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1-2 2v2"></path>
-            </svg>
-            Delete
-          </motion.button>
-
-          <motion.button
-            className="study-tool-button flashcards-button"
-            // whileHover={{
-            //   scale: 1.05,
-            //   y: -3,
-            //   transition: { type: "spring", stiffness: 300, damping: 5 },
-            // }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            Flashcards
-          </motion.button>
-
-          <motion.button
-            className="study-tool-button quiz-button"
-            // whileHover={{
-            //   scale: 1.05,
-            //   y: -3,
-            //   transition: { type: "spring", stiffness: 300, damping: 5 },
-            // }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            Quiz
-          </motion.button>
-
-          {/* <div className="class-menu-container" ref={menuRef}>
-            <motion.button
-              className="class-menu-button"
-              onClick={toggleMenu}
-              whileHover={{
-                scale: 1.05,
-                transition: {
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 5,
-                },
-              }}
-              whileTap={{ scale: 0.98 }}
-              title="Study tools"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </motion.button>
-
-            <AnimatePresence>
-              {showMenu && (
-                <motion.div
-                  className="class-menu-popup"
-                  variants={menuVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <motion.button
-                    className="study-tool-button flashcards-button"
-                    onClick={handleFlashcards}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect
-                        x="2"
-                        y="3"
-                        width="20"
-                        height="14"
-                        rx="2"
-                        ry="2"
-                      ></rect>
-                      <line x1="8" y1="21" x2="16" y2="21"></line>
-                      <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                    <p className="study-tool-button-text">Flashcards</p>
-                  </motion.button>
-
-                  <motion.button
-                    className="study-tool-button quiz-button"
-                    onClick={handleQuiz}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <p className="study-tool-button-text">Quiz</p>
-                  </motion.button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div> */}
+          {/* Study tool buttons: navigate to full-screen study pages */}
+          <MotionFlashcardsButton />
+          <MotionQuizButton />
         </motion.div>
       </motion.div>
 
@@ -984,6 +837,7 @@ const ClassDetails = ({
           />
         )}
       </AnimatePresence>
+      {/* Study pages are opened in full-screen routes now */}
       <ConfirmDialog
         isOpen={deleteConfirmData.isOpen}
         onClose={handleCancelDelete}

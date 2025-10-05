@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
+import { getFilePublicUrl } from "../utils/storageUtils";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import ContextTags from "./ContextTags";
@@ -336,55 +338,177 @@ const ChatComponent = ({
     }
   };
 
+  // Tag selection is handled by `handleTagSelection` defined below (keeps modal control with TagSelector)
+
   const buildAIContext = async () => {
-    let context = "";
+    // Build a clear, delimited context block. This returns a short string
+    // describing which classes and files are active. If nothing is selected,
+    // return an empty string so the assistant behaves as a general chat model.
+    try {
+      if (!selectedClasses.length && !selectedFiles.length) return "";
 
-    if (selectedClasses.length === 0 && selectedFiles.length === 0) {
-      const totalClasses = allClasses.length;
-      const totalFiles = allClasses.reduce(
-        (count, c) => count + (c.files?.length || 0),
-        0
-      );
-      context = `Using all your study materials as general context. You have access to ${totalClasses} classes with a total of ${totalFiles} files.`;
-      return context;
-    }
+      const parts = [];
+      // List selected classes and how many files are included
+      if (selectedClasses.length) {
+        parts.push("Selected classes:");
+        selectedClasses.forEach((classId) => {
+          const cls = allClasses.find((c) => c.id === classId);
+          if (!cls) return;
+          const totalFiles = cls.files?.length || 0;
+          // count how many of this class's files are selected
+          const filesSelectedFromClass = (cls.files || []).filter((f) =>
+            selectedFiles.includes(f.id)
+          );
+          const filesSelectedCount = filesSelectedFromClass.length;
+          parts.push(
+            `- ${cls.name} (id: ${cls.id}): ${filesSelectedCount}/${totalFiles} files selected`
+          );
+        });
+      }
 
-    if (selectedClasses.length > 0) {
-      const classDetails = selectedClasses
-        .map((classId) => {
-          const classObj = allClasses.find((c) => c.id === classId);
-          if (!classObj) return null;
-          const fileCount = classObj.files?.length || 0;
-          const fileNames =
-            classObj.files?.map((f) => f.name).join(", ") || "no files";
-          return `- ${classObj.name} class: Contains ${fileCount} files${
-            fileCount > 0 ? ` (${fileNames})` : ""
-          }`;
-        })
-        .filter(Boolean);
-      context = `Using materials from the following classes:\n${classDetails.join(
-        "\n"
-      )}`;
-    }
+      // List explicitly selected files and attempt to include their text
+      if (selectedFiles.length) {
+        parts.push("Selected files:");
+        // Use for..of so we can await inside the loop when fetching content
+        for (const fileId of selectedFiles) {
+          let found = false;
+          for (const cls of allClasses) {
+            const fileObj = cls.files?.find((f) => f.id === fileId);
+            if (fileObj) {
+              found = true;
+              parts.push(
+                `- ${fileObj.name} (id: ${fileObj.id}) from ${cls.name}`
+              );
 
-    if (selectedFiles.length > 0) {
-      const fileDetails = selectedFiles
-        .map((fileId) => {
-          for (const classObj of allClasses) {
-            const file = classObj.files?.find((f) => f.id === fileId);
-            if (file) {
-              return `- ${file.name} (from ${classObj.name} class)`;
+              // Attempt to fetch textual content for supported MIME types
+              try {
+                const mime = (fileObj.type || "").toLowerCase();
+                const isText =
+                  mime.startsWith("text") ||
+                  mime.includes("json") ||
+                  mime.includes("xml") ||
+                  mime.includes("markdown") ||
+                  mime.includes("csv") ||
+                  mime.includes("plain");
+
+                if (isText) {
+                  const { url, error } = await getFilePublicUrl(
+                    "files",
+                    fileObj.path
+                  );
+                  if (url && !error) {
+                    try {
+                      const resp = await fetch(url);
+                      if (resp.ok) {
+                        const text = await resp.text();
+                        const truncated = text.slice(0, 20000);
+                        parts.push("---BEGIN FILE CONTENT---");
+                        parts.push(truncated);
+                        parts.push("---END FILE CONTENT---");
+                        if (text.length > truncated.length)
+                          parts.push("[Truncated file content]");
+                      } else {
+                        parts.push(
+                          `[Could not fetch file content: HTTP ${resp.status}]`
+                        );
+                      }
+                    } catch (err) {
+                      parts.push("[Error fetching file content]");
+                    }
+                  } else {
+                    parts.push(
+                      "[Could not generate URL for file to fetch content]"
+                    );
+                  }
+                } else if ((fileObj.type || "").toLowerCase().includes("pdf")) {
+                  // Try to extract text from PDF client-side (limited pages)
+                  try {
+                    const { url, error } = await getFilePublicUrl(
+                      "files",
+                      fileObj.path
+                    );
+                    if (url && !error) {
+                      // fetch binary and pass arrayBuffer to pdfjs
+                      const resp = await fetch(url);
+                      if (resp.ok) {
+                        const arrayBuffer = await resp.arrayBuffer();
+                        const loadingTask = pdfjsLib.getDocument({
+                          data: arrayBuffer,
+                        });
+                        const pdf = await loadingTask.promise;
+                        let fullText = "";
+                        const maxPages = Math.min(pdf.numPages, 20);
+                        for (let p = 1; p <= maxPages; p++) {
+                          try {
+                            const page = await pdf.getPage(p);
+                            const content = await page.getTextContent();
+                            const strings = content.items
+                              .map((it) => it.str)
+                              .join(" ");
+                            fullText += strings + "\n\n";
+                            if (fullText.length > 18000) break;
+                          } catch (pageErr) {
+                            console.warn("Error extracting page", p, pageErr);
+                            break;
+                          }
+                        }
+                        const truncated = fullText.slice(0, 20000);
+                        parts.push("---BEGIN FILE CONTENT (PDF EXTRACT)---");
+                        parts.push(truncated);
+                        parts.push("---END FILE CONTENT (PDF EXTRACT)---");
+                        if (fullText.length > truncated.length)
+                          parts.push("[Truncated PDF content]");
+                      } else {
+                        parts.push(
+                          `[Could not fetch PDF: HTTP ${resp.status}]`
+                        );
+                      }
+                    } else {
+                      parts.push(
+                        "[Could not generate URL for PDF to extract content]"
+                      );
+                    }
+                  } catch (err) {
+                    console.error("PDF extraction error:", err);
+                    parts.push("[Error extracting PDF content]");
+                  }
+                } else {
+                  parts.push(
+                    `[${
+                      fileObj.type || "file"
+                    } not included - content not extracted]`
+                  );
+                }
+              } catch (err) {
+                parts.push("[Error while attempting to include file content]");
+              }
+
+              break;
             }
           }
-          return null;
-        })
-        .filter(Boolean);
-      context += `\n\nSpecifically using these files:\n${fileDetails.join(
-        "\n"
-      )}`;
-    }
+          if (!found)
+            parts.push(`- file id: ${fileId} (metadata not found locally)`);
+        }
+      }
 
-    return context;
+      // Include any explicitly selected documents
+      if (selectedDocs && selectedDocs.length) {
+        parts.push("Selected documents:");
+        selectedDocs.forEach((docId) => {
+          const doc = documents.find((d) => d.id === docId);
+          if (doc) {
+            parts.push(`- ${doc.name} (id: ${doc.id})`);
+          } else {
+            parts.push(`- document id: ${docId}`);
+          }
+        });
+      }
+
+      return parts.join("\n");
+    } catch (err) {
+      console.error("Error building AI context:", err);
+      return "";
+    }
   };
 
   const handleSendMessage = async (message) => {
@@ -417,6 +541,7 @@ const ChatComponent = ({
       const context = await buildAIContext();
 
       let fullResponse = "";
+      console.log("AI context sent:\n", context);
       const response = await fetchStreamingResponse(
         message,
         context,
@@ -468,37 +593,44 @@ const ChatComponent = ({
 
       if (user) {
         try {
-          // Extract all user messages and AI responses
-          const userMessages = messages
-            .filter((msg) => msg.type === "user")
-            .map((msg) => msg.content);
+          // Build ordered arrays of questions and answers by scanning the
+          // messages array in time order. This preserves correct pairing of
+          // user/assistant turns even if there were multiple user messages
+          // or assistant segments.
+          const questionParts = [];
+          const answerParts = [];
+          for (const msg of messages) {
+            if (msg.type === "user") questionParts.push(msg.content);
+            if (msg.type === "assistant" && !msg.isStreaming)
+              answerParts.push(msg.content);
+          }
 
-          const aiResponses = messages
-            .filter((msg) => msg.type === "assistant" && !msg.isStreaming)
-            .map((msg) => msg.content);
+          // Ensure current exchange is included (fallback if messages array
+          // was not yet updated): push current message/response if missing
+          const lastQuestion = questionParts[questionParts.length - 1];
+          if (!lastQuestion || lastQuestion !== message) {
+            questionParts.push(message);
+          }
+          const lastAnswer = answerParts[answerParts.length - 1];
+          if (!lastAnswer || lastAnswer !== fullResponse) {
+            answerParts.push(fullResponse);
+          }
 
-          // Add the current message and response
-          userMessages.push(message);
-          aiResponses.push(fullResponse);
+          const allUserMessages = questionParts.join("\n\n");
+          const allAiResponses = answerParts.join("\n\n");
 
-          // Combine all messages with newlines for storage
-          const allUserMessages = userMessages.join("\n\n");
-          const allAiResponses = aiResponses.join("\n\n");
-
-          // If this is the first message in a new conversation
           if (!currentConversationId) {
-            // Generate title for new conversation
+            // Generate title from the first question/answer pair
             const title = await generateConversationTitle(
-              message,
-              fullResponse
+              questionParts[0] || message,
+              answerParts[0] || fullResponse
             );
 
-            // Create a new conversation record
             const newConversation = {
               class_id: initialClassId || null,
               user_id: user.id,
-              question: message, // Start with just the first message
-              answer: fullResponse, // Start with just the first response
+              question: allUserMessages,
+              answer: allAiResponses,
               document_ids: selectedDocs,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -516,31 +648,16 @@ const ChatComponent = ({
             if (error) {
               console.error("Error saving conversation:", error);
             } else {
-              // Save the conversation ID for future updates
               setCurrentConversationId(data[0].id);
             }
           } else {
-            // We're continuing an existing conversation
-            const { data: existingConversation, error: fetchError } =
-              await supabase
-                .from("conversations")
-                .select("*")
-                .eq("id", currentConversationId)
-                .single();
-
-            if (fetchError) {
-              console.error(
-                "Error fetching existing conversation:",
-                fetchError
-              );
-              return;
-            }
-
-            // Update the existing conversation with all messages
+            // Update existing conversation with ordered content
             const updatedConversation = {
               question: allUserMessages,
               answer: allAiResponses,
               updated_at: new Date().toISOString(),
+              context_classes: selectedClasses,
+              context_files: selectedFiles,
             };
 
             const { error: updateError } = await supabase

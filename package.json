@@ -22,7 +22,8 @@
     "react-router-dom": "^6.14.2",
     "rehype-highlight": "^6.0.0",
     "remark-gfm": "^3.0.1",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "pdfjs-dist": "^3.10.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

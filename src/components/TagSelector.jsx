@@ -15,6 +15,7 @@ const TagSelector = ({
   );
   const [selectedFiles, setSelectedFiles] = useState(initialSelectedFiles);
   const [expandedClasses, setExpandedClasses] = useState({});
+  const classCheckboxRefs = useRef({});
   const [searchTerm, setSearchTerm] = useState("");
 
   console.log("TagSelector render - selectedFiles:", selectedFiles);
@@ -52,78 +53,105 @@ const TagSelector = ({
     setExpandedClasses(expanded);
   }, []);
 
-  // Handle class selection toggle
-  const handleClassToggle = (classId) => {
-    console.log(`Toggling class selection for ${classId}`);
+  // Reconcile initial selections: ensure selectedFiles includes files from any
+  // initially selected classes, then mark a class as selected only when all
+  // its files are selected. This prevents divergence between class and file state.
+  useEffect(() => {
+    // start from provided arrays
+    const initialFilesSet = new Set(initialSelectedFiles || []);
 
-    setSelectedClasses((prev) => {
-      if (prev.includes(classId)) {
-        // Deselect class
-        console.log(`Deselecting class: ${classId}`);
-
-        // Also deselect all files from this class
-        const classObj = classes.find((c) => c.id === classId);
-        if (classObj && classObj.files && classObj.files.length > 0) {
-          const filesToRemove = classObj.files.map((f) => f.id);
-          console.log(`Files to remove: ${filesToRemove.join(", ")}`);
-
-          setSelectedFiles((prevFiles) => {
-            const newSelection = prevFiles.filter(
-              (id) => !filesToRemove.includes(id)
-            );
-            console.log(`New file selection: ${newSelection.join(", ")}`);
-            return newSelection;
-          });
-        }
-
-        return prev.filter((id) => id !== classId);
-      } else {
-        // Select class and expand it
-        console.log(`Selecting class: ${classId}`);
-        setExpandedClasses((prev) => ({ ...prev, [classId]: true }));
-        return [...prev, classId];
+    // If initialSelectedClasses provided, add their files to the file set
+    (initialSelectedClasses || []).forEach((clsId) => {
+      const cls = classes.find((c) => c.id === clsId);
+      if (cls && cls.files) {
+        cls.files.forEach((f) => initialFilesSet.add(f.id));
       }
     });
+
+    // compute classes that are fully selected (all files selected)
+    const fullySelectedClasses = new Set();
+    classes.forEach((c) => {
+      const total = (c.files && c.files.length) || 0;
+      if (total === 0) return; // don't auto-add empty classes
+      const allSelected = c.files.every((f) => initialFilesSet.has(f.id));
+      if (allSelected) fullySelectedClasses.add(c.id);
+    });
+
+    setSelectedFiles(Array.from(initialFilesSet));
+    setSelectedClasses(Array.from(fullySelectedClasses));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Handle class selection toggle: selecting a class means "select all files in it".
+  // Deselecting a class removes its files from selection.
+  const handleClassToggle = (classId) => {
+    const classObj = classes.find((c) => c.id === classId);
+    const fileIds =
+      (classObj && classObj.files && classObj.files.map((f) => f.id)) || [];
+
+    // if class is currently fully selected, deselect it
+    if (selectedClasses.includes(classId)) {
+      setSelectedClasses((prev) => prev.filter((id) => id !== classId));
+      setSelectedFiles((prevFiles) =>
+        prevFiles.filter((id) => !fileIds.includes(id))
+      );
+      return;
+    }
+
+    // otherwise select all files from this class and mark class as selected
+    setSelectedFiles((prevFiles) =>
+      Array.from(new Set([...(prevFiles || []), ...fileIds]))
+    );
+    setSelectedClasses((prev) =>
+      Array.from(new Set([...(prev || []), classId]))
+    );
   };
 
-  // Direct file selection handler - completely rewritten for debugging
+  // Direct file selection handler: toggle a single file, and reconcile the parent
+  // class selection: a class is considered selected only when ALL its files are selected.
   const directFileSelect = (fileId, classId) => {
-    console.log(`DIRECT FILE SELECT: file=${fileId}, class=${classId}`);
-
-    // Toggle file selection status
+    const classObj = classes.find((c) => c.id === classId);
+    const classFileIds =
+      (classObj && classObj.files && classObj.files.map((f) => f.id)) || [];
     const isCurrentlySelected = selectedFiles.includes(fileId);
 
     if (isCurrentlySelected) {
-      console.log(`Removing file ${fileId} from selection`);
-      setSelectedFiles((prev) => prev.filter((id) => id !== fileId));
+      // remove file
+      setSelectedFiles((prev) => {
+        const newFiles = (prev || []).filter((id) => id !== fileId);
+        // after removal, check if all files of the class are still selected
+        const allStillSelected = classFileIds.every((id) =>
+          newFiles.includes(id)
+        );
+        if (!allStillSelected) {
+          setSelectedClasses((prevCls) =>
+            prevCls.filter((id) => id !== classId)
+          );
+        }
+        return newFiles;
+      });
     } else {
-      console.log(`Adding file ${fileId} to selection`);
-      setSelectedFiles((prev) => [...prev, fileId]);
-
-      // Make sure parent class is selected
-      if (!selectedClasses.includes(classId)) {
-        console.log(`Also selecting parent class ${classId}`);
-        setSelectedClasses((prev) => [...prev, classId]);
-      }
+      // add file
+      setSelectedFiles((prev) => {
+        const newFiles = Array.from(new Set([...(prev || []), fileId]));
+        // if after adding, all files in the class are selected, mark class as selected
+        const allNowSelected =
+          classFileIds.length > 0 &&
+          classFileIds.every((id) => newFiles.includes(id));
+        if (allNowSelected) {
+          setSelectedClasses((prevCls) =>
+            Array.from(new Set([...(prevCls || []), classId]))
+          );
+        }
+        return newFiles;
+      });
     }
   };
 
-  // Toggle class expansion
+  // Toggle class expansion (only from dropdown button)
   const toggleExpand = (classId, e) => {
-    if (e) {
-      e.stopPropagation();
-    }
-
-    console.log(`Toggling expansion for class ${classId}`);
-    setExpandedClasses((prev) => {
-      const newState = { ...prev, [classId]: !prev[classId] };
-      console.log(
-        `Class ${classId} is now ${
-          newState[classId] ? "expanded" : "collapsed"
-        }`
-      );
-      return newState;
-    });
+    if (e) e.stopPropagation();
+    setExpandedClasses((prev) => ({ ...prev, [classId]: !prev[classId] }));
   };
 
   // Handle save button click
@@ -148,12 +176,46 @@ const TagSelector = ({
 
   if (!isOpen) return null;
 
+  // Update indeterminate state of class checkboxes whenever selectedFiles changes
+  useEffect(() => {
+    classes.forEach((c) => {
+      const ref = classCheckboxRefs.current[c.id];
+      if (!ref) return;
+      const total = (c.files && c.files.length) || 0;
+      if (total === 0) {
+        ref.indeterminate = false;
+        return;
+      }
+      const selectedFromClass = (c.files || []).filter((f) =>
+        selectedFiles.includes(f.id)
+      ).length;
+      if (selectedFromClass > 0 && selectedFromClass < total) {
+        ref.indeterminate = true;
+      } else {
+        ref.indeterminate = false;
+      }
+      // If no files remain selected for this class and the class isn't explicitly selected, auto-deselect
+      if (selectedFromClass === 0 && !selectedClasses.includes(c.id)) {
+        // nothing
+      }
+      // If no files remain but class is selected and we prefer auto-deselect, uncomment below
+      // if (selectedFromClass === 0 && selectedClasses.includes(c.id)) {
+      //   setSelectedClasses((prev) => prev.filter((id) => id !== c.id));
+      // }
+    });
+  }, [selectedFiles, classes, selectedClasses]);
+
   return (
     <div className="tag-selector-overlay">
       <div className="tag-selector-container">
         <div className="tag-selector-header">
           <h2>Select Study Material</h2>
-          <button className="close-button" onClick={onClose}>
+          <button
+            className="close-button"
+            onClick={onClose}
+            aria-label="Close tag selector"
+            title="Close"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -203,44 +265,70 @@ const TagSelector = ({
             filteredClasses.map((classItem) => (
               <div key={classItem.id} className="tag-class-item">
                 <div className="tag-class-header">
-                  <div
-                    className="tag-checkbox"
-                    onClick={() => handleClassToggle(classItem.id)}
-                  >
+                  <div className="tag-checkbox">
                     <input
+                      ref={(el) =>
+                        (classCheckboxRefs.current[classItem.id] = el)
+                      }
                       type="checkbox"
                       checked={selectedClasses.includes(classItem.id)}
-                      readOnly
+                      onChange={() => handleClassToggle(classItem.id)}
+                      aria-label={`Select class ${classItem.name}`}
                     />
-                    <label>{classItem.name}</label>
+                    <label onClick={() => handleClassToggle(classItem.id)}>
+                      {classItem.name}
+                    </label>
                   </div>
 
                   {classItem.files && classItem.files.length > 0 && (
-                    <button
-                      type="button"
-                      className="expand-button"
-                      onClick={(e) => toggleExpand(classItem.id, e)}
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                      <div
+                        className="files-count"
                         style={{
-                          transform: expandedClasses[classItem.id]
-                            ? "rotate(180deg)"
-                            : "rotate(0deg)",
-                          transition: "transform 0.3s",
+                          fontSize: 12,
+                          color: "var(--text-secondary-color)",
                         }}
                       >
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </button>
+                        {classItem.files.length} files
+                      </div>
+                      <button
+                        type="button"
+                        className="expand-button-prominent"
+                        onClick={(e) => toggleExpand(classItem.id, e)}
+                        aria-label={
+                          expandedClasses[classItem.id]
+                            ? "Collapse files"
+                            : "Expand files"
+                        }
+                        title={
+                          expandedClasses[classItem.id]
+                            ? "Collapse files"
+                            : "Expand files"
+                        }
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{
+                            transform: expandedClasses[classItem.id]
+                              ? "rotate(180deg)"
+                              : "rotate(0deg)",
+                            transition: "transform 0.3s",
+                          }}
+                        >
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -270,10 +358,22 @@ const TagSelector = ({
             <span>{selectedFiles.length} files selected</span>
           </div>
           <div className="tag-actions">
-            <button type="button" className="cancel-button" onClick={onClose}>
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={onClose}
+              aria-label="Cancel tag selection"
+              title="Cancel"
+            >
               Cancel
             </button>
-            <button type="button" className="apply-button" onClick={handleSave}>
+            <button
+              type="button"
+              className="apply-button"
+              onClick={handleSave}
+              aria-label="Apply tag selection"
+              title="Apply"
+            >
               Apply
             </button>
           </div>
@@ -287,22 +387,29 @@ const TagSelector = ({
 function FileItem({ file, classId, isSelected, onSelect }) {
   const handleClick = (e) => {
     e.stopPropagation(); // Stop event propagation
-    console.log(
-      `FileItem clicked: file=${file.id}, class=${classId}, currently selected=${isSelected}`
-    );
     onSelect(file.id, classId);
   };
 
-  const handleCheckboxClick = (e) => {
-    e.stopPropagation(); // Prevent double event firing
-    console.log(`FileItem checkbox clicked: file=${file.id}, class=${classId}`);
+  const handleCheckboxChange = (e) => {
+    e.stopPropagation();
     onSelect(file.id, classId);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      onSelect(file.id, classId);
+    }
   };
 
   return (
     <div
       className={`tag-file-item ${isSelected ? "selected" : ""}`}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
       data-fileid={file.id}
       data-classid={classId}
     >
@@ -310,13 +417,12 @@ function FileItem({ file, classId, isSelected, onSelect }) {
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={() => {}} // Empty change handler to avoid React warnings
-          onClick={handleCheckboxClick}
+          onChange={handleCheckboxChange}
           className="file-checkbox"
         />
       </div>
       <div className="file-label-wrapper">
-        <svg
+        {/* <svg
           xmlns="http://www.w3.org/2000/svg"
           width="14"
           height="14"
@@ -330,7 +436,7 @@ function FileItem({ file, classId, isSelected, onSelect }) {
         >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
-        </svg>
+        </svg> */}
         <span className="file-name">{file.name}</span>
       </div>
     </div>

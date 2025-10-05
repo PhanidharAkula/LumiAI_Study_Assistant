@@ -30,6 +30,13 @@ const Dashboard = ({ session }) => {
   const fetchingByUrlRef = useRef(false);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
+  const [classDeleteConfirm, setClassDeleteConfirm] = useState({
+    isOpen: false,
+    classId: null,
+    className: "",
+    hasFiles: false,
+    fileCount: 0,
+  });
   const [chatOpen, setChatOpen] = useState(false);
   const [chatClassId, setChatClassId] = useState(null);
   const [chatConversationId, setChatConversationId] = useState(null);
@@ -138,7 +145,9 @@ const Dashboard = ({ session }) => {
 
       const { data, error } = await supabase
         .from("classes")
-        .select("*")
+        // include related files so callers (like ChatComponent -> TagSelector)
+        // have access to each class's files for tagging
+        .select("*, files(*)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -173,7 +182,9 @@ const Dashboard = ({ session }) => {
   };
 
   const handleAddClass = (newClass) => {
-    setClasses((prev) => [newClass, ...prev]);
+    // Ensure new class has files array for UI components that expect it
+    const withFiles = { ...newClass, files: newClass.files || [] };
+    setClasses((prev) => [withFiles, ...prev]);
     setShowAddForm(false);
   };
 
@@ -541,6 +552,93 @@ const Dashboard = ({ session }) => {
             <div className="class-card-icon">
               {classItem.name.charAt(0).toUpperCase()}
             </div>
+
+            {/* Card-level icon action buttons (Edit / Delete) */}
+            <div
+              className="class-card-actions"
+              onClick={(e) => {
+                // Prevent clicking the action buttons from selecting the class
+                e.stopPropagation();
+              }}
+            >
+              <motion.button
+                className="card-action-btn view-btn"
+                title="Edit class"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedClass(classItem);
+                  setIsEditing(true);
+                }}
+                whileHover={{
+                  scale: 1.1,
+                  transition: { type: "spring", stiffness: 400, damping: 10 },
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </motion.button>
+
+              <motion.button
+                className="card-action-btn delete-btn"
+                title="Delete class"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    const { data: files, error } = await supabase
+                      .from("files")
+                      .select("id")
+                      .eq("class_id", classItem.id);
+                    const fileCount = files ? files.length : 0;
+                    setClassDeleteConfirm({
+                      isOpen: true,
+                      classId: classItem.id,
+                      className: classItem.name,
+                      hasFiles: fileCount > 0,
+                      fileCount,
+                    });
+                  } catch (err) {
+                    console.error("Error checking class files:", err);
+                    setClassDeleteConfirm({
+                      isOpen: true,
+                      classId: classItem.id,
+                      className: classItem.name,
+                      hasFiles: false,
+                      fileCount: 0,
+                    });
+                  }
+                }}
+                whileHover={{
+                  scale: 1.1,
+                  transition: { type: "spring", stiffness: 400, damping: 10 },
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1-2 2v2"></path>
+                </svg>
+              </motion.button>
+            </div>
+
             <div className="class-card-content">
               <h3 className="class-card-title">{classItem.name}</h3>
               {classItem.description && (
@@ -593,7 +691,12 @@ const Dashboard = ({ session }) => {
                     classData={selectedClass}
                     isEditing={isEditing}
                     onEdit={() => setIsEditing(true)}
-                    onCancelEdit={() => setIsEditing(false)}
+                    onCancelEdit={() => {
+                      // when canceling edit from ClassDetails, go back to the dashboard
+                      setIsEditing(false);
+                      setSelectedClass(null);
+                      navigate("", { replace: true });
+                    }}
                     onUpdate={handleUpdateClass}
                     onDelete={handleDeleteClass}
                     onBack={handleBackToClasses}
@@ -946,6 +1049,43 @@ const Dashboard = ({ session }) => {
         message="Are you sure you want to permanently delete your account? This action cannot be undone and will delete all your classes and files."
         confirmText="Delete Account"
         cancelText="Cancel"
+        danger={true}
+      />
+
+      {/* Class delete confirm dialog (reuses ConfirmDialog component) */}
+      <ConfirmDialog
+        isOpen={classDeleteConfirm.isOpen}
+        onClose={() =>
+          setClassDeleteConfirm({
+            isOpen: false,
+            classId: null,
+            className: "",
+            hasFiles: false,
+            fileCount: 0,
+          })
+        }
+        onConfirm={async () => {
+          const id = classDeleteConfirm.classId;
+          setClassDeleteConfirm({
+            isOpen: false,
+            classId: null,
+            className: "",
+            hasFiles: false,
+            fileCount: 0,
+          });
+          if (id) await handleDeleteClass(id);
+        }}
+        title={
+          classDeleteConfirm.hasFiles
+            ? "Delete Class and Files"
+            : "Delete Class"
+        }
+        message={
+          classDeleteConfirm.hasFiles
+            ? `This class contains ${classDeleteConfirm.fileCount} file(s). Deleting the class will also delete all associated files. This action cannot be undone. Are you sure you want to proceed?`
+            : `Are you sure you want to delete ${classDeleteConfirm.className}? This action cannot be undone.`
+        }
+        confirmText={classDeleteConfirm.hasFiles ? "Delete All" : "Delete"}
         danger={true}
       />
     </>

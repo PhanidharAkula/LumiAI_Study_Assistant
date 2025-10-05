@@ -51,16 +51,22 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
       };
     }
 
-    const systemPrompt = context 
-      ? `You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. 
-      
-      The following is information about the student's study materials:
-      ${context}
+    // Use a general ChatGPT-style assistant persona by default. When context is
+    // provided, include it as an explicit block the model can reference. The
+    // assistant should ask clarifying questions when the user's query is
+    // ambiguous, and should avoid inventing access to files it doesn't have.
+    const systemPrompt = context
+      ? `You are a helpful, honest, and clear conversational assistant (like ChatGPT).
 
-      Use this information to provide helpful, accurate answers to the student's questions. 
-      Format your responses using Markdown for better readability. Use headings, bullet points, 
-      and code blocks as appropriate. If showing code examples, use proper syntax highlighting.`
-      : "You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. Format your responses using Markdown for better readability. Use headings, bullet points, and code blocks as appropriate.";
+      The user may have selected study materials (classes and files) to provide as context.
+      The following block is context that you SHOULD use when it is relevant to the user's question.
+
+      === BEGIN CONTEXT ===
+      ${context}
+      === END CONTEXT ===
+
+      Use the context above when the user asks about those classes or files. If the user asks general questions, answer as a general-purpose assistant. Ask brief clarifying questions when the user's message is ambiguous. Format answers using Markdown, with headings, bullet points, and code blocks where appropriate.`
+      : `You are a helpful, honest, and clear conversational assistant (like ChatGPT). Answer conversationally and ask concise clarifying questions when the user's intent is unclear. Format answers using Markdown, with headings, bullet points, and code blocks where appropriate.`;
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -181,14 +187,17 @@ export const fetchAIResponse = async (userMessage, context = "") => {
       };
     }
 
-    const systemPrompt = context 
-      ? `You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. 
-      
-    The following is information about the student's study materials:
-    ${context}
+    const systemPrompt = context
+      ? `You are a helpful, honest, and clear conversational assistant (like ChatGPT).
 
-    Use this information to provide helpful, accurate answers to the student's questions. If asked about class materials, file counts, or other details, refer to the information provided above. Be concise but thorough in your responses.`
-    : "You are Lumi AI, an intelligent study assistant designed to help students learn more effectively. Provide concise, helpful answers to questions.";
+      The user may have provided context about classes and files below.
+
+      === BEGIN CONTEXT ===
+      ${context}
+      === END CONTEXT ===
+
+      When answering, incorporate the context above if it is relevant. If the user's question is general, respond as a general-purpose assistant. Ask concise clarifying questions if needed.`
+      : `You are a helpful, honest, and clear conversational assistant (like ChatGPT). Answer the user's question directly and ask brief clarifying questions when the user's message is ambiguous.`;
 
     const response = await fetch(API_URL, {
       method: "POST",

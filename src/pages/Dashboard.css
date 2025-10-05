@@ -400,6 +400,73 @@
   cursor: pointer;
 }
 
+/* Positioning for card-level actions (edit/delete) */
+.class-card {
+  position: relative; /* allow absolute positioned actions */
+}
+
+.class-card-actions {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.card-action {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--text-primary-color);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.card-action.edit {
+  background: transparent;
+  color: var(--text-primary-color);
+}
+
+.card-action.delete {
+  background: transparent;
+  color: #EF4444;
+}
+
+.card-action:hover {
+  transform: translateY(-2px);
+}
+
+/* Circular icon buttons for class cards (match file-action style) */
+.card-action-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--text-primary-color);
+  background-color: var(--background-secondary-color);
+  box-shadow: 0px 1px 0 var(--text-primary-color);
+  cursor: pointer;
+}
+
+.card-action-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--text-primary-color);
+}
+
+.card-action-btn.delete-btn {
+  border-color: #EF4444;
+  background: #EF4444;
+}
+
+.card-action-btn.delete-btn svg {
+  stroke: white;
+}
+
 /* @media (max-width: 768px) {
   .classes-grid {
     min-height: 220px;
