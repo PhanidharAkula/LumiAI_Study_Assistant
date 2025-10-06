@@ -7,6 +7,7 @@ import ClassDetails from "../components/ClassDetails";
 import AddClassForm from "../components/AddClassForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ChatComponent from "../components/ChatComponent";
+import TalkComponent from "../components/TalkComponent";
 import "./Dashboard.css";
 
 const Dashboard = ({ session }) => {
@@ -40,6 +41,8 @@ const Dashboard = ({ session }) => {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatClassId, setChatClassId] = useState(null);
   const [chatConversationId, setChatConversationId] = useState(null);
+  const [talkOpen, setTalkOpen] = useState(false);
+  const [talkClassId, setTalkClassId] = useState(null);
 
   useEffect(() => {
     if (!loading) {
@@ -382,6 +385,16 @@ const Dashboard = ({ session }) => {
     }
 
     navigate(`?${searchParams.toString()}`, { replace: true });
+  };
+
+  const handleTalkWithAI = (classId = null) => {
+    setTalkClassId(classId);
+    setTalkOpen(true);
+  };
+
+  const handleCloseTalk = () => {
+    setTalkOpen(false);
+    setTalkClassId(null);
   };
 
   const handleCloseChat = () => {
@@ -960,6 +973,16 @@ const Dashboard = ({ session }) => {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {talkOpen && (
+          <TalkComponent
+            isOpen={talkOpen}
+            onClose={handleCloseTalk}
+            initialClassId={talkClassId}
+          />
+        )}
+      </AnimatePresence>
+
       {!selectedClass && hasLoaded && (
         <motion.div
           className="bottom-navbar"
@@ -1001,6 +1024,7 @@ const Dashboard = ({ session }) => {
 
             <motion.button
               className="ai-action-button talk-ai-button"
+              onClick={() => handleTalkWithAI(selectedClass?.id)}
               whileHover={{
                 scale: 1.03,
                 y: -5,
