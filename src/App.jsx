@@ -19,10 +19,6 @@ function App() {
       const {
         data: { session: activeSession },
       } = await supabase.auth.getSession();
-
-      // If there's a stored session, make sure the server still recognizes
-      // the user. If the user was deleted server-side, clear the stale
-      // client session to avoid stuck protected routes.
       if (activeSession) {
         try {
           const {
