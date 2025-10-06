@@ -79,7 +79,7 @@ const ChatInput = ({
           onChange={handleChange}
           onKeyDown={handleKeyPress}
           placeholder="Ask a question..."
-          disabled={loading}
+          disabled={loading && !isGenerating}
         />
 
         <button
@@ -129,7 +129,7 @@ const ChatInput = ({
           <motion.button
             type="submit"
             className="send-button"
-            disabled={!message.trim() || loading}
+            disabled={!message.trim() || isGenerating}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

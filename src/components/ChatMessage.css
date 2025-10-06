@@ -1,63 +1,79 @@
+/* =========================
+   Chat Message Layout
+   ========================= */
 .chat-message {
   margin-bottom: 20px;
-  max-width: 85%;
+  max-width: 100%;
   animation: fadeIn 0.3s ease-in-out;
-  /* border: 1px solid red; */
 }
 
-/* Fix user message layout and appearance */
+/* User bubble alignment */
 .user-message {
   align-self: flex-end;
-  max-width: 70%; /* Constrain maximum width */
+  max-width: 70%;
   width: auto;
 }
 
-/* Properly align the user icon and message */
+/* Align user content to the right */
 .user-message .message-container {
-  justify-content: flex-end; /* Keep right alignment for user messages */
+  justify-content: flex-end;
   align-items: center;
   gap: 12px;
-  width: 100%; /* Use full width of container */
+  width: 100%;
 }
 
-/* Remove background from user message */
+/* User bubble */
 .user-message-text {
+  display: block;
+  max-width: 100%;
+  padding: 20px;
+  border-radius: 20px;
   color: var(--text-primary-color);
   font-size: 16px;
-  white-space: pre-wrap; /* Changed from normal to pre-wrap to preserve line breaks */
+  white-space: pre-wrap;
   background-color: white;
   border: none;
   box-shadow: none;
-  padding: 20px;
-  border-radius: 20px;
-  overflow: visible; /* Change from auto to ensure all content is visible */
-  max-width: 100%;
-  display: block;
+  overflow: visible;
 }
 
-/* No need for scrollbar-related styles for text that wraps */
+/* User copy button inside bubble (hidden by default) */
+.user-message-text-wrapper .user-actions {
+  position: absolute;
+  right: 0;
+  bottom: -30px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.user-message-text-wrapper:hover .user-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Hide scrollbar for wrapping text */
 .user-message-text::-webkit-scrollbar {
   display: none;
 }
 
-/* Ensure content has proper width and wrapping */
+/* Ensure user content wraps and stays right-aligned */
 .user-message .message-content {
-  max-width: 100%;
   display: flex;
   justify-content: flex-end;
-  overflow: visible; /* Change from auto to ensure all content is visible */
   width: 100%;
+  max-width: 100%;
+  overflow: visible;
 }
 
-.ai-message {
-  align-self: flex-start;
-}
+/* AI / error message alignment */
+.ai-message { align-self: flex-start; }
+.error-message { align-self: center; width: 80%; }
 
-.error-message {
-  align-self: center;
-  width: 80%;
-}
-
+/* Shared container + content blocks */
 .message-container {
   display: flex;
   gap: 12px;
@@ -72,26 +88,24 @@
 .message-content {
   position: relative;
   padding: 12px 0;
-  max-width: 100%; /* Expand to full width now that avatars are gone */
+  max-width: 100%;
 }
 
-.ai-content {
-  margin-left: 0; /* Remove left margin previously used for avatar spacing */
-}
+.ai-content { margin-left: 0; }
+.user-content { margin-right: 0; }
 
-.user-content {
-  margin-right: 0; /* Remove right margin previously used for avatar spacing */
-}
-
+/* =========================
+   Markdown Rendering
+   ========================= */
 .markdown-container {
+  position: relative;
+  padding: 0;
   color: black;
   font-size: 16px;
   line-height: 1.5;
-  position: relative;
-  padding: 0;
 }
 
-/* Markdown styling */
+/* Headings */
 .markdown-container h1,
 .markdown-container h2,
 .markdown-container h3,
@@ -107,14 +121,14 @@
 
 .markdown-container h1 {
   font-size: 1.5em;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  padding-bottom: 0.3em;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .markdown-container h2 {
   font-size: 1.25em;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  padding-bottom: 0.3em;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .markdown-container h3 {
@@ -122,12 +136,35 @@
   color: black;
 }
 
+/* Paragraphs */
 .markdown-container p {
   margin-top: 0;
   margin-bottom: 16px;
-  color: black;
+  color: #111827;
 }
 
+/* Horizontal rule */
+.markdown-container hr {
+  border: none;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 18px 0;
+}
+
+.markdown-container h1,
+.markdown-container h2 {
+  display: block !important;
+}
+
+
+/* Heading color tweaks */
+.markdown-container h1,
+.markdown-container h2,
+.markdown-container h3 {
+  color: #0f172a;
+}
+
+/* Lists */
 .markdown-container ul,
 .markdown-container ol {
   padding-left: 2em;
@@ -139,20 +176,19 @@
   margin-top: 0.25em;
 }
 
+/* Code blocks */
 .markdown-container pre {
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: 5px;
-  padding: 16px;
-  overflow: auto;
   margin-bottom: 16px;
+  overflow: auto;
+  border-radius: 6px;
   font-family: monospace;
 }
 
 .markdown-container code {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.03);
   border-radius: 3px;
-  padding: 0.2em 0.4em;
   font-family: monospace;
+  font-size: medium;
 }
 
 .markdown-container pre code {
@@ -160,8 +196,20 @@
   padding: 0;
 }
 
+/* Syntax highlighting colors (rehype-highlight) */
+.markdown-container .hljs-comment { color: #6b7280; }
+.markdown-container .hljs-keyword { color: #7c3aed; font-weight: 600; }
+.markdown-container .hljs-string { color: #059669; }
+.markdown-container .hljs-title { color: #1e293b; }
+.markdown-container .hljs-function { color: #0ea5e9; }
+.markdown-container .hljs-number { color: #d946ef; }
+.markdown-container .hljs-attr { color: #b45309; }
+
+/* =========================
+   Typing Cursor / Indicator
+   ========================= */
 .cursor-blink {
-  display: inline-block;
+  display: none;
   width: 2px;
   height: 16px;
   background-color: var(--text-primary-color);
@@ -196,18 +244,13 @@
   animation: bounce 1.5s infinite ease-in-out;
 }
 
-.typing-indicator span:nth-child(1) {
-  animation-delay: 0s;
-}
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
-.typing-indicator span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-indicator span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
+/* =========================
+   Error States
+   ========================= */
 .error-content {
   display: flex;
   gap: 8px;
@@ -215,82 +258,72 @@
   color: #B91C1C;
 }
 
-.error-content svg {
-  flex-shrink: 0;
-}
+.error-content svg { flex-shrink: 0; }
 
-.error-content p {
-  margin: 0;
-}
+.error-content p { margin: 0; }
 
 .error-content.quota-error {
-  color: #B91C1C;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  color: #B91C1C;
   padding: 5px;
 }
 
 .error-content.quota-error svg {
-  margin-bottom: 10px;
   width: 30px;
   height: 30px;
+  margin-bottom: 10px;
 }
 
 .quota-error-content {
   background-color: #FEE2E2;
   border: 1.5px solid #EF4444;
-  box-shadow: 0px 2px 0 #EF4444;
+  box-shadow: 0 2px 0 #EF4444;
 }
 
+/* =========================
+   Animations
+   ========================= */
 @keyframes bounce {
-  0%, 60%, 100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-4px);
-  }
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
+/* =========================
+   Responsive
+   ========================= */
 @media (max-width: 768px) {
-  .chat-message {
-    max-width: 95%;
-  }
+  .chat-message { max-width: 95%; }
 }
 
-/* Copy button styling */
+/* =========================
+   Copy Buttons / Actions
+   ========================= */
 .message-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: 10px;
 }
 
 .copy-message-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 8px;
   font-size: 12px;
-  /* color: var(--text-secondary-color); */
   background: transparent;
-  border: none;
-  /* border-radius: 6px; */
-  /* padding: 5px 10px; */
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
   cursor: pointer;
-  margin-top: 10px;
-  transition: all 0.2s ease;
-  display: none;
+  transition: all 0.12s ease;
 }
 
 .copy-message-button:hover {
@@ -302,25 +335,45 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  /* color: #10B981; */
 }
 
-/* Code block styling enhancements */
+/* Reveal copy controls on hover */
+.copy-message-button,
+.message-actions {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.chat-message:hover .message-actions,
+.chat-message:hover .copy-message-button,
+.message-content:hover .message-actions,
+.message-content:hover .copy-message-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* =========================
+   Code Block UI
+   ========================= */
 .code-block-wrapper {
   position: relative;
   margin: 16px 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 .code-block-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding: 8px 12px;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .code-language {
@@ -331,14 +384,14 @@
 }
 
 .copy-code-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 5px;
+  background: none;
+  border: none;
   border-radius: 4px;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -350,20 +403,27 @@
   margin: 0;
   padding: 12px;
   overflow-x: auto;
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: transparent;
   border-radius: 0 0 6px 6px;
 }
 
-/* Enhanced link styling */
+/* Prevent double backgrounds inside wrapper */
+.code-block-wrapper code {
+  background: transparent !important;
+}
+
+/* =========================
+   Links / Mentions / Tables
+   ========================= */
 .markdown-link {
-  color: #2563eb;
-  text-decoration: none;
-  border-bottom: none;
-  padding-bottom: 1px;
-  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding-bottom: 1px;
+  color: #2563eb;
+  text-decoration: none;
+  border-bottom: none;
+  transition: all 0.2s ease;
 }
 
 .markdown-link:hover {
@@ -376,33 +436,24 @@
   transition: opacity 0.2s ease;
 }
 
-.markdown-link:hover .external-link-icon {
-  opacity: 1;
-}
+.markdown-link:hover .external-link-icon { opacity: 1; }
 
-/* Ensure hashtags and mentions are black */
-.hashtag, .mention {
+.hashtag,
+.mention {
   color: black;
   font-weight: 500;
   transition: all 0.2s ease;
 }
 
-.hashtag:hover, .mention:hover {
+.hashtag:hover,
+.mention:hover {
   background-color: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
 }
 
-/* Special keyword styling for AI responses - make black */
-.ai-content strong {
-  color: black;
-  font-weight: 600;
-}
+.ai-content strong { color: black; font-weight: 600; }
+.ai-content em { color: black; }
 
-.ai-content em {
-  color: black;
-}
-
-/* Reset any colored headers or text */
 .markdown-container h3,
 .markdown-container h4 {
   color: black;
@@ -410,25 +461,25 @@
 }
 
 .markdown-container blockquote {
-  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  margin: 15px 0;
   padding-left: 15px;
   color: black;
   font-style: italic;
-  margin: 15px 0;
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
 }
 
 .markdown-container table {
-  border-collapse: collapse;
   width: 100%;
   margin: 15px 0;
+  border-collapse: collapse;
 }
 
 .markdown-container th {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: black;
-  font-weight: 600;
   padding: 8px;
   text-align: left;
+  color: black;
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
 }
 
@@ -441,28 +492,21 @@
   background-color: #f8fafc;
 }
 
-/* Ensure syntax highlighting correctly shows comments in gray */
-.hljs-comment, 
-.hljs-quote {
-  color: #708090;
-}
+/* =========================
+   Highlight.js Fallbacks
+   ========================= */
+.hljs-comment,
+.hljs-quote { color: #708090; }
 
-/* Reset any other syntax highlighting colors to ensure readability but maintain black text */
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-literal,
 .hljs-section,
-.hljs-link {
-  color: black;
-}
+.hljs-link { color: black; }
 
-.hljs-function .hljs-keyword {
-  color: black;
-}
+.hljs-function .hljs-keyword { color: black; }
 
-.hljs-subst {
-  color: black;
-}
+.hljs-subst { color: black; }
 
 .hljs-string,
 .hljs-title,
@@ -473,10 +517,13 @@
 .hljs-bullet,
 .hljs-addition,
 .hljs-template-tag,
-.hljs-template-variable {
-  color: black;
-}
+.hljs-template-variable { color: black; }
 
-.hljs-title.function_ {
-  color: black;
+.hljs-title.function_ { color: black; }
+
+/* Ultra-specific version if something else uses !important too */
+.markdown-container.markdown-container h1,
+.markdown-container.markdown-container h2 {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.10) !important;
+  padding-bottom: 0.35em !important;
 }

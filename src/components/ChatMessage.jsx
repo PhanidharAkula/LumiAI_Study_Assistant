@@ -10,23 +10,32 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
   const isTyping = type === "typing";
   const isError = type === "error";
   const isAI = type === "assistant";
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copySuccessFull, setCopySuccessFull] = useState(false);
+  const [copySuccessUser, setCopySuccessUser] = useState(false);
   const [copyingCode, setCopyingCode] = useState(null);
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(
-      () => {
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
-      },
-      (err) => {
-        console.error("Could not copy text: ", err);
-      }
-    );
+    return navigator.clipboard.writeText(text).catch((err) => {
+      console.error("Could not copy text: ", err);
+    });
+  };
+
+  const copyFull = (text) => {
+    copyToClipboard(text).then(() => {
+      setCopySuccessFull(true);
+      setTimeout(() => setCopySuccessFull(false), 2000);
+    });
+  };
+
+  const copyUser = (text) => {
+    copyToClipboard(text).then(() => {
+      setCopySuccessUser(true);
+      setTimeout(() => setCopySuccessUser(false), 2000);
+    });
   };
 
   const handleCopyFullResponse = () => {
-    copyToClipboard(message);
+    copyFull(message);
   };
 
   const renderContent = () => {
@@ -91,7 +100,63 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
       );
     } else if (isUser) {
       // Display user message exactly as entered, preserving line breaks
-      return <div className="user-message-text">{message}</div>;
+      return (
+        <div className="user-message-text-wrapper">
+          <div className="user-message-text">{message}</div>
+          <div className="message-actions user-actions">
+            <button
+              className="copy-message-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                copyUser(message);
+              }}
+              title="Copy user message"
+            >
+              {copySuccessUser ? (
+                <span className="copy-success">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    ></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      );
     } else {
       return (
         <div className="markdown-container">
@@ -110,7 +175,8 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                         <span className="code-language">{match[1]}</span>
                         <button
                           className="copy-code-button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setCopyingCode(match[1]);
                             copyToClipboard(codeString);
                             setTimeout(() => setCopyingCode(null), 2000);
@@ -238,16 +304,20 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
         {!isTyping && !isError && isUser ? (
           <div className="message-content user-content">{renderContent()}</div>
         ) : !isTyping && !isError ? (
-          <div className="message-content ai-content">
+          <div
+            className={`message-content ai-content ${
+              isTyping ? "typing-content" : ""
+            } ${errorType === "quota" ? "quota-error-content" : ""}`}
+          >
             {renderContent()}
-            {isAI && message && (
+            {isAI && message && !isStreaming && (
               <div className="message-actions">
                 <button
                   className="copy-message-button"
                   onClick={handleCopyFullResponse}
                   title="Copy full response"
                 >
-                  {copySuccess ? (
+                  {copySuccessFull ? (
                     <span className="copy-success">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -262,7 +332,6 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                       >
                         <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      Copied
                     </span>
                   ) : (
                     <>
@@ -287,7 +356,6 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
                         ></rect>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                       </svg>
-                      Copy
                     </>
                   )}
                 </button>
@@ -295,13 +363,7 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
             )}
           </div>
         ) : (
-          <div
-            className={`message-content ${isTyping ? "typing-content" : ""} ${
-              errorType === "quota" ? "quota-error-content" : ""
-            }`}
-          >
-            {renderContent()}
-          </div>
+          <div className="message-content">{renderContent()}</div>
         )}
       </div>
     </motion.div>

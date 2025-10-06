@@ -16,6 +16,17 @@ import {
 import "./ChatComponent.css";
 
 const STORAGE_KEY_PREFIX = "lumiAI_chat_";
+// Use an explicit turn separator that is very unlikely to appear in normal text
+const TURN_SEP = "\n\n--LUMI_TURN--\n\n";
+
+// Safely split stored conversation text into parts. First try the sentinel
+// separator, and fall back to splitting on double-newline for older entries.
+const splitConversationParts = (text) => {
+  if (!text || typeof text !== "string") return [];
+  const bySentinel = text.split(TURN_SEP).filter(Boolean);
+  if (bySentinel.length > 1) return bySentinel;
+  return text.split("\n\n").filter(Boolean);
+};
 
 const ChatComponent = ({
   isOpen,
@@ -25,6 +36,7 @@ const ChatComponent = ({
   conversationId = null,
 }) => {
   const [messages, setMessages] = useState([]);
+  const messagesRef = useRef(messages);
   const [loading, setLoading] = useState(false);
   const [abortController, setAbortController] = useState(null);
   const [classData, setClassData] = useState(null);
@@ -60,6 +72,9 @@ const ChatComponent = ({
   };
 
   useEffect(() => {
+    // keep a ref in sync so async handlers can access the latest messages
+    messagesRef.current = messages;
+
     if (messages.length > 0) {
       const storageKey = `${STORAGE_KEY_PREFIX}${initialClassId || "global"}`;
       localStorage.setItem(
@@ -195,10 +210,31 @@ const ChatComponent = ({
       if (convError) throw convError;
 
       if (conversations && conversations.length > 0) {
-        const formattedMessages = conversations.flatMap((conv) => [
-          { type: "user", content: conv.question, id: `q-${conv.id}` },
-          { type: "assistant", content: conv.answer, id: `a-${conv.id}` },
-        ]);
+        // For each conversation row, split into parts and interleave user/assistant
+        const formattedMessages = conversations.flatMap((conv) => {
+          const qParts = splitConversationParts(conv.question);
+          const aParts = splitConversationParts(conv.answer);
+          const arr = [];
+          const max = Math.max(qParts.length, aParts.length);
+          for (let i = 0; i < max; i++) {
+            if (i < qParts.length) {
+              arr.push({
+                type: "user",
+                content: qParts[i],
+                id: `q-${conv.id}-${i}`,
+              });
+            }
+            if (i < aParts.length) {
+              arr.push({
+                type: "assistant",
+                content: aParts[i],
+                id: `a-${conv.id}-${i}`,
+              });
+            }
+          }
+          return arr;
+        });
+
         setMessages(formattedMessages);
       } else {
         setMessages([]);
@@ -252,8 +288,8 @@ const ChatComponent = ({
 
       // Process conversations for display
       const processedHistory = data.map((conv) => {
-        // Count questions in this conversation (each separated by \n\n)
-        const questions = conv.question.split("\n\n").filter(Boolean);
+        // Count questions in this conversation using safe splitter
+        const questions = splitConversationParts(conv.question);
         const messageCount = questions.length;
 
         // Get the first question for display
@@ -291,29 +327,47 @@ const ChatComponent = ({
       if (error) throw error;
 
       if (data) {
-        // Parse the messages from the stored conversation
-        const questionParts = data.question.split("\n\n").filter(Boolean);
-        const answerParts = data.answer.split("\n\n").filter(Boolean);
+        // If this conversation has a session_id, fetch all conversations in the same session
+        // and combine their turns so the full session history is loaded (enables continuation)
+        let sessionConversations = [data];
+        if (data.session_id) {
+          try {
+            const { data: sessionRows, error: sessionError } = await supabase
+              .from("conversations")
+              .select("*")
+              .eq("session_id", data.session_id)
+              .eq("user_id", data.user_id)
+              .order("created_at", { ascending: true });
 
-        // Create a properly interleaved conversation
-        const messageArray = [];
-        const maxParts = Math.max(questionParts.length, answerParts.length);
-
-        for (let i = 0; i < maxParts; i++) {
-          if (i < questionParts.length) {
-            messageArray.push({
-              type: "user",
-              content: questionParts[i],
-              id: `q-${data.id}-${i}`,
-            });
+            if (!sessionError && sessionRows && sessionRows.length) {
+              sessionConversations = sessionRows;
+            }
+          } catch (e) {
+            console.warn("Error fetching session conversations:", e);
           }
+        }
 
-          if (i < answerParts.length) {
-            messageArray.push({
-              type: "assistant",
-              content: answerParts[i],
-              id: `a-${data.id}-${i}`,
-            });
+        // Combine all rows into a single ordered messages array
+        const messageArray = [];
+        for (const conv of sessionConversations) {
+          const qParts = splitConversationParts(conv.question);
+          const aParts = splitConversationParts(conv.answer);
+          const maxParts = Math.max(qParts.length, aParts.length);
+          for (let i = 0; i < maxParts; i++) {
+            if (i < qParts.length) {
+              messageArray.push({
+                type: "user",
+                content: qParts[i],
+                id: `q-${conv.id}-${i}`,
+              });
+            }
+            if (i < aParts.length) {
+              messageArray.push({
+                type: "assistant",
+                content: aParts[i],
+                id: `a-${conv.id}-${i}`,
+              });
+            }
           }
         }
 
@@ -542,6 +596,26 @@ const ChatComponent = ({
 
       let fullResponse = "";
       console.log("AI context sent:\n", context);
+
+      // Build history array from prior messages so the model receives full context
+      const historyPayload = [];
+      const priorMessages = Array.isArray(messagesRef.current)
+        ? messagesRef.current
+        : messages;
+      for (const m of priorMessages) {
+        if (!m || typeof m.content !== "string") continue;
+        const trimmed = m.content.trim();
+        if (!trimmed) continue;
+        if (m.type === "user")
+          historyPayload.push({ role: "user", content: trimmed });
+        if (m.type === "assistant" && !m.isStreaming)
+          historyPayload.push({ role: "assistant", content: trimmed });
+      }
+
+      // Limit history to last N messages to avoid exceeding token limits
+      const MAX_HISTORY_MESSAGES = 20;
+      const trimmedHistory = historyPayload.slice(-MAX_HISTORY_MESSAGES);
+
       const response = await fetchStreamingResponse(
         message,
         context,
@@ -554,7 +628,44 @@ const ChatComponent = ({
           );
           scrollToBottom();
         },
-        controller.signal
+        controller.signal,
+        trimmedHistory
+      );
+
+      // Helper to sanitize assistant's top-level prefatory phrases
+      const sanitizeAssistantResponse = (text) => {
+        if (!text || typeof text !== "string") return "";
+        // Remove common lead-in lines like 'ChatGPT said:' or 'Alright, here's...'
+        const lines = text.split(/\r?\n/);
+        // Drop 1-2 lines if they look like a short meta preface
+        let start = 0;
+        for (let i = 0; i < Math.min(3, lines.length); i++) {
+          const l = lines[i].trim();
+          if (!l) {
+            start = i + 1;
+            continue;
+          }
+          const metaPreface =
+            /^(chatgpt|assistant|ai)\b|^(alright|ok|okay|sure)([,\.!]?\s+here'?s?)?/i;
+          if (metaPreface.test(l) && l.length < 80) {
+            start = i + 1;
+            continue;
+          }
+          break;
+        }
+
+        const cleaned = lines.slice(start).join("\n").trim();
+        return cleaned;
+      };
+
+      // sanitize final ai content
+      fullResponse = sanitizeAssistantResponse(fullResponse);
+
+      // Update the streaming message in state to the sanitized content
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId ? { ...msg, content: fullResponse } : msg
+        )
       );
 
       // Clear the controller after the response is complete
@@ -597,27 +708,43 @@ const ChatComponent = ({
           // messages array in time order. This preserves correct pairing of
           // user/assistant turns even if there were multiple user messages
           // or assistant segments.
+          // Use the messagesRef to get the latest messages (safer in async flows)
+          const currentMessages = Array.isArray(messagesRef.current)
+            ? messagesRef.current
+            : messages;
+
           const questionParts = [];
           const answerParts = [];
-          for (const msg of messages) {
-            if (msg.type === "user") questionParts.push(msg.content);
+
+          for (const msg of currentMessages) {
+            if (!msg || typeof msg.content !== "string") continue;
+            const trimmed = msg.content.trim();
+            if (!trimmed) continue; // skip empty user/ai messages
+            if (msg.type === "user") questionParts.push(trimmed);
             if (msg.type === "assistant" && !msg.isStreaming)
-              answerParts.push(msg.content);
+              answerParts.push(trimmed);
           }
 
-          // Ensure current exchange is included (fallback if messages array
-          // was not yet updated): push current message/response if missing
+          // Ensure current exchange is included (fallback if missing from ref)
           const lastQuestion = questionParts[questionParts.length - 1];
-          if (!lastQuestion || lastQuestion !== message) {
-            questionParts.push(message);
-          }
-          const lastAnswer = answerParts[answerParts.length - 1];
-          if (!lastAnswer || lastAnswer !== fullResponse) {
-            answerParts.push(fullResponse);
+          if (!lastQuestion || lastQuestion !== message.trim()) {
+            questionParts.push(message.trim());
           }
 
-          const allUserMessages = questionParts.join("\n\n");
-          const allAiResponses = answerParts.join("\n\n");
+          const lastAnswer = answerParts[answerParts.length - 1];
+          if (!lastAnswer || lastAnswer !== fullResponse.trim()) {
+            answerParts.push(fullResponse.trim());
+          }
+
+          // Join using explicit sentinel to preserve multi-paragraph messages
+          const allUserMessages = questionParts
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .join(TURN_SEP);
+          const allAiResponses = answerParts
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .join(TURN_SEP);
 
           if (!currentConversationId) {
             // Generate title from the first question/answer pair
@@ -640,6 +767,18 @@ const ChatComponent = ({
               title: title || "New Conversation",
             };
 
+            // Debug: log what will be saved so we can inspect formatting issues
+            console.debug(
+              "Saving new conversation: questionParts:",
+              questionParts,
+              "answerParts:",
+              answerParts
+            );
+            console.debug("Saving new conversation strings:", {
+              allUserMessages,
+              allAiResponses,
+            });
+
             const { data, error } = await supabase
               .from("conversations")
               .insert(newConversation)
@@ -659,6 +798,14 @@ const ChatComponent = ({
               context_classes: selectedClasses,
               context_files: selectedFiles,
             };
+
+            // Debug: log update payload
+            console.debug(
+              "Updating conversation id",
+              currentConversationId,
+              "with:",
+              { allUserMessages, allAiResponses }
+            );
 
             const { error: updateError } = await supabase
               .from("conversations")
@@ -752,31 +899,52 @@ const ChatComponent = ({
     setCurrentConversationId(conversationPair.id);
     setCurrentSessionId(conversationPair.session_id || `session-${Date.now()}`);
 
-    // Parse the messages from the stored conversation
-    const questionParts = conversationPair.question
-      .split("\n\n")
-      .filter(Boolean);
-    const answerParts = conversationPair.answer.split("\n\n").filter(Boolean);
+    // If this conversation belongs to a session, fetch entire session to enable continuation
+    let sessionConversations = [conversationPair];
+    if (conversationPair.session_id) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-    // Create a properly interleaved conversation
-    const messageArray = [];
-    const maxParts = Math.max(questionParts.length, answerParts.length);
+        const { data: sessionRows, error: sessionError } = await supabase
+          .from("conversations")
+          .select("*")
+          .eq("session_id", conversationPair.session_id)
+          .eq("user_id", user?.id)
+          .order("created_at", { ascending: true });
 
-    for (let i = 0; i < maxParts; i++) {
-      if (i < questionParts.length) {
-        messageArray.push({
-          type: "user",
-          content: questionParts[i],
-          id: `hist-q-${conversationPair.id}-${i}`,
-        });
+        if (!sessionError && sessionRows && sessionRows.length) {
+          sessionConversations = sessionRows;
+        }
+      } catch (e) {
+        // fallback to single conversationPair
+        console.warn("Error loading session conversations:", e);
       }
+    }
 
-      if (i < answerParts.length) {
-        messageArray.push({
-          type: "assistant",
-          content: answerParts[i],
-          id: `hist-a-${conversationPair.id}-${i}`,
-        });
+    const messageArray = [];
+    for (const conv of sessionConversations) {
+      const questionParts = splitConversationParts(conv.question);
+      const answerParts = splitConversationParts(conv.answer);
+      const maxParts = Math.max(questionParts.length, answerParts.length);
+
+      for (let i = 0; i < maxParts; i++) {
+        if (i < questionParts.length) {
+          messageArray.push({
+            type: "user",
+            content: questionParts[i],
+            id: `hist-q-${conv.id}-${i}`,
+          });
+        }
+
+        if (i < answerParts.length) {
+          messageArray.push({
+            type: "assistant",
+            content: answerParts[i],
+            id: `hist-a-${conv.id}-${i}`,
+          });
+        }
       }
     }
 
@@ -1284,6 +1452,7 @@ const ChatComponent = ({
                   message={msg.content}
                   type={msg.type}
                   errorType={msg.errorType}
+                  isStreaming={!!msg.isStreaming}
                 />
               ))
             )}

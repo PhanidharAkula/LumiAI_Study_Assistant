@@ -40,7 +40,7 @@ const parseOpenAIError = (error) => {
  * @param {AbortSignal} signal - Optional AbortSignal to cancel the request
  * @returns {Promise<Object>} Object containing response text or error
  */
-export const fetchStreamingResponse = async (userMessage, context = "", onToken, signal) => {
+export const fetchStreamingResponse = async (userMessage, context = "", onToken, signal, history = []) => {
   try {
     if (!API_KEY) {
       console.error("OpenAI API key not found in environment variables.");
@@ -55,6 +55,8 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
     // provided, include it as an explicit block the model can reference. The
     // assistant should ask clarifying questions when the user's query is
     // ambiguous, and should avoid inventing access to files it doesn't have.
+  const formattingGuidelines = `When you answer, provide a thorough, structured response using Markdown. Start with a one-line TL;DR, then a "Detailed explanation" section with headings, short paragraphs, bullet lists and examples. When showing code, include syntax-highlighted fenced code blocks and a brief explanation of the code. End with a short "Next steps" or follow-up question. If an acronym has multiple common meanings, provide the most likely technical/AI meaning first, then briefly list other common meanings. Do NOT include prefatory lines such as "ChatGPT said:" or informal lead-ins like "Alright, here's...". Keep explanations clear but comprehensive.`;
+
     const systemPrompt = context
       ? `You are a helpful, honest, and clear conversational assistant (like ChatGPT).
 
@@ -65,8 +67,15 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
       ${context}
       === END CONTEXT ===
 
-      Use the context above when the user asks about those classes or files. If the user asks general questions, answer as a general-purpose assistant. Ask brief clarifying questions when the user's message is ambiguous. Format answers using Markdown, with headings, bullet points, and code blocks where appropriate.`
-      : `You are a helpful, honest, and clear conversational assistant (like ChatGPT). Answer conversationally and ask concise clarifying questions when the user's intent is unclear. Format answers using Markdown, with headings, bullet points, and code blocks where appropriate.`;
+      Use the context above when the user asks about those classes or files. If the user asks general questions, answer as a general-purpose assistant. Ask brief clarifying questions when the user's message is ambiguous. ${formattingGuidelines}`
+      : `You are a helpful, honest, and clear conversational assistant (like ChatGPT). Answer conversationally and ask concise clarifying questions when the user's intent is unclear. ${formattingGuidelines}`;
+
+    const messagesPayload = [
+      { role: "system", content: systemPrompt },
+      // include any prior turns if provided (history should be array of {role,content})
+      ...((Array.isArray(history) && history.length) ? history : []),
+      { role: "user", content: userMessage },
+    ];
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -76,10 +85,7 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
       },
       body: JSON.stringify({
         model: "gpt-4",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
+        messages: messagesPayload,
         temperature: 0.7,
         max_tokens: 1000,
         stream: true,
@@ -175,7 +181,7 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
  * @param {string} context - Optional context from documents
  * @returns {Promise<Object>} Object containing response text and any error info
  */
-export const fetchAIResponse = async (userMessage, context = "") => {
+export const fetchAIResponse = async (userMessage, context = "", history = []) => {
   try {
     if (!API_KEY) {
       console.error("OpenAI API key not found in environment variables.");
@@ -187,6 +193,8 @@ export const fetchAIResponse = async (userMessage, context = "") => {
       };
     }
 
+  const formattingGuidelines = `When you answer, provide a thorough, structured response using Markdown. Use headings, short paragraphs, bullet lists, and examples. When showing code, provide syntax-highlighted code fences and a brief explanation of the code. If an acronym has multiple common meanings, provide the most likely technical/AI meaning first, then briefly list other common meanings. If the user asks follow-ups, reference earlier turns as needed. Keep explanations clear but comprehensive.`;
+
     const systemPrompt = context
       ? `You are a helpful, honest, and clear conversational assistant (like ChatGPT).
 
@@ -196,8 +204,14 @@ export const fetchAIResponse = async (userMessage, context = "") => {
       ${context}
       === END CONTEXT ===
 
-      When answering, incorporate the context above if it is relevant. If the user's question is general, respond as a general-purpose assistant. Ask concise clarifying questions if needed.`
-      : `You are a helpful, honest, and clear conversational assistant (like ChatGPT). Answer the user's question directly and ask brief clarifying questions when the user's message is ambiguous.`;
+      When answering, incorporate the context above if it is relevant. If the user's question is general, respond as a general-purpose assistant. Ask concise clarifying questions if needed. ${formattingGuidelines}`
+      : `You are a helpful, honest, and clear conversational assistant (like ChatGPT). Answer the user's question directly and ask brief clarifying questions when the user's message is ambiguous. ${formattingGuidelines}`;
+
+    const messagesPayload = [
+      { role: "system", content: systemPrompt },
+      ...((Array.isArray(history) && history.length) ? history : []),
+      { role: "user", content: userMessage },
+    ];
 
     const response = await fetch(API_URL, {
       method: "POST",
@@ -207,10 +221,7 @@ export const fetchAIResponse = async (userMessage, context = "") => {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
+        messages: messagesPayload,
         temperature: 0.8,
         max_tokens: 500,
       }),
