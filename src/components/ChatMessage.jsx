@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -20,15 +20,35 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
     });
   };
 
+  // Utility: extract plain text from React nodes / arrays / markdown node structures
+  const getPlainText = (node) => {
+    if (node == null) return "";
+    if (typeof node === "string") return node;
+    if (typeof node === "number") return String(node);
+    if (Array.isArray(node)) return node.map(getPlainText).join("");
+    // React element
+    if (React && React.isValidElement && React.isValidElement(node)) {
+      return getPlainText(node.props && node.props.children);
+    }
+    // Generic object from remark/rehype
+    if (typeof node === "object") {
+      if (typeof node.value === "string") return node.value;
+      if (node.children) return getPlainText(node.children);
+    }
+    return "";
+  };
+
   const copyFull = (text) => {
-    copyToClipboard(text).then(() => {
+    const plain = getPlainText(text);
+    copyToClipboard(plain).then(() => {
       setCopySuccessFull(true);
       setTimeout(() => setCopySuccessFull(false), 2000);
     });
   };
 
   const copyUser = (text) => {
-    copyToClipboard(text).then(() => {
+    const plain = getPlainText(text);
+    copyToClipboard(plain).then(() => {
       setCopySuccessUser(true);
       setTimeout(() => setCopySuccessUser(false), 2000);
     });
@@ -166,7 +186,7 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
             components={{
               code({ node, inline, className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || "");
-                const codeString = String(children).replace(/\n$/, "");
+                const codeString = getPlainText(children).replace(/\n$/, "");
 
                 if (!inline && match) {
                   return (

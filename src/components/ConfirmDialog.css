@@ -1,15 +1,21 @@
 .confirm-dialog-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0; /* shorthand for top/right/bottom/left */
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 99999; /* put overlay above almost everything */
+    pointer-events: auto; /* ensure overlay captures clicks */
+    isolation: isolate; /* create new stacking context to avoid parent z-index issues */
   }
+
+/* Utility class: when present, ensure overlay forces the highest stacking level */
+.confirm-dialog-overlay--force-top {
+  z-index: 2147483647; /* maximum practical z-index */
+}
   
   .confirm-dialog {
     background-color: white;
@@ -23,6 +29,18 @@
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     border: 1.5px solid var(--text-primary-color);
   }
+
+  /* Ensure the dialog itself captures pointer events (buttons etc.) */
+  .confirm-dialog, .confirm-dialog * {
+    pointer-events: auto;
+  }
+
+  /* When the dialog is open we add a class to the body; make the rest of the page non-interactive
+     This prevents clicks on elements like the chat header while the modal is open. The overlay
+     remains interactive because it is a descendant of body and has pointer-events:auto. */
+  body.confirm-dialog-open > *:not(.confirm-dialog-overlay) {
+    pointer-events: none;
+  }
   
   .confirm-dialog-icon {
     width: 70px;
@@ -32,6 +50,20 @@
     justify-content: center;
     align-items: center;
     margin-bottom: 20px;
+  }
+
+  .confirm-dialog-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+
+    /* Info / Coming soon icon styling */
+  .info-icon {
+    background-color: #EFF6FF; /* soft blue */
+    color: #1D4ED8; /* blue-700 */
+    border: 1.5px solid #1D4ED8;
+      /* width: 84px;
+      height: 84px; */
   }
   
   /* Default delete icon styling */
@@ -82,7 +114,7 @@
     padding: 12px 25px;
     border-radius: 100px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     border: 1.5px solid var(--text-primary-color);
     transition: none;
@@ -92,36 +124,61 @@
     min-width: 120px;
   }
   
-  .confirm-button {
+  .confirm-confirm-button {
     background-color: var(--background-secondary-color);
   }
+
+  /* Coming soon confirm button */
+  .confirm-confirm-button.coming-soon {
+    background-color: #10B981; /* emerald-500 */
+    color: white;
+    /* border-color: #1D4ED8; */
+    /* box-shadow: 0 4px 14px rgba(16,185,129,0.16); */
+  }
   
-  .confirm-button.danger {
+  .confirm-confirm-button.danger {
     background-color: #EF4444;
     color: white;
   }
   
   /* Responsive styles */
   @media (max-width: 768px) {
+    /* mobile tweaks for dialog are applied to .confirm-dialog below */
     .confirm-dialog {
-      padding: 25px;
-      max-width: 450px;
+      /* padding: 20px; */
+      width: 100%;
+      /* max-width: 450px; */
+      /* border: 3px solid red; */
     }
     
-    .confirm-dialog-icon {
-      width: 60px;
-      height: 60px;
+    /* .confirm-dialog-icon {
+      width: 100px;
+      height: 100px;
+    } */
+
+    .confirm-dialog-icon svg {
+      width: 22px;
+      height: 22px;
     }
     
     .confirm-dialog-title {
       font-size: 22px;
+    }
+
+    .confirm-dialog-button {
+      /* width: 100%; */
+      /* padding: 10px 0; */
+      font-size: 14px;
+      min-width: 0;
     }
   }
   
   @media (max-width: 480px) {
     .confirm-dialog {
       padding: 20px;
-      max-width: 320px;
+      /* allow a wider dialog on small phones but keep some side padding */
+      max-width: min(420px, calc(100% - 24px));
+      width: calc(100% - 24px);
     }
     
     .confirm-dialog-icon {
@@ -140,16 +197,9 @@
     }
     
     .confirm-dialog-actions {
-      flex-direction: column;
+      /* flex-direction: column; */
       gap: 10px;
-      width: 100%;
-    }
-    
-    .confirm-dialog-button {
-      width: 100%;
-      padding: 10px 0;
-      font-size: 14px;
-      min-width: 0;
+      /* width: 100%; */
     }
   }
   

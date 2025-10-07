@@ -47,6 +47,10 @@ const ClassDetails = ({
 
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+  const [comingSoonConfirm, setComingSoonConfirm] = useState({
+    isOpen: false,
+    feature: "",
+  });
 
   useEffect(() => {
     if (classData) {
@@ -353,14 +357,14 @@ const ClassDetails = ({
 
   const handleFlashcards = () => {
     setShowMenu(false);
-    console.log("Flashcards for", classData.name);
-    // Implement flashcards functionality
+    // show coming soon dialog
+    setComingSoonConfirm({ isOpen: true, feature: "Flashcards" });
   };
 
   const handleQuiz = () => {
     setShowMenu(false);
-    console.log("Quiz for", classData.name);
-    // Implement quiz functionality
+    // show coming soon dialog
+    setComingSoonConfirm({ isOpen: true, feature: "Practice Quizzes" });
   };
 
   function formatBytes(bytes) {
@@ -391,7 +395,7 @@ const ClassDetails = ({
       <motion.button
         className="study-tool-button flashcards-button"
         whileTap={{ scale: 0.98 }}
-        // onClick={() => navigate(`/study/${classData.id}/flashcards`)}
+        onClick={handleFlashcards}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -418,7 +422,7 @@ const ClassDetails = ({
       <motion.button
         className="study-tool-button quiz-button"
         whileTap={{ scale: 0.98 }}
-        // onClick={() => navigate(`/study/${classData.id}/quiz`)}
+        onClick={handleQuiz}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -562,6 +566,49 @@ const ClassDetails = ({
           {/* Study tool buttons: navigate to full-screen study pages */}
           <MotionFlashcardsButton />
           <MotionQuizButton />
+          <div className="menu-container" ref={menuRef}>
+            <motion.button
+              className="menu-button"
+              onClick={toggleMenu}
+              whileHover={{
+                scale: 1.05,
+                transition: { type: "spring", stiffness: 300, damping: 5 },
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </motion.button>
+
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  className="menu-popup"
+                  variants={menuVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  {/* Intentionally empty: no menu items on ClassDetails */}
+                  <MotionFlashcardsButton />
+                  <MotionQuizButton />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
       </motion.div>
 
@@ -870,6 +917,22 @@ const ClassDetails = ({
         message={`A file named "${uploadConfirmData.file?.name}" already exists. Do you want to upload it anyway?`}
         confirmText="Upload Anyway"
         cancelText="Skip"
+        danger={false}
+      />
+      <ConfirmDialog
+        isOpen={comingSoonConfirm.isOpen}
+        onClose={() => setComingSoonConfirm({ isOpen: false, feature: "" })}
+        onConfirm={() => setComingSoonConfirm({ isOpen: false, feature: "" })}
+        title={
+          comingSoonConfirm.feature
+            ? `${comingSoonConfirm.feature} — Coming Soon`
+            : "Coming Soon"
+        }
+        message={`This feature is coming soon. We'll notify you when ${
+          comingSoonConfirm.feature || "it"
+        } is available.`}
+        confirmText="Got it"
+        cancelText=""
         danger={false}
       />
     </motion.div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import ConfirmDialog from "./ConfirmDialog";
 import "./ChatInput.css";
 
 // Key for storing draft message in localStorage
@@ -11,9 +12,15 @@ const ChatInput = ({
   onShowTagSelector,
   onStopGeneration,
   isGenerating = false,
+  onUploadFiles = null,
 }) => {
   const [message, setMessage] = useState("");
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [comingConfirm, setComingConfirm] = useState({
+    isOpen: false,
+    feature: "",
+  });
 
   // Load saved draft when component mounts
   useEffect(() => {
@@ -69,9 +76,54 @@ const ChatInput = ({
     }
   };
 
+  const openFilePicker = () => {
+    // show coming soon dialog instead of actual picker
+    setComingConfirm({ isOpen: true, feature: "Upload Files" });
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length && typeof onUploadFiles === "function") {
+      onUploadFiles(files);
+    }
+    // reset so same file can be selected again
+    e.target.value = null;
+  };
+
   return (
     <div className="chat-input-container">
       <form onSubmit={handleSubmit} className="chat-form">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={handleFileChange}
+          style={{ display: "none" }}
+        />
+
+        <button
+          type="button"
+          className="upload-button"
+          onClick={() =>
+            setComingConfirm({ isOpen: true, feature: "Upload Files" })
+          }
+          title="Upload files"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
         <textarea
           ref={textareaRef}
           className="chat-input"
@@ -85,7 +137,9 @@ const ChatInput = ({
         <button
           type="button"
           className="tag-button-bottom"
-          onClick={onShowTagSelector}
+          onClick={() =>
+            setComingConfirm({ isOpen: true, feature: "Context Tags" })
+          }
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -104,12 +158,10 @@ const ChatInput = ({
         </button>
 
         {isGenerating ? (
-          <motion.button
+          <button
             type="button"
             className="stop-button"
             onClick={onStopGeneration}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -124,15 +176,9 @@ const ChatInput = ({
             >
               <rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect>
             </svg>
-          </motion.button>
+          </button>
         ) : (
-          <motion.button
-            type="submit"
-            className="send-button"
-            disabled={!message.trim() || isGenerating}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
+          <button type="submit" className="send-button" disabled={isGenerating}>
             {loading ? (
               <div className="button-spinner"></div>
             ) : (
@@ -151,9 +197,25 @@ const ChatInput = ({
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
             )}
-          </motion.button>
+          </button>
         )}
       </form>
+      <ConfirmDialog
+        isOpen={comingConfirm?.isOpen}
+        onClose={() => setComingConfirm({ isOpen: false, feature: "" })}
+        onConfirm={() => setComingConfirm({ isOpen: false, feature: "" })}
+        title={
+          comingConfirm?.feature
+            ? `${comingConfirm.feature} — Coming Soon`
+            : "Coming Soon"
+        }
+        message={`This feature is coming soon. We'll notify you when ${
+          comingConfirm?.feature || "it"
+        } is available.`}
+        confirmText="Got it"
+        cancelText=""
+        danger={false}
+      />
     </div>
   );
 };

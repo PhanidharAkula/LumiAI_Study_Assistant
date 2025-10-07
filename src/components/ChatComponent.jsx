@@ -52,6 +52,7 @@ const ChatComponent = ({
     initialClassId ? [initialClassId] : []
   );
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadedLocalFiles, setUploadedLocalFiles] = useState([]);
   const [currentConversationId, setCurrentConversationId] =
     useState(conversationId);
   const [currentSessionId, setCurrentSessionId] = useState(
@@ -704,11 +705,7 @@ const ChatComponent = ({
 
       if (user) {
         try {
-          // Build ordered arrays of questions and answers by scanning the
-          // messages array in time order. This preserves correct pairing of
-          // user/assistant turns even if there were multiple user messages
-          // or assistant segments.
-          // Use the messagesRef to get the latest messages (safer in async flows)
+          // Build ordered arrays of questions and answers using messagesRef
           const currentMessages = Array.isArray(messagesRef.current)
             ? messagesRef.current
             : messages;
@@ -719,24 +716,22 @@ const ChatComponent = ({
           for (const msg of currentMessages) {
             if (!msg || typeof msg.content !== "string") continue;
             const trimmed = msg.content.trim();
-            if (!trimmed) continue; // skip empty user/ai messages
+            if (!trimmed) continue;
             if (msg.type === "user") questionParts.push(trimmed);
             if (msg.type === "assistant" && !msg.isStreaming)
               answerParts.push(trimmed);
           }
 
-          // Ensure current exchange is included (fallback if missing from ref)
+          // Ensure current exchange is included
           const lastQuestion = questionParts[questionParts.length - 1];
           if (!lastQuestion || lastQuestion !== message.trim()) {
             questionParts.push(message.trim());
           }
-
           const lastAnswer = answerParts[answerParts.length - 1];
           if (!lastAnswer || lastAnswer !== fullResponse.trim()) {
             answerParts.push(fullResponse.trim());
           }
 
-          // Join using explicit sentinel to preserve multi-paragraph messages
           const allUserMessages = questionParts
             .map((s) => s.trim())
             .filter(Boolean)
@@ -746,51 +741,8 @@ const ChatComponent = ({
             .filter(Boolean)
             .join(TURN_SEP);
 
-          if (!currentConversationId) {
-            // Generate title from the first question/answer pair
-            const title = await generateConversationTitle(
-              questionParts[0] || message,
-              answerParts[0] || fullResponse
-            );
-
-            const newConversation = {
-              class_id: initialClassId || null,
-              user_id: user.id,
-              question: allUserMessages,
-              answer: allAiResponses,
-              document_ids: selectedDocs,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              context_classes: selectedClasses,
-              context_files: selectedFiles,
-              session_id: currentSessionId,
-              title: title || "New Conversation",
-            };
-
-            // Debug: log what will be saved so we can inspect formatting issues
-            console.debug(
-              "Saving new conversation: questionParts:",
-              questionParts,
-              "answerParts:",
-              answerParts
-            );
-            console.debug("Saving new conversation strings:", {
-              allUserMessages,
-              allAiResponses,
-            });
-
-            const { data, error } = await supabase
-              .from("conversations")
-              .insert(newConversation)
-              .select();
-
-            if (error) {
-              console.error("Error saving conversation:", error);
-            } else {
-              setCurrentConversationId(data[0].id);
-            }
-          } else {
-            // Update existing conversation with ordered content
+          if (currentConversationId) {
+            // Update an explicitly-selected conversation
             const updatedConversation = {
               question: allUserMessages,
               answer: allAiResponses,
@@ -799,7 +751,6 @@ const ChatComponent = ({
               context_files: selectedFiles,
             };
 
-            // Debug: log update payload
             console.debug(
               "Updating conversation id",
               currentConversationId,
@@ -812,8 +763,94 @@ const ChatComponent = ({
               .update(updatedConversation)
               .eq("id", currentConversationId);
 
-            if (updateError) {
+            if (updateError)
               console.error("Error updating conversation:", updateError);
+          } else {
+            // No explicit id: try to find an existing conversation for this session
+            let existingConvId = null;
+            try {
+              const { data: found, error: foundErr } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("session_id", currentSessionId)
+                .eq("user_id", user.id)
+                .limit(1)
+                .maybeSingle();
+
+              if (!foundErr && found && found.id) existingConvId = found.id;
+            } catch (e) {
+              console.warn(
+                "Error looking up existing conversation by session:",
+                e
+              );
+            }
+
+            if (existingConvId) {
+              const updatedConversation = {
+                question: allUserMessages,
+                answer: allAiResponses,
+                updated_at: new Date().toISOString(),
+                context_classes: selectedClasses,
+                context_files: selectedFiles,
+              };
+
+              console.debug(
+                "Found existing conversation for session, updating id:",
+                existingConvId
+              );
+              const { error: updateErr } = await supabase
+                .from("conversations")
+                .update(updatedConversation)
+                .eq("id", existingConvId);
+
+              if (updateErr) {
+                console.error(
+                  "Error updating existing conversation:",
+                  updateErr
+                );
+              } else {
+                setCurrentConversationId(existingConvId);
+              }
+            } else {
+              const title = await generateConversationTitle(
+                questionParts[0] || message,
+                answerParts[0] || fullResponse
+              );
+
+              const newConversation = {
+                class_id: initialClassId || null,
+                user_id: user.id,
+                question: allUserMessages,
+                answer: allAiResponses,
+                document_ids: selectedDocs,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                context_classes: selectedClasses,
+                context_files: selectedFiles,
+                session_id: currentSessionId,
+                title: title || "New Conversation",
+              };
+
+              console.debug(
+                "Inserting new conversation: questionParts:",
+                questionParts,
+                "answerParts:",
+                answerParts
+              );
+              console.debug("Saving new conversation strings:", {
+                allUserMessages,
+                allAiResponses,
+              });
+
+              const { data, error } = await supabase
+                .from("conversations")
+                .insert(newConversation)
+                .select();
+              if (error) {
+                console.error("Error saving conversation:", error);
+              } else {
+                setCurrentConversationId(data[0].id);
+              }
             }
           }
 
@@ -1189,11 +1226,6 @@ const ChatComponent = ({
                               >
                                 <p className="history-title">
                                   {conv.title || "New Conversation"}
-                                  {/* {conv.hasMultipleMessages && (
-                                    <span className="message-count">
-                                      {conv.messageCount} messages
-                                    </span>
-                                  )} */}
                                 </p>
                                 <p className="history-question">
                                   {conv.displayQuestion}
@@ -1219,8 +1251,8 @@ const ChatComponent = ({
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                   >
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                                   </svg>
                                 </button>
                                 <button
@@ -1478,12 +1510,42 @@ const ChatComponent = ({
               )}
             </AnimatePresence>
 
+            {uploadedLocalFiles && uploadedLocalFiles.length > 0 && (
+              <div className="uploaded-local-files">
+                {uploadedLocalFiles.map((f) => (
+                  <div key={f.id} className="uploaded-file-chip">
+                    <span className="uploaded-file-name">{f.name}</span>
+                    <button
+                      className="remove-uploaded-file"
+                      onClick={() =>
+                        setUploadedLocalFiles((prev) =>
+                          prev.filter((p) => p.id !== f.id)
+                        )
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <ChatInput
               onSendMessage={handleSendMessage}
               loading={loading}
               onShowTagSelector={() => setShowTagSelector(true)}
               onStopGeneration={handleStopGeneration}
               isGenerating={!!abortController}
+              onUploadFiles={(files) => {
+                // store local file previews; actual upload handled elsewhere
+                const mapped = files.map((file, i) => ({
+                  id: `local-${Date.now()}-${i}`,
+                  name: file.name,
+                  url: URL.createObjectURL(file),
+                }));
+                setUploadedLocalFiles((prev) => [...prev, ...mapped]);
+                console.log("Uploaded local files:", mapped);
+              }}
             />
           </div>
         </motion.div>

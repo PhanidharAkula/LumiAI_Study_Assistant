@@ -459,19 +459,12 @@
 }
 
 .card-action-btn.delete-btn {
-  border-color: #EF4444;
   background: #EF4444;
 }
 
 .card-action-btn.delete-btn svg {
   stroke: white;
 }
-
-/* @media (max-width: 768px) {
-  .classes-grid {
-    min-height: 220px;
-  }
-} */
 
 .class-card-icon {
   width: 50px;
@@ -654,7 +647,7 @@
   }
   
   .menu-popup {
-    width: 260px;
+    width: 280px;
     right: 0px;
   }
   
@@ -693,7 +686,7 @@
   }
   
   .user-email {
-    max-width: 140px;
+    max-width: 180px;
   }
   
   .dashboard-background {

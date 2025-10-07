@@ -79,18 +79,18 @@
   gap: 20px;
 }
 
-.cancel-button, .submit-button {
+.form-cancel-button, .submit-button {
   padding: 12px 30px;
   border-radius: 100px;
   border: 1.5px solid var(--text-primary-color);
   font-size: medium;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: 0px 2px 0 var(--text-primary-color);
   transition: none;
 }
 
-.cancel-button {
+.form-cancel-button {
   background-color: white;
 }
 
@@ -99,8 +99,89 @@
   background-color: var(--background-secondary-color);
 }
 
-.cancel-button:disabled,
+.form-cancel-button:disabled,
 .submit-button:disabled {
   opacity: 0.7;
-  cursor: not-allowed;
+  /* cursor: not-allowed; */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .add-class-form-container {
+    /* height: auto; */
+    padding: 24px 12px;
+    /* align-items: flex-start; */
+  }
+
+  .add-class-form {
+    padding: 20px;
+    width: 100%;
+    max-width: 560px;
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .form-title-text {
+    font-size: 1.15rem;
+    text-align: center;
+  }
+
+  .form-group {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .add-class-form .form-input {
+    width: 100% !important;
+    max-width: 100%;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .form-actions {
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .form-cancel-button, .submit-button {
+    padding: 10px 20px;
+    font-size: small;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-class-form-container {
+    padding: 16px 10px;
+  }
+
+  .add-class-form {
+    padding: 16px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .form-title-text {
+    font-size: 1.05rem;
+    text-align: center;
+  }
+
+  .form-actions {
+    /* display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch; */
+    gap: 10px;
+    /* margin-top: 6px; */
+  }
+
+  .form-cancel-button, .submit-button {
+    /* width: 100%; */
+    padding: 10px 15px;
+    min-width: 0;
+    /* border-radius: 10px; */
+  }
+
+  .submit-button {
+    min-width: 0;
+  }
 }

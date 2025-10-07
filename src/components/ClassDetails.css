@@ -38,11 +38,13 @@
   font-size: xx-large;
   font-weight: 600;
   color: var(--text-primary-color);
+  margin-bottom: 4px; /* reduced gap */
 }
 
 .class-meta {
   font-size: small;
   color: var(--text-secondary-color);
+  margin-top: 0; /* ensure small spacing from title */
 }
 
 .class-actions {
@@ -50,6 +52,14 @@
   gap: 15px;
   margin: 0;
   justify-content: flex-end;
+}
+
+/* By default (desktop), show study buttons and hide the compact menu button */
+.class-actions .study-tool-button {
+  display: inline-flex;
+}
+.class-actions .menu-button {
+  display: none;
 }
 
 .edit-button, .delete-button {
@@ -359,6 +369,16 @@
   }
 }
 
+.class-header .class-info .class-info-name {
+  margin-bottom: 5px !important;
+  line-height: 1.12 !important;
+}
+
+.class-header .class-info .class-meta {
+  margin-top: 0 !important;
+  line-height: 1.1 !important;
+}
+
 .class-edit-form {
   max-width: 600px;
   margin: 0 auto;
@@ -469,6 +489,12 @@
   box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
 }
 
+/* Hide study buttons inside the popup by default; they'll be shown on mobile only */
+.menu-popup .study-tool-button,
+.class-menu-popup .study-tool-button {
+  display: none;
+}
+
 .study-tool-button {
   width: 100%;
   display: flex;
@@ -485,9 +511,6 @@
   transition: all 0.2s ease-in-out;
   font-size: medium;
   font-weight: 500;
-}
-
-.study-tool-button-text {
 }
 
 .flashcards-button:hover {
@@ -508,6 +531,14 @@
   color: white;
 }
 
+@media (max-width: 1024px) {
+  .upload-container {
+    width: 80%;
+    gap: 70px;
+    padding: 25px;
+  }
+}
+
 @media (max-width: 768px) {
   .class-menu-popup {
     width: 180px;
@@ -517,9 +548,94 @@
   .study-tool-button {
     padding: 10px;
   }
+
+  /* Show popup study buttons on mobile */
+  /* stronger override so header hide rule doesn't prevent popup buttons from showing */
+  .class-actions .menu-container .menu-popup .study-tool-button,
+  .class-actions .menu-container .class-menu-popup .study-tool-button,
+  .menu-popup .study-tool-button,
+  .class-menu-popup .study-tool-button {
+    display: flex !important;
+  }
   
   .study-tool-button-text {
     font-size: small;
+  }
+
+  .upload-container {
+    width: 100%;
+    gap: 50px;
+    padding: 20px;
+  }
+
+  /* Mobile: make files grid single-column and tweak file-card sizing */
+  .files-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+    padding: 10px 0;
+  }
+
+  .file-card {
+    padding: 14px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .file-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 0;
+    flex: 0 0 48px;
+  }
+
+  .file-details {
+    flex: 1;
+  }
+
+  .file-name {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .file-meta {
+    font-size: 12px;
+    color: var(--text-secondary-color);
+  }
+
+  .file-actions {
+    margin-top: 0;
+    margin-left: 8px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .file-action-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Mobile: hide full header buttons and show compact menu button */
+@media (max-width: 768px) {
+  .class-actions .study-tool-button {
+    display: none;
+  }
+  .class-actions .menu-button {
+    display: inline-flex;
+    width: 50px;
+    height: 50px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--background-secondary-color);
+    border: 1.5px solid var(--text-primary-color);
+    box-shadow: 0px 2px 0 var(--text-primary-color);
+    color: var(--text-primary-color);
   }
 }
 

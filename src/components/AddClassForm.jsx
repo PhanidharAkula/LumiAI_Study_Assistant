@@ -153,7 +153,7 @@ const AddClassForm = ({
           <div className="form-actions">
             <motion.button
               type="button"
-              className="cancel-button"
+              className="form-cancel-button"
               onClick={onCancel}
               disabled={isSubmitting}
               whileHover={{

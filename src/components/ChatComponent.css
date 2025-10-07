@@ -78,19 +78,19 @@
   padding: 0;
 }
 
-/* .history-button:hover {
-  transform: rotate(-15deg);
-} */
+.history-button:hover, .new-conversation-button:hover {
+  transform: translateY(-4px);
+}
 
 .history-button.active {
   background-color: var(--background-secondary-color);
   color: #8B5CF6; /* Purple highlight for active state */
-  transform: rotate(0);
+  /* transform: rotate(0); */
 }
 
-.history-button.active:hover {
+/* .history-button.active:hover {
   transform: rotate(0);
-}
+} */
 
 /* .new-conversation-button:hover {
   transform: translateY(-3px);
@@ -184,6 +184,96 @@
   width: 55%;
   /* border-top: 1.5px solid var(--text-primary-color); */
   background-color: var(--background-primary-color);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 1024px) {
+  .chat-messages {
+    width: 100%;
+    padding: 14px;
+  }
+  .chat-bottom-container {
+    width: 100%;
+  }
+  .chat-header {
+    padding: 18px;
+    background: var(--background-primary-color);
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-component {
+    /* padding-top: 14px; */
+    padding: 10px;
+    /* border: 3px solid red; */
+  }
+
+  .chat-messages {
+    width: 100%;
+    padding: 10px 12px 80px 12px; /* leave room for sticky input */
+    /* border: 3px solid red; */
+
+  }
+
+  .chat-bottom-container {
+    width: 100%;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    padding: 8px 12px;
+    background: var(--background-primary-color);
+    /* box-shadow: 0 -6px 18px rgba(0,0,0,0.06); */
+  }
+
+  /* Make chat header compact */
+  .chat-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 15px 15px;
+    z-index: 130;
+  }
+
+  /* Ensure main content is below header */
+  .chat-messages, .history-panel {
+    margin-top: 64px;
+  }
+}
+
+.uploaded-local-files {
+  display: flex;
+  gap: 8px;
+  padding: 10px 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.uploaded-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1.5px solid var(--text-primary-color);
+  padding: 6px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 0 var(--text-primary-color);
+}
+
+.uploaded-file-name {
+  font-size: 13px;
+  color: var(--text-primary-color);
+}
+
+.remove-uploaded-file {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary-color);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
 }
 
 /* History panel styles */
@@ -319,7 +409,7 @@
   border-radius: 50%;
   background-color: var(--background-secondary-color);
   border: 1px solid var(--text-primary-color);
-  box-shadow: 0px 1.5px 0 var(--text-primary-color);
+  box-shadow: 0px 1px 0 var(--text-primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -327,14 +417,21 @@
   transition: all 0.2s ease;
 }
 
-.history-action-button:hover {
+/* .history-action-button:hover {
   background-color: var(--background-primary-color);
+} */
+
+.history-action-button.delete {
+  background-color: #EF4444;
+  /* color: #EF4444; */
 }
 
-.history-action-button.delete:hover {
-  background-color: #FEE2E2;
-  border-color: #EF4444;
-  color: #EF4444;
+.history-action-button.delete svg {
+  stroke: white;
+}
+
+.history-action-button:hover {
+  transform: translateY(-3px);
 }
 
 .history-item-edit {

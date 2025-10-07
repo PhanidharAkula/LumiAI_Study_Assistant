@@ -45,11 +45,16 @@
   border-radius: 50%;
   background-color: var(--background-secondary-color);
   border: 1.5px solid var(--text-primary-color);
-  box-shadow: 0px 2px 0 var(--text-primary-color);
+  box-shadow: 0px 1.5px 0 var(--text-primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  transform: translateY(-4px);
 }
 
 .tag-selector-search {
@@ -144,8 +149,9 @@
   gap: 5px;
   background-color: #f0f0f0;
   border: 1.5px solid var(--text-primary-color);
-  border-radius: 6px;
-  padding: 4px 8px;
+  box-shadow: 0px 1px 0 var(--text-primary-color);
+  border-radius: 50px;
+  padding: 4px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary-color);
@@ -154,12 +160,7 @@
 }
 
 .expand-button-prominent:hover {
-  background-color: var(--background-secondary-color);
-  transform: translateY(-1px);
-}
-
-.expand-button-prominent svg {
-  margin-left: 2px;
+  transform: translateY(-3px);
 }
 
 /* Files list header */
@@ -282,7 +283,8 @@
 .cancel-button, .apply-button {
   padding: 8px 16px;
   border-radius: 100px;
-  font-weight: 600;
+  font-size: small;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -293,6 +295,10 @@
   color: var(--text-primary-color);
 }
 
+.cancel-button:hover {
+  transform: translateY(-4px);
+}
+
 .apply-button {
   background-color: var(--background-secondary-color);
   border: 1.5px solid var(--text-primary-color);
@@ -301,6 +307,5 @@
 }
 
 .apply-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0px 4px 0 var(--text-primary-color);
+  transform: translateY(-4px);
 }

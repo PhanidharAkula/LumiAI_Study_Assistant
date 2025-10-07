@@ -55,7 +55,14 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
     // provided, include it as an explicit block the model can reference. The
     // assistant should ask clarifying questions when the user's query is
     // ambiguous, and should avoid inventing access to files it doesn't have.
-  const formattingGuidelines = `When you answer, provide a thorough, structured response using Markdown. Start with a one-line TL;DR, then a "Detailed explanation" section with headings, short paragraphs, bullet lists and examples. When showing code, include syntax-highlighted fenced code blocks and a brief explanation of the code. End with a short "Next steps" or follow-up question. If an acronym has multiple common meanings, provide the most likely technical/AI meaning first, then briefly list other common meanings. Do NOT include prefatory lines such as "ChatGPT said:" or informal lead-ins like "Alright, here's...". Keep explanations clear but comprehensive.`;
+  const formattingGuidelines = `
+  When you answer, provide a thorough, structured response using Markdown.
+  Use clear section headings, short paragraphs, bullet lists, and examples.
+  When showing code, include syntax-highlighted fenced code blocks and a brief explanation of the code.
+  End with a short "Next steps" or follow-up question.
+  If an acronym has multiple common meanings, provide the most likely technical/AI meaning first, then briefly list other common meanings.
+  Do NOT include prefatory lines such as "ChatGPT said:" or informal lead-ins like "Alright, here's.".
+  Keep explanations clear but comprehensive.`;
 
     const systemPrompt = context
       ? `You are a helpful, honest, and clear conversational assistant (like ChatGPT).

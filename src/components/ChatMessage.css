@@ -41,7 +41,7 @@
 .user-message-text-wrapper .user-actions {
   position: absolute;
   right: 0;
-  bottom: -30px;
+  bottom: -25px;
   margin: 0;
   opacity: 0;
   pointer-events: none;
@@ -89,6 +89,7 @@
   position: relative;
   padding: 12px 0;
   max-width: 100%;
+  margin-top: 10px;
 }
 
 .ai-content { margin-left: 0; }
@@ -300,7 +301,20 @@
    Responsive
    ========================= */
 @media (max-width: 768px) {
-  .chat-message { max-width: 95%; }
+  .chat-message { max-width: 100%; }
+  .user-message { max-width: 100%; align-self: stretch; }
+  .user-message .message-container { justify-content: flex-end; }
+  .user-message-text { width: 100%; box-sizing: border-box; }
+  .ai-message { align-self: stretch; }
+
+  /* On mobile, always show copy controls (no hover there) */
+  .copy-message-button,
+  .message-actions,
+  .user-message-text-wrapper .user-actions {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+  }
 }
 
 /* =========================
@@ -316,7 +330,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
+  /* margin-top: 6px; */
   padding: 6px 8px;
   font-size: 12px;
   background: transparent;
@@ -324,6 +338,7 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
+  /* border: 1px solid red; */
 }
 
 .copy-message-button:hover {
@@ -475,21 +490,23 @@
 }
 
 .markdown-container th {
-  padding: 8px;
+  padding: 10px 12px;
   text-align: left;
-  color: black;
-  font-weight: 600;
-  background-color: rgba(0, 0, 0, 0.05);
-  border: 1px solid #e2e8f0;
+  color: var(--text-primary-color);
+  font-weight: 700;
+  background-color: rgba(147,193,193, 0.14); /* soft teal tint */
+  border: 1px solid rgba(147,193,193, 0.22);
 }
 
 .markdown-container td {
-  padding: 8px;
-  border: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  border: 1px solid rgba(227,235,235, 0.7);
+  background-color: rgba(255,255,255,0.98);
 }
 
+/* Alternate rows use a subtle tint (not full primary background) to improve contrast */
 .markdown-container tr:nth-child(even) {
-  background-color: #f8fafc;
+  background-color: rgba(147,193,193, 0.06); /* very light teal */
 }
 
 /* =========================

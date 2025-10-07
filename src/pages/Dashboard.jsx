@@ -43,6 +43,14 @@ const Dashboard = ({ session }) => {
   const [chatConversationId, setChatConversationId] = useState(null);
   const [talkOpen, setTalkOpen] = useState(false);
   const [talkClassId, setTalkClassId] = useState(null);
+  const [bottomComingSoon, setBottomComingSoon] = useState({
+    isOpen: false,
+    feature: "",
+  });
+  const [accountComingSoon, setAccountComingSoon] = useState({
+    isOpen: false,
+    feature: "",
+  });
 
   useEffect(() => {
     if (!loading) {
@@ -283,7 +291,8 @@ const Dashboard = ({ session }) => {
 
   const confirmDeleteAccount = () => {
     setShowMenu(false);
-    setDeleteAccountConfirm(true);
+    // show coming soon instead of actual delete flow
+    setAccountComingSoon({ isOpen: true, feature: "Delete Account" });
   };
 
   const handleDeleteAccount = async () => {
@@ -736,9 +745,7 @@ const Dashboard = ({ session }) => {
                     className="classes-header"
                   >
                     <div className="header-left">
-                      <Link to={"./dashboard"} className="link">
-                        <h1>My Classes</h1>
-                      </Link>
+                      <h1>My Classes</h1>
                     </div>
                     <div className="header-right">
                       {classes.length > 0 && (
@@ -1024,7 +1031,10 @@ const Dashboard = ({ session }) => {
 
             <motion.button
               className="ai-action-button talk-ai-button"
-              onClick={() => handleTalkWithAI(selectedClass?.id)}
+              onClick={() => {
+                // show coming soon for voice-first talk in the bottom bar
+                setBottomComingSoon({ isOpen: true, feature: "Talk with AI" });
+              }}
               whileHover={{
                 scale: 1.03,
                 y: -5,
@@ -1063,6 +1073,40 @@ const Dashboard = ({ session }) => {
         confirmText="Sign Out"
         cancelText="Cancel"
         danger={true}
+      />
+
+      <ConfirmDialog
+        isOpen={bottomComingSoon?.isOpen}
+        onClose={() => setBottomComingSoon({ isOpen: false, feature: "" })}
+        onConfirm={() => setBottomComingSoon({ isOpen: false, feature: "" })}
+        title={
+          bottomComingSoon?.feature
+            ? `${bottomComingSoon.feature} — Coming Soon`
+            : "Coming Soon"
+        }
+        message={`This feature is coming soon. We'll notify you when ${
+          bottomComingSoon?.feature || "it"
+        } is available.`}
+        confirmText="Got it"
+        cancelText=""
+        danger={false}
+      />
+
+      <ConfirmDialog
+        isOpen={accountComingSoon?.isOpen}
+        onClose={() => setAccountComingSoon({ isOpen: false, feature: "" })}
+        onConfirm={() => setAccountComingSoon({ isOpen: false, feature: "" })}
+        title={
+          accountComingSoon?.feature
+            ? `${accountComingSoon.feature} — Coming Soon`
+            : "Coming Soon"
+        }
+        message={`This feature is coming soon. We'll notify you when ${
+          accountComingSoon?.feature || "it"
+        } is available.`}
+        confirmText="Got it"
+        cancelText=""
+        danger={false}
       />
 
       <ConfirmDialog
