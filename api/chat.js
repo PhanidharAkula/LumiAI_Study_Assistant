@@ -12,9 +12,20 @@ export default async function handler(req, res) {
   // Get API key from environment (server-side only)
   const API_KEY = process.env.OPENAI_API_KEY;
   
+  // Debug logging (will appear in Vercel function logs)
+  console.log('Environment check:', {
+    hasKey: !!API_KEY,
+    keyPrefix: API_KEY ? API_KEY.substring(0, 7) + '...' : 'undefined',
+    allEnvKeys: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API'))
+  });
+  
   if (!API_KEY) {
     console.error('OPENAI_API_KEY not found in environment variables');
-    return res.status(500).json({ error: 'Server configuration error' });
+    console.error('Available env vars:', Object.keys(process.env));
+    return res.status(500).json({ 
+      error: 'Server configuration error',
+      debug: 'OPENAI_API_KEY environment variable is not set'
+    });
   }
 
   try {
