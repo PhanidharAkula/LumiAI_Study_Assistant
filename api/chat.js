@@ -3,7 +3,7 @@
  * This keeps the API key secure on the server-side
  */
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -12,19 +12,26 @@ export default async function handler(req, res) {
   // Get API key from environment (server-side only)
   const API_KEY = process.env.OPENAI_API_KEY;
   
-  // Debug logging (will appear in Vercel function logs)
-  console.log('Environment check:', {
-    hasKey: !!API_KEY,
-    keyPrefix: API_KEY ? API_KEY.substring(0, 7) + '...' : 'undefined',
-    allEnvKeys: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API'))
-  });
+  // Debug logging
+  console.log('Environment variables check:');
+  console.log('- Has OPENAI_API_KEY:', !!API_KEY);
+  console.log('- Key prefix:', API_KEY ? `${API_KEY.substring(0, 7)}...` : 'MISSING');
+  console.log('- All OPENAI vars:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
+  
+  // If no key, return detailed error
+  if (!API_KEY) {
+    const availableVars = Object.keys(process.env)
+      .filter(k => !k.includes('SECRET') && !k.includes('PASSWORD'))
+      .slice(0, 20);
+    console.error('Available environment variables:', availableVars);
+  }
   
   if (!API_KEY) {
-    console.error('OPENAI_API_KEY not found in environment variables');
-    console.error('Available env vars:', Object.keys(process.env));
+    console.error('❌ CRITICAL: No OpenAI API key found in any expected location');
     return res.status(500).json({ 
       error: 'Server configuration error',
-      debug: 'OPENAI_API_KEY environment variable is not set'
+      debug: 'OPENAI_API_KEY environment variable is not set',
+      availableKeys: Object.keys(process.env).filter(k => !k.includes('SECRET') && !k.includes('KEY')).slice(0, 10)
     });
   }
 
