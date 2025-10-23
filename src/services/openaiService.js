@@ -1,10 +1,22 @@
 /**
  * OpenAI API service for handling AI chat interactions
- * All requests now go through our secure backend API
+ * In production: Uses secure backend API (/api/chat)
+ * In development: Can use direct OpenAI calls with VITE_OPENAI_API_KEY
  */
 
-// Use relative path for API endpoint (works in both dev and production)
-const API_URL = "/api/chat";
+// Check if we're in development mode and have a local API key
+const isDevelopment = import.meta.env.MODE === 'development';
+const DEV_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const USE_BACKEND = !isDevelopment || !DEV_API_KEY;
+
+// Use backend API in production, or direct OpenAI in dev if key is available
+const API_URL = USE_BACKEND ? "/api/chat" : "https://api.openai.com/v1/chat/completions";
+
+console.log('OpenAI Service Config:', { 
+  isDevelopment, 
+  useBackend: USE_BACKEND,
+  hasDevKey: !!DEV_API_KEY 
+});
 
 /**
  * Parses OpenAI API errors to provide meaningful messages
@@ -76,17 +88,34 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
       { role: "user", content: userMessage },
     ];
 
-    const response = await fetch(API_URL, {
+    // Prepare request based on whether we're using backend or direct API
+    const fetchOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+      signal, // Pass the AbortSignal to fetch
+    };
+
+    // If using backend API, send messages directly
+    if (USE_BACKEND) {
+      fetchOptions.body = JSON.stringify({
         messages: messagesPayload,
         stream: true,
-      }),
-      signal, // Pass the AbortSignal to fetch
-    });
+      });
+    } else {
+      // If using direct OpenAI API (dev mode), send full request
+      fetchOptions.headers.Authorization = `Bearer ${DEV_API_KEY}`;
+      fetchOptions.body = JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: messagesPayload,
+        temperature: 0.7,
+        max_tokens: 2000,
+        stream: true,
+      });
+    }
+
+    const response = await fetch(API_URL, fetchOptions);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -200,16 +229,32 @@ export const fetchAIResponse = async (userMessage, context = "", history = []) =
       { role: "user", content: userMessage },
     ];
 
-    const response = await fetch(API_URL, {
+    // Prepare request based on whether we're using backend or direct API
+    const fetchOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+    };
+
+    // If using backend API, send messages directly
+    if (USE_BACKEND) {
+      fetchOptions.body = JSON.stringify({
         messages: messagesPayload,
         stream: false,
-      }),
-    });
+      });
+    } else {
+      // If using direct OpenAI API (dev mode), send full request
+      fetchOptions.headers.Authorization = `Bearer ${DEV_API_KEY}`;
+      fetchOptions.body = JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: messagesPayload,
+        temperature: 0.8,
+        max_tokens: 500,
+      });
+    }
+
+    const response = await fetch(API_URL, fetchOptions);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -255,22 +300,37 @@ export const fetchAIResponse = async (userMessage, context = "", history = []) =
  */
 export const generateFlashcards = async (content) => {
   try {
-    const response = await fetch(API_URL, {
+    const messagesPayload = [
+      { 
+        role: "system", 
+        content: "Generate 5 study flashcards from the following content. Return only a JSON array with objects containing 'front' and 'back' properties." 
+      },
+      { role: "user", content }
+    ];
+
+    const fetchOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messages: [
-          { 
-            role: "system", 
-            content: "Generate 5 study flashcards from the following content. Return only a JSON array with objects containing 'front' and 'back' properties." 
-          },
-          { role: "user", content }
-        ],
+    };
+
+    if (USE_BACKEND) {
+      fetchOptions.body = JSON.stringify({
+        messages: messagesPayload,
         stream: false,
-      }),
-    });
+      });
+    } else {
+      fetchOptions.headers.Authorization = `Bearer ${DEV_API_KEY}`;
+      fetchOptions.body = JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: messagesPayload,
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+    }
+
+    const response = await fetch(API_URL, fetchOptions);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
@@ -301,29 +361,44 @@ export const generateFlashcards = async (content) => {
  */
 export const generateConversationTitle = async (userMessage, aiResponse) => {
   try {
-    const response = await fetch(API_URL, {
+    const messagesPayload = [
+      {
+        role: "system",
+        content: `You are a concise title generator. 
+                  Given a user's question and the AI's reply, create a short but meaningful title that captures the main topic or purpose of the conversation.
+                  Rules:
+                  - Keep it under 7 words.
+                  - Use natural capitalization (e.g., "Understanding React Hooks").
+                  - Do NOT use quotes or punctuation at the ends.
+                  - Focus on clarity and relevance, not just generic terms.`
+      },
+      { role: "user", content: userMessage },
+      { role: "assistant", content: aiResponse }
+    ];
+
+    const fetchOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content: `You are a concise title generator. 
-                      Given a user's question and the AI's reply, create a short but meaningful title that captures the main topic or purpose of the conversation.
-                      Rules:
-                      - Keep it under 7 words.
-                      - Use natural capitalization (e.g., "Understanding React Hooks").
-                      - Do NOT use quotes or punctuation at the ends.
-                      - Focus on clarity and relevance, not just generic terms.`
-          },
-          { role: "user", content: userMessage },
-          { role: "assistant", content: aiResponse }
-        ],
+    };
+
+    if (USE_BACKEND) {
+      fetchOptions.body = JSON.stringify({
+        messages: messagesPayload,
         stream: false,
-      }),
-    });
+      });
+    } else {
+      fetchOptions.headers.Authorization = `Bearer ${DEV_API_KEY}`;
+      fetchOptions.body = JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: messagesPayload,
+        temperature: 0.8,
+        max_tokens: 25,
+      });
+    }
+
+    const response = await fetch(API_URL, fetchOptions);
 
     if (!response.ok) {
       return "New Conversation";
