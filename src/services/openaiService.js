@@ -1,9 +1,10 @@
 /**
  * OpenAI API service for handling AI chat interactions
+ * All requests now go through our secure backend API
  */
 
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-const API_URL = "https://api.openai.com/v1/chat/completions";
+// Use relative path for API endpoint (works in both dev and production)
+const API_URL = "/api/chat";
 
 /**
  * Parses OpenAI API errors to provide meaningful messages
@@ -17,11 +18,11 @@ const parseOpenAIError = (error) => {
     return "OpenAI API quota exceeded. Please check your billing details in your OpenAI account or update your API key.";
   }
   
-  if (errorMessage.includes('rate limit')) {
+  if (errorMessage.includes('rate limit') || errorMessage.includes('Too many requests')) {
     return "OpenAI API rate limit reached. Please try again in a few moments.";
   }
   
-  if (errorMessage.includes('invalid_api_key')) {
+  if (errorMessage.includes('invalid_api_key') || errorMessage.includes('Authentication error')) {
     return "Invalid OpenAI API key. Please check your API key configuration.";
   }
   
@@ -42,15 +43,6 @@ const parseOpenAIError = (error) => {
  */
 export const fetchStreamingResponse = async (userMessage, context = "", onToken, signal, history = []) => {
   try {
-    if (!API_KEY) {
-      console.error("OpenAI API key not found in environment variables.");
-      return { 
-        text: null,
-        error: "API key not configured", 
-        errorType: "config"
-      };
-    }
-
     // Use a general ChatGPT-style assistant persona by default. When context is
     // provided, include it as an explicit block the model can reference. The
     // assistant should ask clarifying questions when the user's query is
@@ -88,23 +80,21 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4",
         messages: messagesPayload,
-        temperature: 0.7,
-        max_tokens: 1000,
         stream: true,
       }),
       signal, // Pass the AbortSignal to fetch
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      const errorMessage = errorData.error?.message || "Failed to get response from OpenAI";
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || "Failed to get response from AI";
       
-      if (errorMessage.includes('exceeded your current quota') || response.status === 429) {
+      if (errorMessage.includes('exceeded your current quota') || 
+          errorMessage.includes('Too many requests') || 
+          response.status === 429) {
         return {
           text: null,
           error: parseOpenAIError({ message: errorMessage, status: response.status }),
@@ -190,16 +180,6 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
  */
 export const fetchAIResponse = async (userMessage, context = "", history = []) => {
   try {
-    if (!API_KEY) {
-      console.error("OpenAI API key not found in environment variables.");
-      return { 
-        text: null,
-        error: "API key not configured", 
-        errorType: "config",
-        errorDetail: "OpenAI API key not found in environment variables."
-      };
-    }
-
   const formattingGuidelines = `When you answer, provide a thorough, structured response using Markdown. Use headings, short paragraphs, bullet lists, and examples. When showing code, provide syntax-highlighted code fences and a brief explanation of the code. If an acronym has multiple common meanings, provide the most likely technical/AI meaning first, then briefly list other common meanings. If the user asks follow-ups, reference earlier turns as needed. Keep explanations clear but comprehensive.`;
 
     const systemPrompt = context
@@ -224,24 +204,23 @@ export const fetchAIResponse = async (userMessage, context = "", history = []) =
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
         messages: messagesPayload,
-        temperature: 0.8,
-        max_tokens: 500,
+        stream: false,
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      const errorMessage = errorData.error?.message || "Failed to get response from OpenAI";
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || "Failed to get response from AI";
       
       console.error("OpenAI API error:", errorData);
       
       // Check for quota exceeded error
-      if (errorMessage.includes('exceeded your current quota') || response.status === 429) {
+      if (errorMessage.includes('exceeded your current quota') || 
+          errorMessage.includes('Too many requests') || 
+          response.status === 429) {
         return {
           text: null,
           error: parseOpenAIError({ message: errorMessage, status: response.status }),
@@ -276,18 +255,12 @@ export const fetchAIResponse = async (userMessage, context = "", history = []) =
  */
 export const generateFlashcards = async (content) => {
   try {
-    if (!API_KEY) {
-      throw new Error("API key not configured");
-    }
-
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
         messages: [
           { 
             role: "system", 
@@ -295,14 +268,13 @@ export const generateFlashcards = async (content) => {
           },
           { role: "user", content }
         ],
-        temperature: 0.7,
-        max_tokens: 100,
+        stream: false,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || "Failed to generate flashcards");
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to generate flashcards");
     }
 
     const data = await response.json();
@@ -329,18 +301,12 @@ export const generateFlashcards = async (content) => {
  */
 export const generateConversationTitle = async (userMessage, aiResponse) => {
   try {
-    if (!API_KEY) {
-      return "New Conversation";
-    }
-
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -355,8 +321,7 @@ export const generateConversationTitle = async (userMessage, aiResponse) => {
           { role: "user", content: userMessage },
           { role: "assistant", content: aiResponse }
         ],
-        temperature: 0.8,
-        max_tokens: 25,
+        stream: false,
       }),
     });
 
