@@ -15,17 +15,21 @@ import {
 } from "../services/openaiService";
 import "./ChatComponent.css";
 
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 const STORAGE_KEY_PREFIX = "lumiAI_chat_";
 // Use an explicit turn separator that is very unlikely to appear in normal text
 const TURN_SEP = "\n\n--LUMI_TURN--\n\n";
 
-// Safely split stored conversation text into parts. First try the sentinel
-// separator, and fall back to splitting on double-newline for older entries.
+// Safely split stored conversation text into parts using the sentinel separator.
+// If no sentinel is found, treat the entire text as a single part (no splitting).
 const splitConversationParts = (text) => {
   if (!text || typeof text !== "string") return [];
   const bySentinel = text.split(TURN_SEP).filter(Boolean);
   if (bySentinel.length > 1) return bySentinel;
-  return text.split("\n\n").filter(Boolean);
+  // Return the whole text as a single part if no separator found
+  return [text];
 };
 
 const ChatComponent = ({
@@ -65,12 +69,91 @@ const ChatComponent = ({
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const historyDropdownRef = useRef(null);
+  const userScrolledUp = useRef(false);
+  const autoScrollEnabled = useRef(true);
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (force = false, smooth = true) => {
+    if (messagesEndRef.current && chatContainerRef.current) {
+      // Only auto-scroll if user hasn't manually scrolled up, or if forced
+      const shouldScroll =
+        force || (!userScrolledUp.current && autoScrollEnabled.current);
+
+      if (shouldScroll) {
+        // Use smooth scrolling for better UX, but allow instant for force scrolls
+        const behavior = smooth && !force ? "smooth" : "auto";
+
+        // Use requestAnimationFrame for smoother scrolling during streaming
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({
+            behavior,
+            block: "end",
+          });
+        });
+      }
     }
   };
+
+  // Track if user has scrolled up manually - using wheel/touch events for reliability
+  useEffect(() => {
+    const container = chatContainerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    let scrollTimeout = null;
+
+    // Detect user scrolling UP (away from bottom)
+    const handleWheel = (e) => {
+      // e.deltaY < 0 means scrolling UP
+      if (e.deltaY < 0) {
+        // Immediately disable auto-scroll when user scrolls up
+        autoScrollEnabled.current = false;
+        userScrolledUp.current = true;
+      } else if (e.deltaY > 0) {
+        // User is scrolling down - check if they're near bottom after a short delay
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          const { scrollTop, scrollHeight, clientHeight } = container;
+          const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+          if (distanceFromBottom < 50) {
+            autoScrollEnabled.current = true;
+            userScrolledUp.current = false;
+          }
+        }, 100);
+      }
+    };
+
+    // Check scroll position to re-enable auto-scroll when at bottom
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+
+      scrollTimeout = setTimeout(() => {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        const isAtBottom = distanceFromBottom < 10;
+        const isNearBottom = distanceFromBottom < 50;
+
+        // Re-enable auto-scroll when user scrolls to bottom
+        if (isAtBottom || isNearBottom) {
+          autoScrollEnabled.current = true;
+          userScrolledUp.current = false;
+        }
+      }, 50); // Small debounce for performance
+    };
+
+    // Listen for wheel events (mouse scroll)
+    container.addEventListener("wheel", handleWheel, { passive: true });
+    // Listen for scroll position changes
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      container.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   useEffect(() => {
     // keep a ref in sync so async handlers can access the latest messages
@@ -91,11 +174,26 @@ const ChatComponent = ({
   }, [messages, selectedClasses, selectedFiles]);
 
   useEffect(() => {
-    scrollToBottom();
+    // Smooth auto-scroll during message updates (streaming)
+    // Only scroll if user hasn't manually scrolled up
+    if (!userScrolledUp.current && autoScrollEnabled.current) {
+      scrollToBottom(false, true);
+    }
   }, [messages]);
 
   useEffect(() => {
+    console.log(
+      "🎯 useEffect triggered - conversationId:",
+      conversationId,
+      "initialClassId:",
+      initialClassId
+    );
+
     if (conversationId) {
+      console.log(
+        "📞 About to call loadSpecificConversation with ID:",
+        conversationId
+      );
       loadSpecificConversation(conversationId);
       return;
     }
@@ -318,6 +416,7 @@ const ChatComponent = ({
   const loadSpecificConversation = async (id) => {
     try {
       setInitialLoading(true);
+      console.log("🔄 Loading conversation:", id);
 
       const { data, error } = await supabase
         .from("conversations")
@@ -328,6 +427,12 @@ const ChatComponent = ({
       if (error) throw error;
 
       if (data) {
+        console.log("📥 Conversation data loaded:", {
+          id: data.id,
+          hasMetadata: !!data.messages_metadata,
+          metadataLength: data.messages_metadata?.length || 0,
+        });
+
         // If this conversation has a session_id, fetch all conversations in the same session
         // and combine their turns so the full session history is loaded (enables continuation)
         let sessionConversations = [data];
@@ -354,12 +459,41 @@ const ChatComponent = ({
           const qParts = splitConversationParts(conv.question);
           const aParts = splitConversationParts(conv.answer);
           const maxParts = Math.max(qParts.length, aParts.length);
+
+          // Try to parse stored message metadata if available
+          let storedMessages = [];
+          try {
+            if (conv.messages_metadata) {
+              storedMessages = JSON.parse(conv.messages_metadata);
+              console.log("📦 Loaded messages metadata:", storedMessages);
+            } else {
+              console.log("⚠️ No messages_metadata found in conversation");
+            }
+          } catch (e) {
+            console.warn("Could not parse messages_metadata:", e);
+          }
+
           for (let i = 0; i < maxParts; i++) {
             if (i < qParts.length) {
+              // Try to find stored metadata for this message
+              const storedUserMsg = storedMessages.find(
+                (m) => m.type === "user" && m.index === i
+              );
+
+              if (storedUserMsg) {
+                console.log(
+                  `📝 Found metadata for user message ${i}:`,
+                  storedUserMsg
+                );
+              }
+
               messageArray.push({
                 type: "user",
                 content: qParts[i],
                 id: `q-${conv.id}-${i}`,
+                // Restore contextFiles and files if available
+                contextFiles: storedUserMsg?.contextFiles || [],
+                files: storedUserMsg?.files || [],
               });
             }
             if (i < aParts.length) {
@@ -382,6 +516,11 @@ const ChatComponent = ({
         if (data.context_files) {
           setSelectedFiles(data.context_files);
         }
+
+        // Scroll to bottom after loading conversation
+        setTimeout(() => {
+          scrollToBottom(true, false);
+        }, 100);
       } else {
         setMessages([]);
       }
@@ -438,6 +577,7 @@ const ChatComponent = ({
               // Attempt to fetch textual content for supported MIME types
               try {
                 const mime = (fileObj.type || "").toLowerCase();
+                const fileName = (fileObj.name || "").toLowerCase();
                 const isText =
                   mime.startsWith("text") ||
                   mime.includes("json") ||
@@ -445,6 +585,7 @@ const ChatComponent = ({
                   mime.includes("markdown") ||
                   mime.includes("csv") ||
                   mime.includes("plain");
+                const isPDF = mime.includes("pdf") || fileName.endsWith(".pdf");
 
                 if (isText) {
                   const { url, error } = await getFilePublicUrl(
@@ -475,22 +616,35 @@ const ChatComponent = ({
                       "[Could not generate URL for file to fetch content]"
                     );
                   }
-                } else if ((fileObj.type || "").toLowerCase().includes("pdf")) {
+                } else if (isPDF) {
                   // Try to extract text from PDF client-side (limited pages)
+                  console.log(`📄 Extracting PDF: ${fileObj.name}`);
+                  console.log(`PDF MIME type: ${fileObj.type || "not set"}`);
+                  console.log(`PDF file path: ${fileObj.path}`);
                   try {
                     const { url, error } = await getFilePublicUrl(
                       "files",
                       fileObj.path
                     );
+                    console.log(
+                      `PDF URL obtained:`,
+                      url ? "✅" : "❌",
+                      error || ""
+                    );
                     if (url && !error) {
                       // fetch binary and pass arrayBuffer to pdfjs
                       const resp = await fetch(url);
+                      console.log(`PDF fetch status: ${resp.status}`);
                       if (resp.ok) {
                         const arrayBuffer = await resp.arrayBuffer();
+                        console.log(
+                          `PDF size: ${arrayBuffer.byteLength} bytes`
+                        );
                         const loadingTask = pdfjsLib.getDocument({
                           data: arrayBuffer,
                         });
                         const pdf = await loadingTask.promise;
+                        console.log(`PDF loaded: ${pdf.numPages} pages`);
                         let fullText = "";
                         const maxPages = Math.min(pdf.numPages, 20);
                         for (let p = 1; p <= maxPages; p++) {
@@ -508,24 +662,43 @@ const ChatComponent = ({
                           }
                         }
                         const truncated = fullText.slice(0, 20000);
-                        parts.push("---BEGIN FILE CONTENT (PDF EXTRACT)---");
-                        parts.push(truncated);
-                        parts.push("---END FILE CONTENT (PDF EXTRACT)---");
-                        if (fullText.length > truncated.length)
-                          parts.push("[Truncated PDF content]");
+                        console.log(
+                          `✅ PDF extracted: ${truncated.length} characters from ${maxPages} pages`
+                        );
+
+                        if (truncated.trim().length > 0) {
+                          parts.push("---BEGIN FILE CONTENT (PDF EXTRACT)---");
+                          parts.push(truncated);
+                          parts.push("---END FILE CONTENT (PDF EXTRACT)---");
+                          if (fullText.length > truncated.length)
+                            parts.push("[Truncated PDF content]");
+                        } else {
+                          console.warn(
+                            `⚠️ PDF "${fileObj.name}" extracted but contains no text`
+                          );
+                          parts.push(
+                            `[⚠️ PDF "${fileObj.name}" appears to be image-based or contains no extractable text. Consider uploading it via the + button for image analysis.]`
+                          );
+                        }
                       } else {
+                        console.error(
+                          `❌ PDF fetch failed: HTTP ${resp.status}`
+                        );
                         parts.push(
                           `[Could not fetch PDF: HTTP ${resp.status}]`
                         );
                       }
                     } else {
+                      console.error(`❌ Could not get PDF URL:`, error);
                       parts.push(
                         "[Could not generate URL for PDF to extract content]"
                       );
                     }
                   } catch (err) {
                     console.error("PDF extraction error:", err);
-                    parts.push("[Error extracting PDF content]");
+                    parts.push(
+                      `[⚠️ Unable to extract text from PDF "${fileObj.name}". The file may be image-based or have extraction restrictions. Consider uploading it via the + button for analysis.]`
+                    );
                   }
                 } else {
                   parts.push(
@@ -566,16 +739,55 @@ const ChatComponent = ({
     }
   };
 
-  const handleSendMessage = async (message) => {
-    if (!message.trim()) return;
+  const handleSendMessage = async (message, files = []) => {
+    if (!message.trim() && files.length === 0) return;
     try {
+      // Build context files metadata for display
+      const contextFiles = [];
+
+      // Add tagged files from selected context
+      selectedFiles.forEach((fileId) => {
+        for (const cls of allClasses) {
+          const fileObj = cls.files?.find((f) => f.id === fileId);
+          if (fileObj) {
+            contextFiles.push({
+              id: fileObj.id,
+              name: fileObj.name,
+              type: fileObj.type,
+              source: "context", // tagged via context selector
+              className: cls.name,
+              classId: cls.id,
+            });
+            break;
+          }
+        }
+      });
+
+      // Build the full context content for this message (for future reference)
+      const messageContext = await buildAIContext();
+
       const userMessage = {
         type: "user",
         content: message,
+        files: files, // Locally uploaded files
+        contextFiles: contextFiles, // Tagged files from context selector
+        selectedClasses: [...selectedClasses], // Store which classes were selected
+        selectedFiles: [...selectedFiles], // Store which files were selected
+        contextContent: messageContext, // Store the actual content for history
         id: `user-${Date.now()}`,
       };
       setMessages((prev) => [...prev, userMessage]);
-      scrollToBottom();
+
+      // Clear all context immediately after sending (hide active context area)
+      setUploadedLocalFiles([]);
+      setSelectedClasses([]);
+      setSelectedFiles([]);
+
+      // Re-enable auto-scroll when user sends a new message
+      autoScrollEnabled.current = true;
+      userScrolledUp.current = false;
+      scrollToBottom(true); // Force scroll when user sends a message
+
       setLoading(true);
 
       // Create a new AbortController for this request
@@ -596,21 +808,48 @@ const ChatComponent = ({
       const context = await buildAIContext();
 
       let fullResponse = "";
-      console.log("AI context sent:\n", context);
+      console.log("=== AI Context Debug ===");
+      console.log("Selected Classes:", selectedClasses);
+      console.log("Selected Files:", selectedFiles);
+      console.log("Context length:", context.length, "characters");
+      console.log("Context preview:", context.substring(0, 500));
+      console.log("========================");
 
       // Build history array from prior messages so the model receives full context
       const historyPayload = [];
       const priorMessages = Array.isArray(messagesRef.current)
         ? messagesRef.current
         : messages;
+
       for (const m of priorMessages) {
         if (!m || typeof m.content !== "string") continue;
         const trimmed = m.content.trim();
         if (!trimmed) continue;
-        if (m.type === "user")
-          historyPayload.push({ role: "user", content: trimmed });
-        if (m.type === "assistant" && !m.isStreaming)
+
+        if (m.type === "user") {
+          // Build user message with context if it was included originally
+          let userContent = trimmed;
+
+          // If this message had context content, include it
+          if (m.contextContent && m.contextContent.trim()) {
+            userContent = `[📚 Study Materials Context - Files from your classes]\n\n${m.contextContent}\n\n[End of Study Materials Context]\n\n${trimmed}`;
+          }
+
+          // If this message had uploaded files with text content, include them
+          if (m.files && m.files.length > 0) {
+            m.files.forEach((file) => {
+              if (file.text) {
+                userContent += `\n\n[📎 Uploaded Document: ${file.name}]\n${file.text}\n[End of uploaded document]\n`;
+              }
+            });
+          }
+
+          historyPayload.push({ role: "user", content: userContent });
+        }
+
+        if (m.type === "assistant" && !m.isStreaming) {
           historyPayload.push({ role: "assistant", content: trimmed });
+        }
       }
 
       // Limit history to last N messages to avoid exceeding token limits
@@ -627,10 +866,14 @@ const ChatComponent = ({
               msg.id === aiMessageId ? { ...msg, content: fullResponse } : msg
             )
           );
-          scrollToBottom();
+          // Only auto-scroll during streaming if user hasn't scrolled up
+          if (!userScrolledUp.current) {
+            scrollToBottom();
+          }
         },
         controller.signal,
-        trimmedHistory
+        trimmedHistory,
+        files // Pass files to the API
       );
 
       // Helper to sanitize assistant's top-level prefatory phrases
@@ -743,12 +986,49 @@ const ChatComponent = ({
 
           if (currentConversationId) {
             // Update an explicitly-selected conversation
+
+            // Build messages metadata to preserve contextFiles and files
+            const messagesMetadata = [];
+            const userMessages = priorMessages.filter((m) => m.type === "user");
+
+            console.log(
+              "🔍 Prior messages for metadata:",
+              priorMessages.length,
+              "user messages:",
+              userMessages.length
+            );
+            userMessages.forEach((msg, index) => {
+              console.log(`  Message ${index}:`, {
+                hasContextFiles: !!(
+                  msg.contextFiles && msg.contextFiles.length > 0
+                ),
+                hasFiles: !!(msg.files && msg.files.length > 0),
+                contextFilesCount: msg.contextFiles?.length || 0,
+                filesCount: msg.files?.length || 0,
+              });
+
+              if (msg.contextFiles || msg.files) {
+                messagesMetadata.push({
+                  type: "user",
+                  index,
+                  contextFiles: msg.contextFiles || [],
+                  files: msg.files || [],
+                });
+              }
+            });
+
+            console.log(
+              "💾 [Explicit Update] Saving messages metadata:",
+              messagesMetadata
+            );
+
             const updatedConversation = {
               question: allUserMessages,
               answer: allAiResponses,
               updated_at: new Date().toISOString(),
               context_classes: selectedClasses,
               context_files: selectedFiles,
+              messages_metadata: JSON.stringify(messagesMetadata),
             };
 
             console.debug(
@@ -786,12 +1066,34 @@ const ChatComponent = ({
             }
 
             if (existingConvId) {
+              // Build messages metadata
+              const messagesMetadata = [];
+              const userMessages = priorMessages.filter(
+                (m) => m.type === "user"
+              );
+              userMessages.forEach((msg, index) => {
+                if (msg.contextFiles || msg.files) {
+                  messagesMetadata.push({
+                    type: "user",
+                    index,
+                    contextFiles: msg.contextFiles || [],
+                    files: msg.files || [],
+                  });
+                }
+              });
+
+              console.log(
+                "💾 [Session Update] Saving messages metadata:",
+                messagesMetadata
+              );
+
               const updatedConversation = {
                 question: allUserMessages,
                 answer: allAiResponses,
                 updated_at: new Date().toISOString(),
                 context_classes: selectedClasses,
                 context_files: selectedFiles,
+                messages_metadata: JSON.stringify(messagesMetadata),
               };
 
               console.debug(
@@ -817,6 +1119,27 @@ const ChatComponent = ({
                 answerParts[0] || fullResponse
               );
 
+              // Build messages metadata
+              const messagesMetadata = [];
+              const userMessages = priorMessages.filter(
+                (m) => m.type === "user"
+              );
+              userMessages.forEach((msg, index) => {
+                if (msg.contextFiles || msg.files) {
+                  messagesMetadata.push({
+                    type: "user",
+                    index,
+                    contextFiles: msg.contextFiles || [],
+                    files: msg.files || [],
+                  });
+                }
+              });
+
+              console.log(
+                "💾 [New Conversation] Saving messages metadata:",
+                messagesMetadata
+              );
+
               const newConversation = {
                 class_id: initialClassId || null,
                 user_id: user.id,
@@ -829,6 +1152,7 @@ const ChatComponent = ({
                 context_files: selectedFiles,
                 session_id: currentSessionId,
                 title: title || "New Conversation",
+                messages_metadata: JSON.stringify(messagesMetadata),
               };
 
               console.debug(
@@ -916,6 +1240,12 @@ const ChatComponent = ({
     }
   };
 
+  const handleClearAll = () => {
+    setSelectedClasses([]);
+    setSelectedFiles([]);
+    setUploadedLocalFiles([]);
+  };
+
   const toggleDocumentSelection = (docId) => {
     setSelectedDocs((prev) =>
       prev.includes(docId)
@@ -932,6 +1262,11 @@ const ChatComponent = ({
   };
 
   const loadConversation = async (conversationPair) => {
+    console.log(
+      "🔄 [loadConversation] Loading conversation from history:",
+      conversationPair.id
+    );
+
     setShowHistory(false);
     setCurrentConversationId(conversationPair.id);
     setCurrentSessionId(conversationPair.session_id || `session-${Date.now()}`);
@@ -964,14 +1299,56 @@ const ChatComponent = ({
     for (const conv of sessionConversations) {
       const questionParts = splitConversationParts(conv.question);
       const answerParts = splitConversationParts(conv.answer);
+
+      console.log("🔍 [loadConversation] Split results:", {
+        questionPartsCount: questionParts.length,
+        answerPartsCount: answerParts.length,
+        hasMultipleAnswerParts: answerParts.length > 1,
+        answerContainsTurnSep: conv.answer?.includes(TURN_SEP),
+        answerContainsDoubleNewline: conv.answer?.includes("\n\n"),
+      });
+
       const maxParts = Math.max(questionParts.length, answerParts.length);
+
+      // Try to parse stored message metadata if available
+      let storedMessages = [];
+      try {
+        if (conv.messages_metadata) {
+          storedMessages = JSON.parse(conv.messages_metadata);
+          console.log(
+            "📦 [loadConversation] Loaded messages metadata:",
+            storedMessages
+          );
+        } else {
+          console.log(
+            "⚠️ [loadConversation] No messages_metadata found in conversation"
+          );
+        }
+      } catch (e) {
+        console.warn("Could not parse messages_metadata:", e);
+      }
 
       for (let i = 0; i < maxParts; i++) {
         if (i < questionParts.length) {
+          // Try to find stored metadata for this message
+          const storedUserMsg = storedMessages.find(
+            (m) => m.type === "user" && m.index === i
+          );
+
+          if (storedUserMsg) {
+            console.log(
+              `📝 [loadConversation] Found metadata for user message ${i}:`,
+              storedUserMsg
+            );
+          }
+
           messageArray.push({
             type: "user",
             content: questionParts[i],
             id: `hist-q-${conv.id}-${i}`,
+            // Restore contextFiles and files if available
+            contextFiles: storedUserMsg?.contextFiles || [],
+            files: storedUserMsg?.files || [],
           });
         }
 
@@ -993,6 +1370,11 @@ const ChatComponent = ({
     if (conversationPair.context_files) {
       setSelectedFiles(conversationPair.context_files);
     }
+
+    // Scroll to bottom after loading conversation
+    setTimeout(() => {
+      scrollToBottom(true, false);
+    }, 100);
   };
 
   const handleClose = () => {
@@ -1129,7 +1511,6 @@ const ChatComponent = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      ref={chatContainerRef}
       tabIndex={-1}
     >
       <motion.div
@@ -1453,6 +1834,7 @@ const ChatComponent = ({
           )}
           <motion.div
             className="chat-messages"
+            ref={chatContainerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
@@ -1485,6 +1867,8 @@ const ChatComponent = ({
                   type={msg.type}
                   errorType={msg.errorType}
                   isStreaming={!!msg.isStreaming}
+                  files={msg.files || []}
+                  contextFiles={msg.contextFiles || []}
                 />
               ))
             )}
@@ -1492,7 +1876,9 @@ const ChatComponent = ({
           </motion.div>
           <div className="chat-bottom-container">
             <AnimatePresence>
-              {(selectedClasses.length > 0 || selectedFiles.length > 0) && (
+              {(selectedClasses.length > 0 ||
+                selectedFiles.length > 0 ||
+                uploadedLocalFiles.length > 0) && (
                 <motion.div
                   className="chat-context-tags-wrapper"
                   initial={{ opacity: 0, y: 20 }}
@@ -1505,30 +1891,17 @@ const ChatComponent = ({
                     allClasses={allClasses}
                     onRemoveTag={handleRemoveTag}
                     onShowTagSelector={() => setShowTagSelector(true)}
+                    uploadedFiles={uploadedLocalFiles}
+                    onRemoveUploadedFile={(index) => {
+                      setUploadedLocalFiles((prev) =>
+                        prev.filter((_, i) => i !== index)
+                      );
+                    }}
+                    onClearAll={handleClearAll}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {uploadedLocalFiles && uploadedLocalFiles.length > 0 && (
-              <div className="uploaded-local-files">
-                {uploadedLocalFiles.map((f) => (
-                  <div key={f.id} className="uploaded-file-chip">
-                    <span className="uploaded-file-name">{f.name}</span>
-                    <button
-                      className="remove-uploaded-file"
-                      onClick={() =>
-                        setUploadedLocalFiles((prev) =>
-                          prev.filter((p) => p.id !== f.id)
-                        )
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
 
             <ChatInput
               onSendMessage={handleSendMessage}
@@ -1537,14 +1910,8 @@ const ChatComponent = ({
               onStopGeneration={handleStopGeneration}
               isGenerating={!!abortController}
               onUploadFiles={(files) => {
-                // store local file previews; actual upload handled elsewhere
-                const mapped = files.map((file, i) => ({
-                  id: `local-${Date.now()}-${i}`,
-                  name: file.name,
-                  url: URL.createObjectURL(file),
-                }));
-                setUploadedLocalFiles((prev) => [...prev, ...mapped]);
-                console.log("Uploaded local files:", mapped);
+                // Add uploaded files to the unified context display
+                setUploadedLocalFiles((prev) => [...prev, ...files]);
               }}
             />
           </div>

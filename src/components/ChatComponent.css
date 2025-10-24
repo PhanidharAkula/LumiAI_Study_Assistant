@@ -110,6 +110,9 @@
   flex-direction: column;
   padding-bottom: 10px;
   
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  
   /* Hide scrollbar but maintain scrolling functionality */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */

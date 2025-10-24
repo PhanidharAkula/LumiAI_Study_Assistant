@@ -51,9 +51,11 @@ const parseOpenAIError = (error) => {
  * @param {string} context - Optional context from documents
  * @param {function} onToken - Callback for each token received
  * @param {AbortSignal} signal - Optional AbortSignal to cancel the request
+ * @param {Array} history - Previous conversation history
+ * @param {Array} files - Optional array of file objects with base64 data
  * @returns {Promise<Object>} Object containing response text or error
  */
-export const fetchStreamingResponse = async (userMessage, context = "", onToken, signal, history = []) => {
+export const fetchStreamingResponse = async (userMessage, context = "", onToken, signal, history = [], files = []) => {
   try {
     // Enhanced system prompt for more intelligent, engaging responses
     const formattingGuidelines = `
@@ -101,25 +103,8 @@ export const fetchStreamingResponse = async (userMessage, context = "", onToken,
 - Don't just list facts without context or explanation
 - Don't end with bland "Let me know if you need anything else"`;
 
-    const systemPrompt = context
-      ? `You are Lumi - an exceptionally intelligent, engaging, and helpful AI study assistant. You're like having a brilliant tutor who genuinely cares about helping students learn and understand complex topics.
-
-**Context Awareness:**
-The user has provided study materials (classes and files) as context below. Use this context thoughtfully when relevant to their questions.
-
-=== BEGIN STUDY MATERIALS ===
-${context}
-=== END STUDY MATERIALS ===
-
-**Your Approach:**
-- When questions relate to their study materials, reference specific content and explain how concepts connect
-- For general questions, provide comprehensive, insightful answers that go beyond basic facts
-- Adapt your depth and style based on the complexity of their question
-- Be proactive in offering related insights and deeper understanding
-- Make learning engaging by connecting abstract concepts to concrete examples
-
-${formattingGuidelines}`
-      : `You are Lumi - an exceptionally intelligent, engaging, and helpful AI assistant. Think of yourself as a knowledgeable friend who loves diving deep into topics and making complex ideas accessible and interesting.
+    // Simplified system prompt - context is now included in user messages
+    const systemPrompt = `You are Lumi - an exceptionally intelligent, engaging, and helpful AI study assistant. You're like having a brilliant tutor who genuinely cares about helping students learn and understand complex topics.
 
 **Your Personality:**
 - Genuinely curious and enthusiastic about learning and teaching
@@ -128,12 +113,19 @@ ${formattingGuidelines}`
 - You provide thorough, well-researched responses that show deep understanding
 - You're helpful without being patronizing
 
+**Context Awareness:**
+- When users provide study materials in their messages (marked with [Study Materials Context]), use this content thoughtfully to answer their questions
+- Reference specific content from the materials and explain how concepts connect
+- For questions with no context provided, give comprehensive, insightful answers
+- Adapt your depth and style based on the complexity of their question
+
 **Your Approach:**
 - For simple greetings, be warm and offer specific, relevant help based on the app's purpose (study assistant)
 - For questions, provide comprehensive answers with context, examples, and practical insights
 - Explain not just "what" but "why" and "how"
 - Connect ideas to broader concepts and real-world applications
 - Anticipate follow-up questions and address them proactively
+- When study materials are provided, ALWAYS analyze them and reference them in your answer
 
 ${formattingGuidelines}`;
 
@@ -141,8 +133,63 @@ ${formattingGuidelines}`;
       { role: "system", content: systemPrompt },
       // include any prior turns if provided (history should be array of {role,content})
       ...((Array.isArray(history) && history.length) ? history : []),
-      { role: "user", content: userMessage },
     ];
+
+    // Build user message with optional file attachments and context
+    const userMessageContent = [];
+    
+    // Add context from selected files first (if present)
+    if (context && context.trim()) {
+      userMessageContent.push({
+        type: "text",
+        text: `[📚 Study Materials Context - Files from your classes]\n\n${context}\n\n[End of Study Materials Context]\n\n`
+      });
+    }
+    
+    // Add text content if present
+    if (userMessage && userMessage.trim()) {
+      userMessageContent.push({
+        type: "text",
+        text: userMessage
+      });
+    }
+
+    // Add file attachments from local uploads
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        // Handle images with vision API
+        if (file.base64 && file.type && file.type.startsWith('image/')) {
+          userMessageContent.push({
+            type: "image_url",
+            image_url: {
+              url: file.base64,
+              detail: "high"
+            }
+          });
+        }
+        
+        // Handle documents with extracted text
+        if (file.text) {
+          userMessageContent.push({
+            type: "text",
+            text: `\n\n[📎 Uploaded Document: ${file.name}]\n${file.text}\n[End of uploaded document]\n`
+          });
+        }
+      });
+    }
+
+    // Add the user message (as array if has images, as string otherwise)
+    if (userMessageContent.length > 1 || (userMessageContent.length === 1 && files.length > 0)) {
+      messagesPayload.push({
+        role: "user",
+        content: userMessageContent
+      });
+    } else {
+      messagesPayload.push({
+        role: "user",
+        content: userMessage
+      });
+    }
 
     // Prepare request based on whether we're using backend or direct API
     const fetchOptions = {
@@ -328,7 +375,7 @@ ${formattingGuidelines}`
         model: "gpt-4o-mini",
         messages: messagesPayload,
         temperature: 0.8,
-        max_tokens: 4000,    // Increased for longer responses
+        max_tokens: 400,    // Increased for longer responses
       });
     }
 

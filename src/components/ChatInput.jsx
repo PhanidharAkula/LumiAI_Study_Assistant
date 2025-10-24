@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import ConfirmDialog from "./ConfirmDialog";
 import "./ChatInput.css";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // Key for storing draft message in localStorage
 const DRAFT_MESSAGE_KEY = "lumiAI_draft_message";
@@ -15,11 +19,12 @@ const ChatInput = ({
   onUploadFiles = null,
 }) => {
   const [message, setMessage] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [comingConfirm, setComingConfirm] = useState({
+  const [fileSizeError, setFileSizeError] = useState({
     isOpen: false,
-    feature: "",
+    message: "",
   });
 
   // Load saved draft when component mounts
@@ -55,9 +60,10 @@ const ChatInput = ({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (message.trim() && !loading) {
-      onSendMessage(message);
+    if ((message.trim() || uploadedFiles.length > 0) && !loading) {
+      onSendMessage(message, uploadedFiles);
       setMessage("");
+      setUploadedFiles([]);
 
       // Clear the saved draft after sending
       localStorage.removeItem(DRAFT_MESSAGE_KEY);
@@ -77,17 +83,124 @@ const ChatInput = ({
   };
 
   const openFilePicker = () => {
-    // show coming soon dialog instead of actual picker
-    setComingConfirm({ isOpen: true, feature: "Upload Files" });
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length && typeof onUploadFiles === "function") {
-      onUploadFiles(files);
+  // Extract text from PDF files
+  const extractPdfText = async (file) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+
+      // Extract text from all pages
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item) => item.str).join(" ");
+        fullText += pageText + "\n\n";
+      }
+
+      return fullText.trim();
+    } catch (error) {
+      console.error("Error extracting PDF text:", error);
+      return null;
     }
-    // reset so same file can be selected again
+  };
+
+  // Extract text from text files
+  const extractTextFile = async (file) => {
+    try {
+      return await file.text();
+    } catch (error) {
+      console.error("Error reading text file:", error);
+      return null;
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+
+    if (files.length === 0) return;
+
+    // File size limits (in bytes)
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB for images
+    const MAX_DOCUMENT_SIZE = 50 * 1024 * 1024; // 50MB for documents
+
+    const validFiles = [];
+    let errorMessage = "";
+
+    for (const file of files) {
+      const isImage = file.type.startsWith("image/");
+      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
+      const maxSizeMB = isImage ? 20 : 50;
+
+      if (file.size > maxSize) {
+        errorMessage = `File "${
+          file.name
+        }" is too large. Maximum size is ${maxSizeMB}MB for ${
+          isImage ? "images" : "documents"
+        }.`;
+        break;
+      }
+
+      // Convert file to base64 for images (for vision API)
+      if (isImage) {
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve) => {
+          reader.onload = (e) => {
+            resolve({
+              file,
+              type: file.type,
+              name: file.name,
+              size: file.size,
+              base64: e.target.result,
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+        validFiles.push(await base64Promise);
+      } else {
+        // Extract text from documents
+        let extractedText = null;
+
+        if (file.type === "application/pdf") {
+          extractedText = await extractPdfText(file);
+        } else if (file.type === "text/plain") {
+          extractedText = await extractTextFile(file);
+        }
+
+        validFiles.push({
+          file,
+          type: file.type,
+          name: file.name,
+          size: file.size,
+          text: extractedText, // Store extracted text
+        });
+      }
+    }
+
+    if (errorMessage) {
+      setFileSizeError({
+        isOpen: true,
+        message: errorMessage,
+      });
+    } else if (validFiles.length > 0) {
+      setUploadedFiles((prev) => [...prev, ...validFiles]);
+      // Also notify parent component to show in unified ContextTags
+      if (onUploadFiles) {
+        onUploadFiles(validFiles);
+      }
+    }
+
+    // Reset input
     e.target.value = null;
+  };
+
+  const removeFile = (index) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -97,6 +210,7 @@ const ChatInput = ({
           ref={fileInputRef}
           type="file"
           multiple
+          accept="image/*,.pdf,.doc,.docx,.txt,.ppt,.pptx"
           onChange={handleFileChange}
           style={{ display: "none" }}
         />
@@ -104,9 +218,7 @@ const ChatInput = ({
         <button
           type="button"
           className="upload-button"
-          onClick={() =>
-            setComingConfirm({ isOpen: true, feature: "Upload Files" })
-          }
+          onClick={openFilePicker}
           title="Upload files"
         >
           <svg
@@ -137,9 +249,8 @@ const ChatInput = ({
         <button
           type="button"
           className="tag-button-bottom"
-          onClick={() =>
-            setComingConfirm({ isOpen: true, feature: "Context Tags" })
-          }
+          onClick={onShowTagSelector}
+          title="Select context"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -200,18 +311,14 @@ const ChatInput = ({
           </button>
         )}
       </form>
+
+      {/* File size error dialog */}
       <ConfirmDialog
-        isOpen={comingConfirm?.isOpen}
-        onClose={() => setComingConfirm({ isOpen: false, feature: "" })}
-        onConfirm={() => setComingConfirm({ isOpen: false, feature: "" })}
-        title={
-          comingConfirm?.feature
-            ? `${comingConfirm.feature} — Coming Soon`
-            : "Coming Soon"
-        }
-        message={`This feature is coming soon. We'll notify you when ${
-          comingConfirm?.feature || "it"
-        } is available.`}
+        isOpen={fileSizeError.isOpen}
+        onClose={() => setFileSizeError({ isOpen: false, message: "" })}
+        onConfirm={() => setFileSizeError({ isOpen: false, message: "" })}
+        title="File Too Large"
+        message={fileSizeError.message}
         confirmText="Got it"
         cancelText=""
         danger={false}
