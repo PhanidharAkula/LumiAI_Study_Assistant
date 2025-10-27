@@ -11,8 +11,31 @@ CREATE TABLE IF NOT EXISTS public.auth_error_log (
 
 CREATE OR REPLACE FUNCTION public.handle_new_user_safe()
 RETURNS TRIGGER AS $$
+DECLARE
+  deletion_record record;
 BEGIN
   BEGIN
+    -- Check if this email was recently deleted
+    SELECT * INTO deletion_record 
+    FROM public.deleted_accounts 
+    WHERE email = lower(NEW.email) 
+    AND can_reregister_at > now()
+    LIMIT 1;
+    
+    -- If account was recently deleted, prevent profile creation
+    IF deletion_record IS NOT NULL THEN
+      -- Log that we blocked re-registration
+      INSERT INTO public.auth_error_log (context, error_text)
+      VALUES (
+        'Blocked re-registration for recently deleted account: ' || NEW.email,
+        'Account deleted on ' || deletion_record.deleted_at::text || 
+        '. Can re-register after ' || deletion_record.can_reregister_at::text
+      );
+      -- Don't create profile, but don't block auth (user will get empty state)
+      RETURN NEW;
+    END IF;
+    
+    -- Normal profile creation
     INSERT INTO public.profiles (
       id, email, full_name, avatar_url, metadata, created_at, updated_at
     )

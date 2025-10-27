@@ -29,6 +29,31 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Try to get user's region from browser API
+      let userRegion = "Unknown";
+      try {
+        // Use Intl API to get timezone and infer region
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        // Extract region from timezone (e.g., "America/New_York" -> "America")
+        if (timeZone) {
+          userRegion = timeZone.split("/")[0] || "Unknown";
+          // Convert common timezone prefixes to readable regions
+          const regionMap = {
+            America: "America",
+            Europe: "Europe",
+            Asia: "Asia",
+            Africa: "Africa",
+            Australia: "Oceania",
+            Pacific: "Oceania",
+            Atlantic: "Atlantic",
+            Indian: "Indian Ocean",
+          };
+          userRegion = regionMap[userRegion] || userRegion;
+        }
+      } catch (e) {
+        console.log("Could not detect region:", e);
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -37,6 +62,15 @@ const Login = () => {
           // to the dashboard. This ensures new-user signups are handled
           // correctly.
           redirectTo: `${window.location.origin}/auth/callback`,
+          // Pass region in metadata
+          queryParams: {
+            access_type: "offline",
+            // No prompt parameter = consent screen only shown on first login
+          },
+          // Store region in user metadata
+          data: {
+            region: userRegion,
+          },
         },
       });
       if (error) throw error;

@@ -41,7 +41,10 @@ const Dashboard = ({ session }) => {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatClassId, setChatClassId] = useState(null);
   const [chatConversationId, setChatConversationId] = useState(null);
-  const [talkOpen, setTalkOpen] = useState(false);
+  const [talkOpen, setTalkOpen] = useState(() => {
+    // Restore Talk state from sessionStorage on page load
+    return sessionStorage.getItem("lumiTalkOpen") === "true";
+  });
   const [talkClassId, setTalkClassId] = useState(null);
   const [bottomComingSoon, setBottomComingSoon] = useState({
     isOpen: false,
@@ -51,6 +54,14 @@ const Dashboard = ({ session }) => {
     isOpen: false,
     feature: "",
   });
+  const [accountDeletedInfo, setAccountDeletedInfo] = useState({
+    isOpen: false,
+    deletedDate: "",
+    canReregisterDate: "",
+    isAdminDeleted: false,
+  });
+  const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
+  const hasCheckedDeletedAccount = useRef(false);
 
   useEffect(() => {
     if (!loading) {
@@ -136,6 +147,42 @@ const Dashboard = ({ session }) => {
       }
 
       setUser(user);
+
+      // Check if this account was recently deleted (only once per session)
+      if (!hasCheckedDeletedAccount.current) {
+        hasCheckedDeletedAccount.current = true;
+
+        try {
+          const { data: deletedAccount, error: deletedError } = await supabase
+            .from("deleted_accounts")
+            .select("deleted_at, can_reregister_at, reason")
+            .eq("email", user.email?.toLowerCase())
+            .gt("can_reregister_at", new Date().toISOString())
+            .single();
+
+          // Silently ignore errors (table doesn't exist, no rows, RLS, etc.)
+          if (!deletedError && deletedAccount) {
+            // Account was deleted - show confirmation dialog
+            const deletedDate = new Date(
+              deletedAccount.deleted_at
+            ).toLocaleDateString();
+            const canReregisterDate = new Date(
+              deletedAccount.can_reregister_at
+            ).toLocaleDateString();
+            const isAdminDeleted = deletedAccount.reason === "deleted_by_admin";
+
+            setAccountDeletedInfo({
+              isOpen: true,
+              deletedDate,
+              canReregisterDate,
+              isAdminDeleted,
+            });
+            return; // Stop loading, dialog will handle sign out
+          }
+        } catch (deletedCheckErr) {
+          // Silently continue - deleted accounts feature not available
+        }
+      }
 
       // fetch profile to determine admin flag
       try {
@@ -291,76 +338,92 @@ const Dashboard = ({ session }) => {
 
   const confirmDeleteAccount = () => {
     setShowMenu(false);
-    // show coming soon instead of actual delete flow
-    setAccountComingSoon({ isOpen: true, feature: "Delete Account" });
+    setDeleteAccountConfirm(true);
   };
 
   const handleDeleteAccount = async () => {
     try {
+      setDeleteAccountConfirm(false);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
         console.error("No user found to delete");
+        alert("Session expired. Please log in again.");
+        navigate("/login");
         return;
       }
 
-      const { data: classes, error: classesError } = await supabase
-        .from("classes")
-        .select("id")
+      console.log("Starting account deletion for user:", user.id);
+
+      // Step 1: Get all file paths for storage cleanup
+      const { data: files, error: filesError } = await supabase
+        .from("files")
+        .select("path")
         .eq("user_id", user.id);
 
-      if (classesError) {
-        console.error("Error fetching classes:", classesError);
-      } else if (classes && classes.length > 0) {
-        for (const classObj of classes) {
-          const { data: files, error: filesError } = await supabase
-            .from("files")
-            .select("id, path")
-            .eq("class_id", classObj.id);
+      if (filesError) {
+        console.error("Error fetching files:", filesError);
+      }
 
-          if (files && files.length > 0) {
-            for (const file of files) {
-              if (file.path) {
-                await supabase.storage
-                  .from("files")
-                  .remove([file.path])
-                  .catch((err) =>
-                    console.error("Error deleting file from storage:", err)
-                  );
-              }
-            }
+      const filePaths = files?.map((f) => f.path).filter(Boolean) || [];
+      console.log(`Found ${filePaths.length} files to delete from storage`);
 
-            await supabase
-              .from("files")
-              .delete()
-              .eq("class_id", classObj.id)
-              .catch((err) =>
-                console.error("Error deleting files from database:", err)
-              );
-          }
+      // Step 2: Delete files from storage
+      if (filePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("files")
+          .remove(filePaths);
+
+        if (storageError) {
+          console.error("Error deleting files from storage:", storageError);
+          // Continue with deletion even if storage cleanup fails
+        } else {
+          console.log(`Deleted ${filePaths.length} files from storage`);
         }
-
-        await supabase
-          .from("classes")
-          .delete()
-          .eq("user_id", user.id)
-          .catch((err) => console.error("Error deleting classes:", err));
       }
 
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
+      // Step 3: Call the SQL function to delete all user data
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        "user_delete_own_account"
+      );
 
-      if (error) {
-        throw error;
+      if (rpcError) {
+        console.error("Error calling user_delete_own_account:", rpcError);
+        throw new Error(
+          `Failed to delete account data: ${
+            rpcError.message || "Unknown error"
+          }`
+        );
       }
 
-      await supabase.auth.signOut();
-      navigate("/");
+      console.log("RPC response:", rpcData);
+
+      // Check if the RPC returned an error
+      if (rpcData && rpcData.ok === false) {
+        throw new Error(
+          `Account deletion failed: ${rpcData.error || "Unknown error"}`
+        );
+      }
+
+      // Step 4: Account data deleted successfully
+      // Note: The auth user is deleted by the SQL function if it has sufficient permissions
+      // Otherwise, it requires admin API which we can't call from the client
+      console.log("Account data deleted successfully");
+
+      // Show success dialog FIRST (don't sign out yet)
+      // Sign out will happen when user clicks "Done" on the success dialog
+      setAccountDeleteSuccess(true);
     } catch (error) {
-      console.error("Error deleting account:", error.message);
-      await supabase.auth.signOut();
-      navigate("/");
+      console.error("Error deleting account:", error);
+      alert(
+        `An error occurred while deleting your account: ${
+          error.message || "Please try again or contact support."
+        }`
+      );
+      // Don't sign out on error so user can retry
     }
   };
 
@@ -399,11 +462,13 @@ const Dashboard = ({ session }) => {
   const handleTalkWithAI = (classId = null) => {
     setTalkClassId(classId);
     setTalkOpen(true);
+    sessionStorage.setItem("lumiTalkOpen", "true");
   };
 
   const handleCloseTalk = () => {
     setTalkOpen(false);
     setTalkClassId(null);
+    sessionStorage.removeItem("lumiTalkOpen");
   };
 
   const handleCloseChat = () => {
@@ -748,38 +813,38 @@ const Dashboard = ({ session }) => {
                       <h1>My Classes</h1>
                     </div>
                     <div className="header-right">
-                      {classes.length > 0 && (
-                        <motion.button
-                          className="add-class-button"
-                          onClick={() => setShowAddForm(true)}
-                          whileHover={{
-                            scale: 1.03,
-                            y: -3,
-                            transition: {
-                              type: "spring",
-                              stiffness: 300,
-                              damping: 5,
-                            },
-                          }}
-                          whileTap={{ scale: 0.98 }}
+                      <motion.button
+                        className={`add-class-button ${
+                          classes.length > 0 ? "has-classes" : ""
+                        }`}
+                        onClick={() => setShowAddForm(true)}
+                        whileHover={{
+                          scale: 1.03,
+                          y: -3,
+                          transition: {
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 5,
+                          },
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                          </svg>
-                          Create Class
-                        </motion.button>
-                      )}
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Create Class
+                      </motion.button>
 
                       <div className="menu-container" ref={menuRef}>
                         <motion.button
@@ -822,18 +887,18 @@ const Dashboard = ({ session }) => {
                               exit="exit"
                             >
                               {user && (
-                                <div className="user-profile">
-                                  <div className="user-avatar">
+                                <div className="dash-user-profile">
+                                  <div className="dash-user-avatar">
                                     {user.email
                                       ? user.email.charAt(0).toUpperCase()
                                       : "?"}
                                   </div>
-                                  <div className="user-details">
-                                    <div className="user-name">
+                                  <div className="dash-user-details">
+                                    <div className="dash-user-name">
                                       {user.user_metadata?.full_name ||
                                         "Phanidhar Akula"}
                                     </div>
-                                    <div className="user-email">
+                                    <div className="dash-user-email">
                                       {user.email}
                                     </div>
                                   </div>
@@ -1032,8 +1097,7 @@ const Dashboard = ({ session }) => {
             <motion.button
               className="ai-action-button talk-ai-button"
               onClick={() => {
-                // show coming soon for voice-first talk in the bottom bar
-                setBottomComingSoon({ isOpen: true, feature: "Talk with AI" });
+                handleTalkWithAI();
               }}
               whileHover={{
                 scale: 1.03,
@@ -1155,6 +1219,95 @@ const Dashboard = ({ session }) => {
         }
         confirmText={classDeleteConfirm.hasFiles ? "Delete All" : "Delete"}
         danger={true}
+      />
+
+      {/* Account deleted confirmation dialog - shown when user tries to log back in */}
+      <ConfirmDialog
+        isOpen={accountDeletedInfo.isOpen}
+        onClose={async () => {
+          setAccountDeletedInfo({
+            isOpen: false,
+            deletedDate: "",
+            canReregisterDate: "",
+          });
+          // Sign out and redirect when dialog is closed
+          try {
+            await supabase.auth.signOut();
+          } catch (err) {
+            console.error("Error signing out:", err);
+          }
+          navigate("/");
+        }}
+        onConfirm={async () => {
+          // Sign out and navigate immediately to prevent dashboard flash
+          try {
+            await supabase.auth.signOut();
+          } catch (err) {
+            console.error("Error signing out:", err);
+          }
+          // Navigate immediately before closing dialog
+          navigate("/");
+          // Clean up state after navigation
+          setAccountDeletedInfo({
+            isOpen: false,
+            deletedDate: "",
+            canReregisterDate: "",
+            isAdminDeleted: false,
+          });
+        }}
+        title={
+          accountDeletedInfo.isAdminDeleted
+            ? "Account Deleted by Administrator"
+            : "Account Successfully Deleted"
+        }
+        message={
+          accountDeletedInfo.deletedDate
+            ? accountDeletedInfo.isAdminDeleted
+              ? `Your account was deleted by an administrator on ${accountDeletedInfo.deletedDate} due to violation of terms.\n\nAll your classes, files, notes, and conversations have been permanently removed from our servers.\n\nYou may create a new account after ${accountDeletedInfo.canReregisterDate} if you wish to return to LumiAI.`
+              : `Your account and all associated data were permanently removed on ${accountDeletedInfo.deletedDate}.\n\nAll classes, files, notes, and conversations have been deleted from our servers.\n\nYou may create a new account after ${accountDeletedInfo.canReregisterDate} if you wish to return to LumiAI.`
+            : "Your account has been deleted."
+        }
+        confirmText="Understood"
+        cancelText=""
+        danger={false}
+        hideBackground={true}
+      />
+
+      {/* Account delete success dialog - shown after successful deletion */}
+      <ConfirmDialog
+        isOpen={accountDeleteSuccess}
+        onClose={async () => {
+          setAccountDeleteSuccess(false);
+          // Sign out before navigating
+          try {
+            await supabase.auth.signOut();
+          } catch (err) {
+            console.log(
+              "Sign out error (expected if user already deleted):",
+              err
+            );
+          }
+          navigate("/");
+        }}
+        onConfirm={async () => {
+          setAccountDeleteSuccess(false);
+          // Sign out before navigating
+          try {
+            await supabase.auth.signOut();
+          } catch (err) {
+            console.log(
+              "Sign out error (expected if user already deleted):",
+              err
+            );
+          }
+          navigate("/");
+        }}
+        title="Account Deleted Successfully"
+        message="Your account and all associated data have been permanently removed from our servers. Thank you for using LumiAI."
+        confirmText="Done"
+        cancelText=""
+        danger={false}
+        hideBackground={true}
       />
     </>
   );

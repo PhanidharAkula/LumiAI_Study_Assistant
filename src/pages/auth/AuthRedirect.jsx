@@ -7,6 +7,51 @@ const AuthRedirect = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Helper function to detect and update user region
+  const updateUserRegion = async (userId) => {
+    try {
+      // Get user's region from browser API
+      let userRegion = "Unknown";
+      try {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (timeZone) {
+          userRegion = timeZone.split("/")[0] || "Unknown";
+          const regionMap = {
+            America: "America",
+            Europe: "Europe",
+            Asia: "Asia",
+            Africa: "Africa",
+            Australia: "Oceania",
+            Pacific: "Oceania",
+            Atlantic: "Atlantic",
+            Indian: "Indian Ocean",
+          };
+          userRegion = regionMap[userRegion] || userRegion;
+        }
+      } catch (e) {
+        console.log("Could not detect region:", e);
+      }
+
+      // Check if region is already set
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("region")
+        .eq("id", userId)
+        .single();
+
+      // Only update if region is not set or is "Unknown"
+      if (!profile?.region || profile.region === "Unknown") {
+        await supabase
+          .from("profiles")
+          .update({ region: userRegion })
+          .eq("id", userId);
+      }
+    } catch (e) {
+      console.log("Could not update region:", e);
+      // Don't throw - region update is not critical
+    }
+  };
+
   useEffect(() => {
     const handleAuthRedirect = async () => {
       try {
@@ -65,6 +110,8 @@ const AuthRedirect = () => {
           });
           if (setErr) throw setErr;
           if (data?.session) {
+            // Update region in profile if not already set
+            await updateUserRegion(data.session.user.id);
             navigate("/dashboard");
             return;
           }
@@ -78,6 +125,8 @@ const AuthRedirect = () => {
           const polledSession = data?.data?.session;
           if (polledSession) {
             sessionFound = true;
+            // Update region in profile if not already set
+            await updateUserRegion(polledSession.user.id);
             navigate("/dashboard");
             break;
           }

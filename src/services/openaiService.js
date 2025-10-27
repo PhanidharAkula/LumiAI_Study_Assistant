@@ -308,11 +308,35 @@ ${formattingGuidelines}`;
  * Fetches a response from OpenAI's API based on user input (non-streaming version)
  * @param {string} userMessage - The user's message
  * @param {string} context - Optional context from documents
+ * @param {Array} history - Conversation history
+ * @param {boolean} isVoiceMode - If true, use conversational voice-optimized prompts
  * @returns {Promise<Object>} Object containing response text and any error info
  */
-export const fetchAIResponse = async (userMessage, context = "", history = []) => {
+export const fetchAIResponse = async (userMessage, context = "", history = [], isVoiceMode = false) => {
   try {
-  // Use the same enhanced guidelines as streaming version
+  // Voice mode uses concise, natural conversation style
+  const voiceGuidelines = `
+## Voice Conversation Guidelines:
+
+**Response Style:**
+- Keep responses natural, concise, and conversational
+- Speak like a friendly, knowledgeable human - NOT a robot
+- Avoid repetitive greetings like "Hey there" every time
+- Get straight to the point while remaining warm and helpful
+- Use natural transitions and casual language
+
+**Length:**
+- Keep most responses under 3-4 sentences unless explaining something complex
+- Break complex topics into digestible chunks
+- Pause for user input if the topic is extensive
+
+**Tone:**
+- Sound natural and human-like
+- Vary your openings - don't use the same greeting repeatedly
+- Show personality without being overly formal or robotic
+- Be enthusiastic but not forced`;
+
+  // Text mode uses detailed, comprehensive style
   const formattingGuidelines = `
 ## Response Style Guidelines:
 
@@ -338,6 +362,8 @@ export const fetchAIResponse = async (userMessage, context = "", history = []) =
 - Include emojis sparingly for emphasis
 - Keep paragraphs short and scannable`;
 
+    const guidelines = isVoiceMode ? voiceGuidelines : formattingGuidelines;
+
     const systemPrompt = context
       ? `You are Lumi - an exceptionally intelligent and engaging AI study assistant. Use the study materials provided below when relevant to answer questions with depth and insight.
 
@@ -345,8 +371,8 @@ export const fetchAIResponse = async (userMessage, context = "", history = []) =
 ${context}
 === END STUDY MATERIALS ===
 
-${formattingGuidelines}`
-      : `You are Lumi - an exceptionally intelligent and engaging AI assistant. Be conversational, insightful, and provide thorough explanations that go beyond basic facts. ${formattingGuidelines}`;
+${guidelines}`
+      : `You are Lumi - an exceptionally intelligent and engaging AI assistant. Be conversational, insightful, and ${isVoiceMode ? 'keep your responses natural and concise for voice conversation' : 'provide thorough explanations that go beyond basic facts'}. ${guidelines}`;
 
     const messagesPayload = [
       { role: "system", content: systemPrompt },
