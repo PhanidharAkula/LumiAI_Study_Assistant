@@ -1,207 +1,208 @@
 .accdel-dialog-overlay {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 999999;
-    pointer-events: auto;
-    isolation: isolate;
-  }
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+  pointer-events: auto;
+  isolation: isolate;
+}
 
 .accdel-dialog-overlay--force-top {
   z-index: 2147483647;
 }
-  
+
+.accdel-main-dialog {
+  background-color: white;
+  border-radius: 12px;
+  padding: 30px;
+  width: 90%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border: 1.5px solid var(--text-primary-color);
+}
+
+.accdel-main-dialog,
+.accdel-main-dialog * {
+  pointer-events: auto;
+}
+
+body.accdel-dialog-open>*:not(.accdel-dialog-overlay) {
+  pointer-events: none;
+  /* filter: blur(2px); */
+}
+
+/* Hide background content only for specific dialogs */
+body.accdel-hide-bg>*:not(.accdel-dialog-overlay) {
+  visibility: hidden;
+}
+
+.accdel-icon-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.accdel-icon-wrapper svg {
+  width: 36px;
+  height: 36px;
+}
+
+/* Info / Coming soon icon styling */
+.accdel-info-icon {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border: 1.5px solid #1D4ED8;
+}
+
+/* Default delete icon styling */
+.accdel-delete-icon {
+  background-color: #FEE2E2;
+  color: #EF4444;
+  border: 1.5px solid #EF4444;
+}
+
+/* Sign out icon styling */
+.accdel-signout-icon {
+  background-color: #E0E7FF;
+  color: #4F46E5;
+  border: 1.5px solid #4F46E5;
+}
+
+/* File exists icon styling */
+.accdel-fileexists-icon {
+  background-color: #FEF3C7;
+  color: #D97706;
+  border: 1.5px solid #D97706;
+}
+
+/* Warning icon styling (for errors, unsupported files, etc.) */
+.accdel-warning-icon {
+  background-color: #FEF3C7;
+  color: #F59E0B;
+  border: 1.5px solid #F59E0B;
+}
+
+/* Success icon styling (for successful operations like account deletion) */
+.accdel-success-icon {
+  background-color: #D1FAE5;
+  color: #10B981;
+  border: 1.5px solid #10B981;
+}
+
+.accdel-dialog-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-align: center;
+  color: var(--text-primary-color);
+}
+
+.accdel-dialog-message {
+  font-size: 16px;
+  text-align: center;
+  color: var(--text-secondary-color);
+  margin-bottom: 30px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.accdel-dialog-actions {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  justify-content: center;
+}
+
+.accdel-dialog-btn {
+  padding: 12px 25px;
+  border-radius: 100px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  background-color: transparent;
+  color: var(--text-primary-color);
+  min-width: 120px;
+}
+
+.accdel-confirm-btn {
+  background-color: var(--background-secondary-color);
+}
+
+/* Single button styling (for dialogs with only one button) */
+.accdel-confirm-btn.accdel-single-btn {
+  background-color: #10B981;
+  color: white;
+  border-color: var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+}
+
+.accdel-confirm-btn.accdel-danger {
+  background-color: #EF4444;
+  color: white;
+  border-color: var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
   .accdel-main-dialog {
-    background-color: white;
-    border-radius: 12px;
-    padding: 30px;
-    width: 90%;
-    max-width: 500px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    border: 1.5px solid var(--text-primary-color);
-  }
-
-  .accdel-main-dialog, .accdel-main-dialog * {
-    pointer-events: auto;
-  }
-
-  body.accdel-dialog-open > *:not(.accdel-dialog-overlay) {
-    pointer-events: none;
-    /* filter: blur(2px); */
-  }
-
-  /* Hide background content only for specific dialogs */
-  body.accdel-hide-bg > *:not(.accdel-dialog-overlay) {
-    visibility: hidden;
-  }
-  
-  .accdel-icon-wrapper {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 20px;
+    width: 100%;
   }
 
   .accdel-icon-wrapper svg {
-    width: 36px;
-    height: 36px;
+    width: 22px;
+    height: 22px;
   }
 
-    /* Info / Coming soon icon styling */
-  .accdel-info-icon {
-    background-color: #EFF6FF;
-    color: #1D4ED8;
-    border: 1.5px solid #1D4ED8;
-  }
-  
-  /* Default delete icon styling */
-  .accdel-delete-icon {
-    background-color: #FEE2E2;
-    color: #EF4444;
-    border: 1.5px solid #EF4444;
-  }
-  
-  /* Sign out icon styling */
-  .accdel-signout-icon {
-    background-color: #E0E7FF;
-    color: #4F46E5;
-    border: 1.5px solid #4F46E5;
-  }
-  
-  /* File exists icon styling */
-  .accdel-fileexists-icon {
-    background-color: #FEF3C7;
-    color: #D97706;
-    border: 1.5px solid #D97706;
-  }
-
-  /* Warning icon styling (for errors, unsupported files, etc.) */
-  .accdel-warning-icon {
-    background-color: #FEF3C7;
-    color: #F59E0B;
-    border: 1.5px solid #F59E0B;
-  }
-
-  /* Success icon styling (for successful operations like account deletion) */
-  .accdel-success-icon {
-    background-color: #D1FAE5;
-    color: #10B981;
-    border: 1.5px solid #10B981;
-  }
-  
   .accdel-dialog-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 15px;
-    text-align: center;
-    color: var(--text-primary-color);
+    font-size: 22px;
   }
-  
-  .accdel-dialog-message {
-    font-size: 16px;
-    text-align: center;
-    color: var(--text-secondary-color);
-    margin-bottom: 30px;
-    line-height: 1.5;
-    white-space: pre-line;
-  }
-  
-  .accdel-dialog-actions {
-    display: flex;
-    gap: 15px;
-    width: 100%;
-    justify-content: center;
-  }
-  
+
   .accdel-dialog-btn {
-    padding: 12px 25px;
-    border-radius: 100px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1.5px solid var(--text-primary-color);
-    box-shadow: 0px 2px 0 var(--text-primary-color);
-    background-color: transparent;
-    color: var(--text-primary-color);
-    min-width: 120px;
+    font-size: 14px;
+    min-width: 0;
   }
-  
-  .accdel-confirm-btn {
-    background-color: var(--background-secondary-color);
+}
+
+@media (max-width: 480px) {
+  .accdel-main-dialog {
+    padding: 20px;
+    max-width: min(420px, calc(100% - 24px));
+    width: calc(100% - 24px);
   }
 
-  /* Single button styling (for dialogs with only one button) */
-  .accdel-confirm-btn.accdel-single-btn {
-    background-color: #10B981;
-    color: white;
-    border-color: var(--text-primary-color);
-    box-shadow: 0px 2px 0 var(--text-primary-color);
+  .accdel-icon-wrapper {
+    width: 50px;
+    height: 50px;
   }
-  
-  .accdel-confirm-btn.accdel-danger {
-    background-color: #EF4444;
-    color: white;
-    border-color: var(--text-primary-color);
-    box-shadow: 0px 2px 0 var(--text-primary-color);
-  }
-  
-  /* Responsive styles */
-  @media (max-width: 768px) {
-    .accdel-main-dialog {
-      width: 100%;
-    }
 
-    .accdel-icon-wrapper svg {
-      width: 22px;
-      height: 22px;
-    }
-    
-    .accdel-dialog-title {
-      font-size: 22px;
-    }
-
-    .accdel-dialog-btn {
-      font-size: 14px;
-      min-width: 0;
-    }
+  .accdel-dialog-title {
+    font-size: 20px;
+    margin-bottom: 10px;
   }
-  
-  @media (max-width: 480px) {
-    .accdel-main-dialog {
-      padding: 20px;
-      max-width: min(420px, calc(100% - 24px));
-      width: calc(100% - 24px);
-    }
-    
-    .accdel-icon-wrapper {
-      width: 50px;
-      height: 50px;
-    }
-    
-    .accdel-dialog-title {
-      font-size: 20px;
-      margin-bottom: 10px;
-    }
-    
-    .accdel-dialog-message {
-      font-size: 14px;
-      margin-bottom: 25px;
-    }
-    
-    .accdel-dialog-btn {
-      padding: 10px 18px;
-      font-size: 14px;
-      min-width: 100px;
-    }
-  }  
+
+  .accdel-dialog-message {
+    font-size: 14px;
+    margin-bottom: 25px;
+  }
+
+  .accdel-dialog-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    min-width: 100px;
+  }
+}

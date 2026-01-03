@@ -62,7 +62,8 @@
   font-size: 14px;
 }
 
-.history-button, .new-conversation-button {
+.history-button,
+.new-conversation-button {
   height: 45px;
   width: 45px;
   border-radius: 50%;
@@ -78,13 +79,15 @@
   padding: 0;
 }
 
-.history-button:hover, .new-conversation-button:hover {
+.history-button:hover,
+.new-conversation-button:hover {
   transform: translateY(-4px);
 }
 
 .history-button.active {
   background-color: var(--background-secondary-color);
-  color: #8B5CF6; /* Purple highlight for active state */
+  color: #8B5CF6;
+  /* Purple highlight for active state */
   /* transform: rotate(0); */
 }
 
@@ -96,7 +99,8 @@
   transform: translateY(-3px);
 } */
 
-.history-button svg, .new-conversation-button svg {
+.history-button svg,
+.new-conversation-button svg {
   width: 20px;
   height: 20px;
 }
@@ -109,13 +113,15 @@
   display: flex;
   flex-direction: column;
   padding-bottom: 10px;
-  
+
   /* Smooth scrolling */
   scroll-behavior: smooth;
-  
+
   /* Hide scrollbar but maintain scrolling functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -195,9 +201,11 @@
     width: 100%;
     padding: 14px;
   }
+
   .chat-bottom-container {
     width: 100%;
   }
+
   .chat-header {
     padding: 18px;
     background: var(--background-primary-color);
@@ -213,7 +221,8 @@
 
   .chat-messages {
     width: 100%;
-    padding: 10px 12px 80px 12px; /* leave room for sticky input */
+    padding: 10px 12px 80px 12px;
+    /* leave room for sticky input */
     /* border: 3px solid red; */
 
   }
@@ -241,7 +250,8 @@
   }
 
   /* Ensure main content is below header */
-  .chat-messages, .history-panel {
+  .chat-messages,
+  .history-panel {
     margin-top: 64px;
   }
 }
@@ -615,7 +625,8 @@
   bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
-  width: auto; /* Allow button to expand for text */
+  width: auto;
+  /* Allow button to expand for text */
   min-width: 40px;
   height: 40px;
   padding: 0 12px;
@@ -682,10 +693,12 @@
     transform: scale(1);
     opacity: 0.7;
   }
+
   50% {
     transform: scale(1.6);
     opacity: 0;
   }
+
   100% {
     transform: scale(1);
     opacity: 0;
@@ -701,14 +714,16 @@
   .history-sidebar {
     width: 280px;
   }
-  
+
   .history-dropdown {
     width: 280px;
-    right: -20px; /* Offset to center better on mobile */
+    right: -20px;
+    /* Offset to center better on mobile */
   }
-  
+
   .history-dropdown::after {
-    right: 24px; /* Adjust triangle position */
+    right: 24px;
+    /* Adjust triangle position */
   }
 }
 
@@ -717,12 +732,13 @@
     width: 100%;
     border-left: none;
   }
-  
+
   .history-dropdown {
     width: 280px;
-    right: -100px; /* Position it more centrally on small screens */
+    right: -100px;
+    /* Position it more centrally on small screens */
   }
-  
+
   .with-history-sidebar .chat-content-area {
     width: 0;
     overflow: hidden;

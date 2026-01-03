@@ -77,12 +77,12 @@
   .welcome-features {
     gap: 20px;
   }
-  
+
   .feature-card {
     width: 320px;
     padding: 25px;
   }
-  
+
   .welcome-logo-name {
     font-size: 80px;
   }
@@ -93,20 +93,20 @@
     padding: 30px;
     gap: 20px;
   }
-  
+
   .welcome-background {
     width: 250px;
     height: 250px;
   }
-  
+
   .welcome-logo-name {
     font-size: 60px;
   }
-  
+
   .welcome-login-btn {
     padding: 12px 70px;
   }
-  
+
   .feature-card {
     width: 280px;
     padding: 20px;
@@ -118,30 +118,30 @@
     padding: 20px;
     gap: 20px;
   }
-  
+
   .welcome-background {
     display: none;
   }
-  
+
   .welcome-logo-name {
     font-size: 40px;
     margin-top: 30px;
   }
-  
+
   .welcome-sub-logo {
     font-size: medium;
   }
-  
+
   .welcome-login-btn {
     padding: 10px 50px;
     margin-top: 0;
   }
-  
+
   .feature-card {
     width: 100%;
     gap: 15px;
   }
-  
+
   .feature-icon {
     height: 80px;
     margin-bottom: 40px;
