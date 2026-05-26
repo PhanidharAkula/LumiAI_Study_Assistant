@@ -1,149 +1,586 @@
+/* ===========================================
+   WELCOME PAGE - Modern Advanced Design
+   =========================================== */
+
+/* Main Container */
 .welcome-container {
   min-height: 100vh;
   width: 100%;
-  padding: 50px;
+  padding: 60px 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 30px;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Animated Background Gradient */
+.welcome-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  /* background: 
+    radial-gradient(circle at 20% 20%, rgba(147, 193, 193, 0.3) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(147, 193, 193, 0.25) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(147, 193, 193, 0.1) 0%, transparent 60%); */
+  animation: gradientRotate 20s linear infinite;
+  z-index: -1;
+}
+
+@keyframes gradientRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Floating Particles Effect */
+.welcome-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle, var(--text-primary-color) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.03;
+  animation: particleFloat 30s linear infinite;
+  z-index: -1;
+}
+
+@keyframes particleFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50px); }
+}
+
+/* Logo Name - Gradient Text with Glow */
 .welcome-logo-name {
-  font-size: 100px;
+  font-size: clamp(60px, 12vw, 120px);
   font-weight: 800;
+  background: linear-gradient(
+    135deg, 
+    var(--text-primary-color) 0%, 
+    #2a2a2a 25%,
+    var(--background-secondary-color) 50%,
+    #2a2a2a 75%,
+    var(--text-primary-color) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s ease-in-out infinite;
+  text-shadow: 0 0 60px rgba(147, 193, 193, 0.3);
+  letter-spacing: -2px;
+  position: relative;
 }
 
+@keyframes shimmer {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 200% center; }
+}
+
+/* Decorative Line Under Logo */
+.welcome-logo-name::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--background-secondary-color), transparent);
+  border-radius: 2px;
+}
+
+/* Sub Logo - Elegant Badge Style */
 .welcome-sub-logo {
-  font-size: large;
+  font-size: 14px;
   font-weight: 600;
-}
-
-.welcome-description {
-  font-size: medium;
+  letter-spacing: 4px;
+  text-transform: uppercase;
   color: var(--text-secondary-color);
-  max-width: 600px;
-  text-align: center;
-  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 10px 24px;
+  border-radius: 100px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  margin-top: 16px;
+  position: relative;
+  overflow: hidden;
 }
 
+.welcome-sub-logo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: subtleShine 3s ease-in-out infinite;
+}
+
+@keyframes subtleShine {
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
+}
+
+/* Description */
+.welcome-description {
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text-secondary-color);
+  max-width: 550px;
+  text-align: center;
+  margin: 8px 0 16px 0;
+}
+
+/* Get Started Button - Premium Glass Style */
 .welcome-login-btn {
-  padding: 15px 100px;
+  padding: 15px 60px;
   border-radius: 100px;
   background: var(--background-secondary-color);
-  border: 1.5px solid var(--text-primary-color);
+  border: 2px solid var(--text-primary-color);
   color: var(--text-primary-color);
-  font-size: medium;
+  font-size: 16px;
   font-weight: 700;
-  box-shadow: 0px 3px 0 var(--text-primary-color);
-  background-clip: padding-box;
+  letter-spacing: 1px;
+  box-shadow: 
+    0px 2px 0 var(--text-primary-color),
+    0 10px 40px rgba(147, 193, 193, 0.3);
   cursor: pointer;
-  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.welcome-features {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 30px;
+.welcome-login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  margin-top: 30px;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
 }
 
+.welcome-login-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.welcome-login-btn:hover {
+  box-shadow: 
+    0px 2px 0 var(--text-primary-color),
+    0 15px 50px rgba(147, 193, 193, 0.4);
+  transform: translateY(2px);
+}
+
+.welcome-login-btn:active {
+  transform: translateY(4px);
+  box-shadow: 
+    0px 0px 0 var(--text-primary-color),
+    0 5px 20px rgba(147, 193, 193, 0.3);
+}
+
+/* Features Section */
+.welcome-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 60px;
+  padding: 0 20px;
+}
+
+/* Feature Card - Glassmorphism with Depth */
 .feature-card {
-  border-radius: 15px;
-  background-color: white;
-  padding: 30px;
-  width: 400px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 40px 30px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   text-align: center;
-  gap: 20px;
+  gap: 16px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.feature-card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+/* Card Glow Effect on Hover */
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(147, 193, 193, 0.1) 0%,
+    transparent 50%,
+    rgba(147, 193, 193, 0.05) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.feature-card:hover::before {
+  opacity: 1;
+}
+
+/* Decorative Corner Accent */
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 80px;
+  height: 80px;
+  background: var(--background-secondary-color);
+  border-radius: 50%;
+  opacity: 0.15;
+  transition: all 0.4s ease;
+}
+
+.feature-card:hover::after {
+  transform: scale(1.5);
+  opacity: 0.25;
+}
+
+.feature-card:hover {
+  border-color: var(--background-secondary-color);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(147, 193, 193, 0.2);
+}
+
+/* Feature Icon Container */
 .feature-icon {
-  font-size: 3rem;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(147, 193, 193, 0.15) 0%,
+    rgba(147, 193, 193, 0.05) 100%
+  );
+  border-radius: 20px;
+  padding: 10px;
 }
 
+.feature-icon > div {
+  height: 120px !important;
+}
+
+/* Feature Name */
 .feature-name {
-  font-size: x-large;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary-color);
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
 }
 
+/* Feature Description */
+.feature-card p:last-child {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary-color);
+  position: relative;
+  z-index: 1;
+}
+
+/* ===========================================
+   RESPONSIVE DESIGN
+   =========================================== */
+
+/* Tablet Large */
 @media (max-width: 1024px) {
   .welcome-features {
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
+    padding: 0 16px;
   }
 
   .feature-card {
-    width: 320px;
-    padding: 25px;
+    padding: 32px 24px;
   }
 
   .welcome-logo-name {
-    font-size: 80px;
+    font-size: clamp(50px, 10vw, 90px);
   }
 }
 
+/* Tablet */
+@media (max-width: 900px) {
+  .welcome-features {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 700px;
+  }
+
+  .feature-card:last-child {
+    grid-column: 1 / -1;
+    max-width: 340px;
+    justify-self: center;
+  }
+}
+
+/* Tablet Small */
 @media (max-width: 768px) {
   .welcome-container {
-    padding: 30px;
-    gap: 20px;
-  }
-
-  .welcome-background {
-    width: 250px;
-    height: 250px;
+    padding: 40px 24px;
+    gap: 18px;
   }
 
   .welcome-logo-name {
-    font-size: 60px;
+    font-size: 52px;
+    letter-spacing: -1px;
   }
 
-  .welcome-login-btn {
-    padding: 12px 70px;
-  }
-
-  .feature-card {
-    width: 280px;
-    padding: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .welcome-container {
-    padding: 20px;
-    gap: 20px;
-  }
-
-  .welcome-background {
-    display: none;
-  }
-
-  .welcome-logo-name {
-    font-size: 40px;
-    margin-top: 30px;
+  .welcome-logo-name::after {
+    width: 55px;
+    height: 3px;
+    bottom: -4px;
   }
 
   .welcome-sub-logo {
-    font-size: medium;
+    font-size: 12px;
+    letter-spacing: 3px;
+    padding: 8px 18px;
+  }
+
+  .welcome-description {
+    font-size: 15px;
+    max-width: 85%;
+    margin: 6px 0 12px 0;
   }
 
   .welcome-login-btn {
-    padding: 10px 50px;
-    margin-top: 0;
+    padding: 14px 44px;
+    font-size: 14px;
+  }
+
+  .welcome-features {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 36px;
+    max-width: 380px;
   }
 
   .feature-card {
-    width: 100%;
-    gap: 15px;
+    padding: 24px 20px;
+    gap: 12px;
+  }
+
+  .feature-card:last-child {
+    max-width: none;
   }
 
   .feature-icon {
-    height: 80px;
-    margin-bottom: 40px;
+    padding: 6px;
+  }
+
+  .feature-icon > div {
+    height: 90px !important;
+  }
+
+  .feature-name {
+    font-size: 18px;
+    margin-top: 4px;
+  }
+
+  .feature-card p:last-child {
+    font-size: 13px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .welcome-container {
+    padding: 24px 16px;
+    gap: 14px;
+    min-height: 100dvh;
+    justify-content: flex-start;
+    padding-top: 60px;
+  }
+
+  .welcome-container::before {
+    animation: none;
+    transform: none;
+  }
+
+  .welcome-logo-name {
+    font-size: 42px;
+    margin-top: 0;
+  }
+
+  .welcome-logo-name::after {
+    width: 45px;
+    height: 3px;
+    bottom: -2px;
+  }
+
+  .welcome-sub-logo {
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 6px 14px;
+    margin-top: 6px;
+  }
+
+  .welcome-description {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 4px 0 8px 0;
+    max-width: 100%;
+  }
+
+  .welcome-login-btn {
+    padding: 12px 36px;
+    font-size: 13px;
+    box-shadow: 
+      0px 2px 0 var(--text-primary-color),
+      0 6px 24px rgba(147, 193, 193, 0.25);
+  }
+
+  .welcome-features {
+    margin-top: 24px;
+    gap: 12px;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .feature-card {
+    padding: 20px 16px;
+    border-radius: 18px;
+    gap: 10px;
+  }
+
+  .feature-card::after {
+    width: 50px;
+    height: 50px;
+    top: -15px;
+    right: -15px;
+  }
+
+  .feature-icon {
+    padding: 4px;
+    border-radius: 14px;
+  }
+
+  .feature-icon > div {
+    height: 70px !important;
+  }
+
+  .feature-name {
+    font-size: 16px;
+    margin-top: 2px;
+  }
+
+  .feature-card p:last-child {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+
+/* Extra Small Mobile */
+@media (max-width: 360px) {
+  .welcome-container {
+    padding: 20px 12px;
+    padding-top: 50px;
+    gap: 12px;
+  }
+
+  .welcome-logo-name {
+    font-size: 36px;
+  }
+
+  .welcome-logo-name::after {
+    width: 40px;
+  }
+
+  .welcome-sub-logo {
+    font-size: 9px;
+    padding: 5px 12px;
+    letter-spacing: 1.5px;
+  }
+
+  .welcome-description {
+    font-size: 12px;
+  }
+
+  .welcome-login-btn {
+    padding: 10px 28px;
+    font-size: 12px;
+  }
+
+  .welcome-features {
+    margin-top: 20px;
+    gap: 10px;
+  }
+
+  .feature-card {
+    padding: 16px 12px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+
+  .feature-icon > div {
+    height: 60px !important;
+  }
+
+  .feature-name {
+    font-size: 14px;
+  }
+
+  .feature-card p:last-child {
+    font-size: 11px;
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-container::before,
+  .welcome-container::after {
+    animation: none;
+  }
+
+  .welcome-logo-name {
+    animation: none;
+    background-position: 0% center;
+  }
+
+  .welcome-sub-logo::before {
+    animation: none;
+  }
+
+  .feature-card,
+  .feature-icon,
+  .welcome-login-btn {
+    transition: none;
   }
 }

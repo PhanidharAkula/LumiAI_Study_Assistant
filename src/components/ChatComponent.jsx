@@ -12,7 +12,7 @@ import {
   fetchAIResponse,
   fetchStreamingResponse,
   generateConversationTitle,
-} from "../services/openaiService";
+} from "../services/aiService";
 import "./ChatComponent.css";
 
 // Configure PDF.js worker

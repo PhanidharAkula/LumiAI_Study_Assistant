@@ -1,0 +1,21 @@
+/*
+ * Tailwind v4 entry — utilities + theme only, NO preflight.
+ *
+ * The app already ships its own global reset and hand-written component CSS, so
+ * we deliberately skip Tailwind's preflight to guarantee the existing design is
+ * untouched. Tailwind utilities are additive: used as components are migrated.
+ */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Design tokens — mirror the existing palette so utilities match 1:1. */
+@theme {
+  --color-cream: #f0ebe1; /* background — primary */
+  --color-sage: #93c1c1; /* background — secondary / accent */
+  --color-ink: #000000; /* text — primary */
+  --color-muted: #707070; /* text — secondary */
+
+  --font-display: "Winky Sans", sans-serif;
+}

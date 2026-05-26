@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { fetchAIResponse } from "../services/openaiService";
+import { fetchAIResponse } from "../services/aiService";
 import "./TalkComponent.css";
 
 const TalkComponent = ({

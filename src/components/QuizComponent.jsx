@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
-import { fetchStreamingResponse } from "../services/openaiService";
+import { fetchStreamingResponse } from "../services/aiService";
 import { getFilePublicUrl } from "../utils/storageUtils";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 import ConfirmDialog from "./ConfirmDialog";
