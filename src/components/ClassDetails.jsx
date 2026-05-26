@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
 import FileViewer from "./FileViewer";
 import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "./ConfirmDialog";
-import QuizComponent from "./QuizComponent";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { getFilePublicUrl } from "../utils/storageUtils";
 import "./ClassDetails.css";
+
+// Study tools are heavy (pdf.js, AI) — load them only when opened.
+const QuizComponent = lazy(() => import("./QuizComponent"));
+const FlashcardsComponent = lazy(() => import("./FlashcardsComponent"));
 
 const ClassDetails = ({
   classData,
@@ -53,6 +56,10 @@ const ClassDetails = ({
 
   // Quiz state - initialize from URL parameter
   const [showQuiz, setShowQuiz] = useState(searchParams.get("quiz") === "true");
+  // Flashcards state - initialize from URL parameter
+  const [showFlashcards, setShowFlashcards] = useState(
+    searchParams.get("flashcards") === "true"
+  );
   const [comingSoonConfirm, setComingSoonConfirm] = useState({
     isOpen: false,
     feature: "",
@@ -363,8 +370,11 @@ const ClassDetails = ({
 
   const handleFlashcards = () => {
     setShowMenu(false);
-    // show coming soon dialog
-    setComingSoonConfirm({ isOpen: true, feature: "Flashcards" });
+    setShowFlashcards(true);
+    // Add flashcards parameter to URL
+    const params = new URLSearchParams(searchParams);
+    params.set("flashcards", "true");
+    setSearchParams(params, { replace: true });
   };
 
   const handleQuiz = () => {
@@ -532,8 +542,8 @@ const ClassDetails = ({
       exit={{ opacity: 0, y: -20 }}
       transition={{ type: "spring", stiffness: 100, damping: 15 }}
     >
-      {/* Hide all ClassDetails content when quiz is open */}
-      {!showQuiz && (
+      {/* Hide all ClassDetails content when quiz or flashcards is open */}
+      {!showQuiz && !showFlashcards && (
         <>
           <motion.div
             className="class-header"
@@ -959,17 +969,38 @@ const ClassDetails = ({
       {/* Quiz Component */}
       <AnimatePresence>
         {showQuiz && (
-          <QuizComponent
-            isOpen={showQuiz}
-            onClose={() => {
-              setShowQuiz(false);
-              // Remove quiz parameter from URL
-              const params = new URLSearchParams(searchParams);
-              params.delete("quiz");
-              setSearchParams(params, { replace: true });
-            }}
-            classData={{ ...classData, files }}
-          />
+          <Suspense fallback={null}>
+            <QuizComponent
+              isOpen={showQuiz}
+              onClose={() => {
+                setShowQuiz(false);
+                // Remove quiz parameter from URL
+                const params = new URLSearchParams(searchParams);
+                params.delete("quiz");
+                setSearchParams(params, { replace: true });
+              }}
+              classData={{ ...classData, files }}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* Flashcards Component */}
+      <AnimatePresence>
+        {showFlashcards && (
+          <Suspense fallback={null}>
+            <FlashcardsComponent
+              isOpen={showFlashcards}
+              onClose={() => {
+                setShowFlashcards(false);
+                // Remove flashcards parameter from URL
+                const params = new URLSearchParams(searchParams);
+                params.delete("flashcards");
+                setSearchParams(params, { replace: true });
+              }}
+              classData={{ ...classData, files }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </motion.div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,9 +6,11 @@ import { supabase } from "../lib/supabaseClient";
 import ClassDetails from "../components/ClassDetails";
 import AddClassForm from "../components/AddClassForm";
 import ConfirmDialog from "../components/ConfirmDialog";
-import ChatComponent from "../components/ChatComponent";
-import TalkComponent from "../components/TalkComponent";
 import "./Dashboard.css";
+
+// Heavy AI overlays — loaded on demand (they pull in pdf.js, markdown, etc.).
+const ChatComponent = lazy(() => import("../components/ChatComponent"));
+const TalkComponent = lazy(() => import("../components/TalkComponent"));
 
 const Dashboard = ({ session }) => {
   const [classes, setClasses] = useState([]);
@@ -1035,23 +1037,27 @@ const Dashboard = ({ session }) => {
       {/* Add chat component with AnimatePresence for smooth transitions */}
       <AnimatePresence>
         {chatOpen && (
-          <ChatComponent
-            isOpen={chatOpen}
-            onClose={handleCloseChat}
-            initialClassId={chatClassId}
-            allClasses={classes}
-            conversationId={chatConversationId}
-          />
+          <Suspense fallback={null}>
+            <ChatComponent
+              isOpen={chatOpen}
+              onClose={handleCloseChat}
+              initialClassId={chatClassId}
+              allClasses={classes}
+              conversationId={chatConversationId}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {talkOpen && (
-          <TalkComponent
-            isOpen={talkOpen}
-            onClose={handleCloseTalk}
-            initialClassId={talkClassId}
-          />
+          <Suspense fallback={null}>
+            <TalkComponent
+              isOpen={talkOpen}
+              onClose={handleCloseTalk}
+              initialClassId={talkClassId}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
