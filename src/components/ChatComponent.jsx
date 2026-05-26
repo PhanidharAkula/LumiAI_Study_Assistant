@@ -890,7 +890,7 @@ const ChatComponent = ({
             continue;
           }
           const metaPreface =
-            /^(chatgpt|assistant|ai)\b|^(alright|ok|okay|sure)([,\.!]?\s+here'?s?)?/i;
+            /^(chatgpt|assistant|ai)\b|^(alright|ok|okay|sure)([,.!]?\s+here'?s?)?/i;
           if (metaPreface.test(l) && l.length < 80) {
             start = i + 1;
             continue;

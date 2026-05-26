@@ -151,12 +151,14 @@ export default function Admin() {
             return diffDays < 7;
           case "month":
             return diffDays < 30;
-          case "thisMonth":
+          case "thisMonth": {
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // 1st day of current month
             return createdAt >= startOfMonth;
-          case "thisYear":
+          }
+          case "thisYear": {
             const startOfYear = new Date(now.getFullYear(), 0, 1); // Jan 1st of current year
             return createdAt >= startOfYear;
+          }
           case "year":
             return diffDays < 365;
           default:
