@@ -855,7 +855,8 @@ const Dashboard = ({ session }) => {
                                   <div className="dash-user-details">
                                     <div className="dash-user-name">
                                       {user.user_metadata?.full_name ||
-                                        "Phanidhar Akula"}
+                                        user.email?.split("@")[0] ||
+                                        "User"}
                                     </div>
                                     <div className="dash-user-email">
                                       {user.email}

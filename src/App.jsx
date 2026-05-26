@@ -44,45 +44,45 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Set up the auth listener synchronously so the effect cleanup actually
+    // unsubscribes it on unmount (previously it was created inside an async
+    // function, so the returned cleanup was never wired to the effect).
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    // Validate any stored session on load.
     const setupAuth = async () => {
-      // Get the current session - this checks localStorage automatically
-      const {
-        data: { session: activeSession },
-      } = await supabase.auth.getSession();
-      if (activeSession) {
-        try {
+      try {
+        const {
+          data: { session: activeSession },
+        } = await supabase.auth.getSession();
+        if (activeSession) {
           const {
             data: { user },
             error: getUserError,
           } = await supabase.auth.getUser();
           if (getUserError || !user) {
-            // Clear the client session
             await supabase.auth.signOut();
             setSession(null);
           } else {
             setSession(activeSession);
           }
-        } catch (err) {
-          console.warn("Error validating stored session:", err);
-          setSession(activeSession);
+        } else {
+          setSession(null);
         }
-      } else {
-        setSession(activeSession);
+      } catch (err) {
+        console.warn("Error validating stored session:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
-
-      // Set up the auth state listener for future changes
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-      });
-
-      return () => subscription.unsubscribe();
     };
 
     setupAuth();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Show a loading state while checking authentication

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { detectRegion } from "../../utils/region";
 import "./Auth.css";
 
 const AuthRedirect = () => {
@@ -10,27 +11,7 @@ const AuthRedirect = () => {
   // Helper function to detect and update user region
   const updateUserRegion = async (userId) => {
     try {
-      // Get user's region from browser API
-      let userRegion = "Unknown";
-      try {
-        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (timeZone) {
-          userRegion = timeZone.split("/")[0] || "Unknown";
-          const regionMap = {
-            America: "America",
-            Europe: "Europe",
-            Asia: "Asia",
-            Africa: "Africa",
-            Australia: "Oceania",
-            Pacific: "Oceania",
-            Atlantic: "Atlantic",
-            Indian: "Indian Ocean",
-          };
-          userRegion = regionMap[userRegion] || userRegion;
-        }
-      } catch (e) {
-        console.log("Could not detect region:", e);
-      }
+      const userRegion = detectRegion();
 
       // Check if region is already set
       const { data: profile } = await supabase

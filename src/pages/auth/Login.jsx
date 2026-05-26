@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
+import { detectRegion } from "../../utils/region";
 import Lottie from "lottie-react";
 import google from "../../assets/google.json";
 import "./Auth.css";
@@ -29,30 +30,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Try to get user's region from browser API
-      let userRegion = "Unknown";
-      try {
-        // Use Intl API to get timezone and infer region
-        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        // Extract region from timezone (e.g., "America/New_York" -> "America")
-        if (timeZone) {
-          userRegion = timeZone.split("/")[0] || "Unknown";
-          // Convert common timezone prefixes to readable regions
-          const regionMap = {
-            America: "America",
-            Europe: "Europe",
-            Asia: "Asia",
-            Africa: "Africa",
-            Australia: "Oceania",
-            Pacific: "Oceania",
-            Atlantic: "Atlantic",
-            Indian: "Indian Ocean",
-          };
-          userRegion = regionMap[userRegion] || userRegion;
-        }
-      } catch (e) {
-        console.log("Could not detect region:", e);
-      }
+      const userRegion = detectRegion();
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
