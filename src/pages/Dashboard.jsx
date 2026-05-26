@@ -56,14 +56,7 @@ const Dashboard = ({ session }) => {
     isOpen: false,
     feature: "",
   });
-  const [accountDeletedInfo, setAccountDeletedInfo] = useState({
-    isOpen: false,
-    deletedDate: "",
-    canReregisterDate: "",
-    isAdminDeleted: false,
-  });
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
-  const hasCheckedDeletedAccount = useRef(false);
 
   useEffect(() => {
     if (!loading) {
@@ -149,42 +142,6 @@ const Dashboard = ({ session }) => {
       }
 
       setUser(user);
-
-      // Check if this account was recently deleted (only once per session)
-      if (!hasCheckedDeletedAccount.current) {
-        hasCheckedDeletedAccount.current = true;
-
-        try {
-          const { data: deletedAccount, error: deletedError } = await supabase
-            .from("deleted_accounts")
-            .select("deleted_at, can_reregister_at, reason")
-            .eq("email", user.email?.toLowerCase())
-            .gt("can_reregister_at", new Date().toISOString())
-            .maybeSingle();
-
-          // Silently ignore errors (table doesn't exist, no rows, RLS, etc.)
-          if (!deletedError && deletedAccount) {
-            // Account was deleted - show confirmation dialog
-            const deletedDate = new Date(
-              deletedAccount.deleted_at
-            ).toLocaleDateString();
-            const canReregisterDate = new Date(
-              deletedAccount.can_reregister_at
-            ).toLocaleDateString();
-            const isAdminDeleted = deletedAccount.reason === "deleted_by_admin";
-
-            setAccountDeletedInfo({
-              isOpen: true,
-              deletedDate,
-              canReregisterDate,
-              isAdminDeleted,
-            });
-            return; // Stop loading, dialog will handle sign out
-          }
-        } catch (deletedCheckErr) {
-          // Silently continue - deleted accounts feature not available
-        }
-      }
 
       // fetch profile to determine admin flag
       try {
@@ -1225,58 +1182,6 @@ const Dashboard = ({ session }) => {
         }
         confirmText={classDeleteConfirm.hasFiles ? "Delete All" : "Delete"}
         danger={true}
-      />
-
-      {/* Account deleted confirmation dialog - shown when user tries to log back in */}
-      <ConfirmDialog
-        isOpen={accountDeletedInfo.isOpen}
-        onClose={async () => {
-          setAccountDeletedInfo({
-            isOpen: false,
-            deletedDate: "",
-            canReregisterDate: "",
-          });
-          // Sign out and redirect when dialog is closed
-          try {
-            await supabase.auth.signOut();
-          } catch (err) {
-            console.error("Error signing out:", err);
-          }
-          navigate("/");
-        }}
-        onConfirm={async () => {
-          // Sign out and navigate immediately to prevent dashboard flash
-          try {
-            await supabase.auth.signOut();
-          } catch (err) {
-            console.error("Error signing out:", err);
-          }
-          // Navigate immediately before closing dialog
-          navigate("/");
-          // Clean up state after navigation
-          setAccountDeletedInfo({
-            isOpen: false,
-            deletedDate: "",
-            canReregisterDate: "",
-            isAdminDeleted: false,
-          });
-        }}
-        title={
-          accountDeletedInfo.isAdminDeleted
-            ? "Account Deleted by Administrator"
-            : "Account Successfully Deleted"
-        }
-        message={
-          accountDeletedInfo.deletedDate
-            ? accountDeletedInfo.isAdminDeleted
-              ? `Your account was deleted by an administrator on ${accountDeletedInfo.deletedDate} due to violation of terms.\n\nAll your classes, files, notes, and conversations have been permanently removed from our servers.\n\nYou may create a new account after ${accountDeletedInfo.canReregisterDate} if you wish to return to LumiAI.`
-              : `Your account and all associated data were permanently removed on ${accountDeletedInfo.deletedDate}.\n\nAll classes, files, notes, and conversations have been deleted from our servers.\n\nYou may create a new account after ${accountDeletedInfo.canReregisterDate} if you wish to return to LumiAI.`
-            : "Your account has been deleted."
-        }
-        confirmText="Understood"
-        cancelText=""
-        danger={false}
-        hideBackground={true}
       />
 
       {/* Account delete success dialog - shown after successful deletion */}
