@@ -3,6 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import "./ConfirmDialog.css";
 
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+  hideBackground?: boolean;
+}
+
 const ConfirmDialog = ({
   isOpen,
   onClose,
@@ -13,7 +25,7 @@ const ConfirmDialog = ({
   cancelText = "Cancel",
   danger = false,
   hideBackground = false,
-}) => {
+}: ConfirmDialogProps) => {
   const overlayVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -289,7 +301,7 @@ const ConfirmDialog = ({
         </motion.div>
       )}
     </AnimatePresence>,
-    typeof document !== "undefined" ? document.body : null
+    document.body
   );
 };
 
