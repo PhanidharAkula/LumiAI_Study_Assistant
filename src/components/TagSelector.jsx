@@ -18,36 +18,22 @@ const TagSelector = ({
   const classCheckboxRefs = useRef({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  console.log("TagSelector render - selectedFiles:", selectedFiles);
-  console.log("TagSelector render - selectedClasses:", selectedClasses);
-
   // Auto-expand classes for initial load
   useEffect(() => {
-    console.log("Setting up initial expanded state");
-    console.log("Initial selected files:", initialSelectedFiles);
-    console.log("Initial selected classes:", initialSelectedClasses);
-
     const expanded = {};
 
-    // Auto-expand classes with selected files
+    // Auto-expand classes that have selected files
     initialSelectedFiles.forEach((fileId) => {
       classes.forEach((classItem) => {
-        if (classItem.files) {
-          const fileFound = classItem.files.some((f) => f.id === fileId);
-          if (fileFound) {
-            expanded[classItem.id] = true;
-            console.log(
-              `Auto-expanding class ${classItem.id} for file ${fileId}`
-            );
-          }
+        if (classItem.files?.some((f) => f.id === fileId)) {
+          expanded[classItem.id] = true;
         }
       });
     });
 
-    // Also expand selected classes
+    // Also expand explicitly-selected classes
     initialSelectedClasses.forEach((id) => {
       expanded[id] = true;
-      console.log(`Auto-expanding selected class ${id}`);
     });
 
     setExpandedClasses(expanded);
@@ -156,10 +142,6 @@ const TagSelector = ({
 
   // Handle save button click
   const handleSave = () => {
-    console.log("Saving selections");
-    console.log("Selected classes:", selectedClasses);
-    console.log("Selected files:", selectedFiles);
-
     onSelectTags({
       selectedClasses,
       selectedFiles,
@@ -174,36 +156,21 @@ const TagSelector = ({
       )
     : classes;
 
-  if (!isOpen) return null;
-
-  // Update indeterminate state of class checkboxes whenever selectedFiles changes
+  // Reflect partial class selection (some-but-not-all files) as an
+  // indeterminate checkbox. Must run before any early return (Rules of Hooks).
   useEffect(() => {
     classes.forEach((c) => {
       const ref = classCheckboxRefs.current[c.id];
       if (!ref) return;
       const total = (c.files && c.files.length) || 0;
-      if (total === 0) {
-        ref.indeterminate = false;
-        return;
-      }
       const selectedFromClass = (c.files || []).filter((f) =>
         selectedFiles.includes(f.id)
       ).length;
-      if (selectedFromClass > 0 && selectedFromClass < total) {
-        ref.indeterminate = true;
-      } else {
-        ref.indeterminate = false;
-      }
-      // If no files remain selected for this class and the class isn't explicitly selected, auto-deselect
-      if (selectedFromClass === 0 && !selectedClasses.includes(c.id)) {
-        // nothing
-      }
-      // If no files remain but class is selected and we prefer auto-deselect, uncomment below
-      // if (selectedFromClass === 0 && selectedClasses.includes(c.id)) {
-      //   setSelectedClasses((prev) => prev.filter((id) => id !== c.id));
-      // }
+      ref.indeterminate = selectedFromClass > 0 && selectedFromClass < total;
     });
   }, [selectedFiles, classes, selectedClasses]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="tag-selector-overlay">
