@@ -37,7 +37,7 @@ const AuthRedirect = () => {
         .from("profiles")
         .select("region")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       // Only update if region is not set or is "Unknown"
       if (!profile?.region || profile.region === "Unknown") {
