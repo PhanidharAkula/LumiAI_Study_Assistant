@@ -160,7 +160,7 @@ const Dashboard = ({ session }) => {
             .select("deleted_at, can_reregister_at, reason")
             .eq("email", user.email?.toLowerCase())
             .gt("can_reregister_at", new Date().toISOString())
-            .single();
+            .maybeSingle();
 
           // Silently ignore errors (table doesn't exist, no rows, RLS, etc.)
           if (!deletedError && deletedAccount) {
@@ -193,7 +193,7 @@ const Dashboard = ({ session }) => {
           .select("is_admin")
           .eq("id", user.id)
           .limit(1)
-          .single();
+          .maybeSingle();
         if (!profileErr && profile && profile.is_admin === true) {
           setIsAdmin(true);
         } else {

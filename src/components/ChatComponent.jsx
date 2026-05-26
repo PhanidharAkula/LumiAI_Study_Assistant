@@ -286,7 +286,7 @@ const ChatComponent = ({
         .from("classes")
         .select("*")
         .eq("id", classId)
-        .single();
+        .maybeSingle();
 
       if (classError) throw classError;
       setClassData(classDetails);
@@ -422,7 +422,7 @@ const ChatComponent = ({
         .from("conversations")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

@@ -67,7 +67,7 @@ export default function Admin() {
         .select("is_admin")
         .eq("id", userId)
         .limit(1)
-        .single();
+        .maybeSingle();
       if (profileErr && profileErr.code !== "PGRST116")
         console.error(profileErr);
 
