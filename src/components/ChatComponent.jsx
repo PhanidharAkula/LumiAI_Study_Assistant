@@ -1379,6 +1379,9 @@ const ChatComponent = ({
   };
 
   const handleClose = () => {
+    // Abort any in-flight stream so closing mid-response doesn't keep the
+    // request running (wasted work + setState-after-unmount).
+    if (abortController) abortController.abort();
     onClose();
   };
 

@@ -42,25 +42,3 @@ export const getFilePublicUrl = async (
     return { url: null, error: err as Error };
   }
 };
-
-/** Check whether the storage bucket is accessible (no admin privileges needed). */
-export const checkStorageAccess = async (
-  bucketName = "files"
-): Promise<boolean> => {
-  try {
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .list("", { limit: 1 });
-    return !error;
-  } catch (err) {
-    console.error("Storage access check error:", err);
-    return false;
-  }
-};
-
-/** Backwards-compatible alias kept for existing callers. */
-export const ensureBucketExists = async (
-  bucketName = "files"
-): Promise<boolean> => {
-  return await checkStorageAccess(bucketName);
-};

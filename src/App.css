@@ -25,9 +25,23 @@ h6,
 span,
 label,
 a,
-button,
-input,
-textarea {
+button {
+  cursor: pointer;
+}
+
+/* Shared back button — consolidated here (was defined with conflicting sizes
+   in both ClassDetails.css and ChatComponent.css; a single definition keeps
+   every back button consistent app-wide). */
+.back-button {
+  height: 48px;
+  width: 48px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--background-secondary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  border: 1.5px solid var(--text-primary-color);
   cursor: pointer;
 }
 
