@@ -250,7 +250,8 @@ const TalkComponent = ({
         userText,
         "",
         conversationHistoryRef.current,
-        true
+        true,
+        ac.signal
       );
 
       if (response?.text) {
@@ -263,6 +264,12 @@ const TalkComponent = ({
         speakText(aiText);
       } else {
         setThinking(false);
+        // Don't leave the user in silence on failure (unless they stopped it).
+        if (response?.error && response.errorType !== "aborted") {
+          speakText(
+            "Sorry, I'm having trouble responding right now. Please try again in a moment."
+          );
+        }
       }
     } catch (e) {
       setThinking(false);

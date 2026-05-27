@@ -188,7 +188,8 @@ export const fetchStreamingResponse = async (
 
     if (!response.ok || !response.body) {
       const data = await response.json().catch(() => ({} as any));
-      const message = data.error || "Failed to get a response from the AI.";
+      const message =
+        data.error || "Lumi couldn't respond just now. Please try again in a moment.";
       return {
         text: null,
         error: message,
@@ -233,7 +234,7 @@ export const fetchStreamingResponse = async (
     console.error("Error calling AI:", error);
     return {
       text: null,
-      error: "Error connecting to the AI. Please try again later.",
+      error: "Couldn't reach Lumi. Please check your connection and try again.",
       errorType: "api",
     };
   }
@@ -247,7 +248,8 @@ export const fetchAIResponse = async (
   userMessage: string,
   context = "",
   history: ChatMessage[] = [],
-  isVoiceMode = false
+  isVoiceMode = false,
+  signal?: AbortSignal
 ): Promise<AIResult> => {
   try {
     const system = isVoiceMode
@@ -255,16 +257,20 @@ export const fetchAIResponse = async (
       : textSystemPrompt(context);
     const messages = buildMessages(history, userMessage);
 
-    const response = await postJson({
-      system,
-      messages,
-      stream: false,
-      maxTokens: isVoiceMode ? 1024 : 4096,
-    });
+    const response = await postJson(
+      {
+        system,
+        messages,
+        stream: false,
+        maxTokens: isVoiceMode ? 1024 : 4096,
+      },
+      signal
+    );
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({} as any));
-      const message = data.error || "Failed to get a response from the AI.";
+      const message =
+        data.error || "Lumi couldn't respond just now. Please try again in a moment.";
       return {
         text: null,
         error: message,
@@ -275,10 +281,13 @@ export const fetchAIResponse = async (
     const data = await response.json();
     return { text: (data.text || "").trim(), error: null };
   } catch (error: any) {
+    if (error?.name === "AbortError") {
+      return { text: null, error: "aborted", errorType: "aborted" };
+    }
     console.error("Error calling AI:", error);
     return {
       text: null,
-      error: "Error connecting to the AI. Please try again later.",
+      error: "Couldn't reach Lumi. Please check your connection and try again.",
       errorType: "api",
     };
   }

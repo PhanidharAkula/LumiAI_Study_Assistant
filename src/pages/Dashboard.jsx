@@ -58,6 +58,7 @@ const Dashboard = ({ session }) => {
     feature: "",
   });
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
+  const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);
 
@@ -336,8 +337,7 @@ const Dashboard = ({ session }) => {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        console.error("No user found to delete");
-        alert("Session expired. Please log in again.");
+        console.warn("No user found to delete; redirecting to login.");
         navigate("/login");
         return;
       }
@@ -404,11 +404,8 @@ const Dashboard = ({ session }) => {
       setAccountDeleteSuccess(true);
     } catch (error) {
       console.error("Error deleting account:", error);
-      alert(
-        `An error occurred while deleting your account: ${
-          error.message || "Please try again or contact support."
-        }`
-      );
+      // Friendly, non-technical message (never the raw RPC/DB error string).
+      setAccountDeleteError(true);
       // Don't sign out on error so user can retry
     }
   };
@@ -1237,6 +1234,18 @@ const Dashboard = ({ session }) => {
         cancelText=""
         danger={false}
         hideBackground={true}
+      />
+
+      {/* Account delete failure dialog — friendly, never shows the raw error */}
+      <ConfirmDialog
+        isOpen={accountDeleteError}
+        onClose={() => setAccountDeleteError(false)}
+        onConfirm={() => setAccountDeleteError(false)}
+        title="Account Deletion Failed"
+        message="Something went wrong while deleting your account. Please try again in a moment, or contact support if it keeps happening."
+        confirmText="OK"
+        cancelText=""
+        danger={false}
       />
     </>
   );
