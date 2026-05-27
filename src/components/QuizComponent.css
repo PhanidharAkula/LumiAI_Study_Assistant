@@ -120,7 +120,7 @@
   flex-direction: column;
 }
 
-.dropdown-header {
+.quiz-dropdown-header {
   padding: 20px;
   background: #dbeafe;
   border-bottom: 1.5px solid var(--text-primary-color);
@@ -129,14 +129,14 @@
   justify-content: space-between;
 }
 
-.dropdown-header h3 {
+.quiz-dropdown-header h3 {
   margin: 0;
   font-size: large;
   font-weight: 600;
   color: var(--text-primary-color);
 }
 
-.dropdown-header .history-count {
+.quiz-dropdown-header .history-count {
   min-width: auto;
   height: auto;
   padding: 6px 12px;
@@ -148,7 +148,7 @@
   border: 1.5px solid var(--text-primary-color);
 }
 
-.dropdown-content {
+.quiz-dropdown-content {
   padding: 16px;
   overflow-y: auto;
   max-height: calc(80vh - 100px); /* Adjust based on viewport height minus header */
@@ -161,12 +161,12 @@
   -ms-overflow-style: none; /* IE and Edge */
 }
 
-.dropdown-content::-webkit-scrollbar {
+.quiz-dropdown-content::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
 
 /* Dropdown Overlay */
-.dropdown-overlay {
+.quiz-dropdown-overlay {
   position: fixed;
   top: 0;
   left: 0;

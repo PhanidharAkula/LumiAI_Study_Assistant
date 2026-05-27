@@ -337,7 +337,7 @@ CRITICAL JSON FORMATTING RULES:
 
       addDebugLog(`📤 Sending prompt to AI (${prompt.length} chars)...`);
 
-      await fetchStreamingResponse(
+      const aiResult = await fetchStreamingResponse(
         prompt, // userMessage
         "", // context (empty, we already included it in the prompt)
         (chunk) => {
@@ -348,6 +348,17 @@ CRITICAL JSON FORMATTING RULES:
         [], // history
         [] // files
       );
+
+      // If the AI call itself failed (offline, busy, etc.), surface the
+      // friendly message rather than mislabeling it as a content/JSON error.
+      if (aiResult?.error && aiResult.errorType !== "aborted") {
+        setErrorDialog({
+          isOpen: true,
+          title: "Couldn't generate quiz",
+          message: aiResult.error,
+        });
+        return;
+      }
 
       addDebugLog(`✓ Received AI response: ${quizData.length} chars`);
       addDebugLog(`🔍 Parsing quiz data...`);
@@ -453,14 +464,11 @@ CRITICAL JSON FORMATTING RULES:
       );
     } catch (error) {
       console.error("Error generating quiz:", error);
-      addDebugLog(`❌ ERROR: ${error.message}`, "error");
-      addDebugLog(`Error details: ${error.stack}`, "error");
-
-      const errorMsg = `Failed to generate quiz: ${error.message}\n\nPlease check the debug panel for details or try again.`;
       setErrorDialog({
         isOpen: true,
         title: "Quiz Generation Failed",
-        message: errorMsg,
+        message:
+          "Couldn't generate the quiz from these materials right now. Please try again in a moment.",
       });
     } finally {
       setGeneratingQuiz(false);
@@ -761,7 +769,7 @@ CRITICAL JSON FORMATTING RULES:
           {/* Dropdown Overlay - closes dropdown when clicking outside */}
           {showHistoryDropdown && (
             <div
-              className="dropdown-overlay"
+              className="quiz-dropdown-overlay"
               onClick={() => setShowHistoryDropdown(false)}
             />
           )}
@@ -777,7 +785,7 @@ CRITICAL JSON FORMATTING RULES:
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                <div className="dropdown-header">
+                <div className="quiz-dropdown-header">
                   <h3>Quiz History</h3>
                   <span className="history-count">
                     {quizHistory.length}{" "}
@@ -785,7 +793,7 @@ CRITICAL JSON FORMATTING RULES:
                   </span>
                 </div>
 
-                <div className="dropdown-content">
+                <div className="quiz-dropdown-content">
                   {quizHistory.length > 0 ? (
                     quizHistory.map((item, index) => {
                       // Handle both old and new quiz data structures

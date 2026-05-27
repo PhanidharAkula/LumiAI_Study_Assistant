@@ -72,11 +72,15 @@ function toAnthropicContent(content: string | ContentPart[]): any {
   return blocks.length ? blocks : " ";
 }
 
-function friendlyError(status: number, fallback: string): string {
-  if (status === 401) return "AI authentication failed — check ANTHROPIC_API_KEY.";
-  if (status === 429) return "Rate limit reached. Please try again in a moment.";
-  if (status === 529) return "The AI service is temporarily overloaded. Please retry.";
-  return fallback;
+// User-facing copy must never reveal the AI provider, API keys, billing, or raw
+// error text (e.g. a 400 "credit balance too low" or a 401 about the API key).
+// Everything maps to friendly, on-brand messages; the real error is logged
+// server-side only (never sent to the client).
+function friendlyError(status?: number): string {
+  if (status === 429 || status === 503 || status === 529) {
+    return "Lumi is a little busy right now. Please try again in a moment.";
+  }
+  return "Lumi couldn't respond just now. Please try again in a moment.";
 }
 
 export default async function handler(req: any, res: any): Promise<void> {
@@ -86,9 +90,10 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return sendJson(res, 500, {
-      error:
-        "AI is not configured yet. Set ANTHROPIC_API_KEY in your environment (.env locally, Vercel project settings in production).",
+    // Config problem — log it for ops, but never expose it to the user.
+    console.error("[chat] ANTHROPIC_API_KEY is not set");
+    return sendJson(res, 503, {
+      error: "Lumi is temporarily unavailable. Please try again soon.",
     });
   }
 
@@ -145,10 +150,9 @@ export default async function handler(req: any, res: any): Promise<void> {
       try {
         await streaming.finalMessage();
       } catch (err: any) {
+        console.error("[chat] stream error:", err?.status, err?.message);
         res.write(
-          `data: ${JSON.stringify({
-            error: friendlyError(err?.status ?? 500, err?.message || "Stream error"),
-          })}\n\n`
+          `data: ${JSON.stringify({ error: friendlyError(err?.status) })}\n\n`
         );
       }
       res.write("data: [DONE]\n\n");
@@ -166,7 +170,8 @@ export default async function handler(req: any, res: any): Promise<void> {
       typeof err?.status === "number" && Number.isInteger(err.status)
         ? err.status
         : 500;
-    const message = friendlyError(status, err?.message || "AI request failed");
+    console.error("[chat] request error:", status, err?.message);
+    const message = friendlyError(status);
     if (!res.headersSent) {
       sendJson(res, status, { error: message });
     } else {
