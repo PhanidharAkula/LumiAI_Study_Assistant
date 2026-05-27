@@ -1042,7 +1042,7 @@ CRITICAL JSON FORMATTING RULES:
                       height="40"
                       fill="none"
                       stroke="currentColor"
-                      stroke-width="1.5"
+                      strokeWidth="1.5"
                       viewBox="0 0 24 24"
                     >
                       <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
@@ -1133,7 +1133,7 @@ CRITICAL JSON FORMATTING RULES:
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        stroke-width="1.5"
+                        strokeWidth="1.5"
                       >
                         <circle cx="5" cy="6" r="1.5" />
                         <circle cx="5" cy="12" r="1.5" />
