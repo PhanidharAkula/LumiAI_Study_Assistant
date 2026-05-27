@@ -368,7 +368,10 @@ export default function Admin() {
               animate={{ opacity: 1, x: 0 }}
             >
               {/* App settings — self-service account deletion toggle */}
-              <div className="admin-search-filter-card">
+              <div
+                className="admin-search-filter-card"
+                style={{ marginBottom: 16 }}
+              >
                 <h2>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -425,15 +428,16 @@ export default function Admin() {
                         : "Enable account deletion"
                     }
                     style={{
-                      width: 46,
-                      height: 26,
+                      width: 48,
+                      height: 28,
                       flexShrink: 0,
                       borderRadius: 999,
-                      border: "none",
+                      border: "2px solid var(--text-primary-color)",
                       cursor: "pointer",
+                      padding: 0,
                       background: accountDeletionEnabled
-                        ? "var(--background-secondary-color)"
-                        : "#cbd5d5",
+                        ? "var(--text-primary-color)"
+                        : "var(--background-primary-color)",
                       position: "relative",
                       transition: "background 0.2s",
                     }}
@@ -443,12 +447,13 @@ export default function Admin() {
                         position: "absolute",
                         top: 3,
                         left: accountDeletionEnabled ? 23 : 3,
-                        width: 20,
-                        height: 20,
+                        width: 18,
+                        height: 18,
                         borderRadius: "50%",
-                        background: "#fff",
-                        transition: "left 0.2s",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                        background: accountDeletionEnabled
+                          ? "#fff"
+                          : "var(--text-primary-color)",
+                        transition: "left 0.2s, background 0.2s",
                       }}
                     />
                   </button>
