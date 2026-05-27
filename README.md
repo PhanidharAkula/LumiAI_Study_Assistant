@@ -5,7 +5,7 @@
 🔗 **Live:** [studywithlumi.com](https://studywithlumi.com) · 👥 **55+ active students**
 
 Lumi AI lets students upload their class materials, then study with an AI tutor
-grounded in *their* content — answering questions, generating flashcards and
+grounded in _their_ content — answering questions, generating flashcards and
 summaries, all scoped to the documents they uploaded.
 
 ![Lumi AI interface](docs/screenshot-main.png)
