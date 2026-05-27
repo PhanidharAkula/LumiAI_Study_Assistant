@@ -9,7 +9,6 @@ import ContextTags from "./ContextTags";
 import TagSelector from "./TagSelector";
 import ConfirmDialog from "./ConfirmDialog";
 import {
-  fetchAIResponse,
   fetchStreamingResponse,
   generateConversationTitle,
 } from "../services/aiService";
@@ -43,14 +42,14 @@ const ChatComponent = ({
   const messagesRef = useRef(messages);
   const [loading, setLoading] = useState(false);
   const [abortController, setAbortController] = useState(null);
-  const [classData, setClassData] = useState(null);
+  const [, setClassData] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [selectedDocs, setSelectedDocs] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyFetched, setHistoryFetched] = useState(false);
+  const [, setHistoryFetched] = useState(false);
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [selectedClasses, setSelectedClasses] = useState(
     initialClassId ? [initialClassId] : []
@@ -171,6 +170,7 @@ const ChatComponent = ({
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, selectedClasses, selectedFiles]);
 
   useEffect(() => {
@@ -256,6 +256,7 @@ const ChatComponent = ({
     }
 
     fetchChatHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialClassId, conversationId]);
 
   useEffect(() => {
@@ -608,7 +609,7 @@ const ChatComponent = ({
                           `[Could not fetch file content: HTTP ${resp.status}]`
                         );
                       }
-                    } catch (err) {
+                    } catch {
                       parts.push("[Error fetching file content]");
                     }
                   } else {
@@ -707,7 +708,7 @@ const ChatComponent = ({
                     } not included - content not extracted]`
                   );
                 }
-              } catch (err) {
+              } catch {
                 parts.push("[Error while attempting to include file content]");
               }
 

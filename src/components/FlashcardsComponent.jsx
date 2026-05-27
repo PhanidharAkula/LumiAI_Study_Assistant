@@ -21,7 +21,7 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }) => {
   const [currentDeck, setCurrentDeck] = useState(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [generatingCards, setGeneratingCards] = useState(false);
 
   // Card progress tracking
@@ -50,6 +50,7 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }) => {
     if (isOpen && classData) {
       loadFlashcardHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, classData]);
 
   // Prevent background scroll when component is open
@@ -422,13 +423,6 @@ CRITICAL JSON FORMATTING RULES:
       setIsFlipped(false);
       setFlashcardState("studying");
     }
-  };
-
-  const handleStudyAll = () => {
-    setStudyMode("all");
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
-    setFlashcardState("studying");
   };
 
   const handleRestartDeck = () => {

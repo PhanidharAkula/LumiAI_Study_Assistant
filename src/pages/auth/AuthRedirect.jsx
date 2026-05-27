@@ -101,7 +101,6 @@ const AuthRedirect = () => {
         // Poll briefly for session
         let sessionFound = false;
         for (let i = 0; i < 8; i++) {
-          // eslint-disable-next-line no-await-in-loop
           const data = await supabase.auth.getSession();
           const polledSession = data?.data?.session;
           if (polledSession) {
@@ -111,7 +110,6 @@ const AuthRedirect = () => {
             navigate("/dashboard");
             break;
           }
-          // eslint-disable-next-line no-await-in-loop
           await new Promise((r) => setTimeout(r, 250));
         }
 
