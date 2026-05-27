@@ -17,6 +17,7 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { userId, userName, userEmail }
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const navigate = useNavigate();
 
   function formatBytes(bytes) {
@@ -74,7 +75,10 @@ export default function Admin() {
       const admin = profile && profile.is_admin === true;
       setIsAdmin(admin);
 
-      if (admin) await fetchUsers();
+      if (admin) {
+        await fetchUsers();
+        await fetchSettings();
+      }
     } catch (err) {
       console.error("init error:", err);
       setError("Failed to initialize admin");
@@ -169,6 +173,32 @@ export default function Admin() {
 
     setFilteredUsers(filtered);
   }, [searchQuery, regionFilter, dateFilter, users]);
+
+  async function fetchSettings() {
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "account_deletion_enabled")
+        .maybeSingle();
+      if (data) setAccountDeletionEnabled(data.value !== false);
+    } catch (e) {
+      console.error("Error loading settings:", e);
+    }
+  }
+
+  async function toggleAccountDeletion() {
+    const next = !accountDeletionEnabled;
+    setAccountDeletionEnabled(next); // optimistic
+    const { error: updErr } = await supabase
+      .from("app_settings")
+      .update({ value: next, updated_at: new Date().toISOString() })
+      .eq("key", "account_deletion_enabled");
+    if (updErr) {
+      setAccountDeletionEnabled(!next); // revert on failure
+      console.error("Error updating setting:", updErr);
+    }
+  }
 
   async function handleDeleteUser() {
     if (!deleteConfirm) return;
@@ -337,6 +367,99 @@ export default function Admin() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
+              {/* App settings — self-service account deletion toggle */}
+              <div
+                className="admin-search-filter-card"
+                style={{ marginBottom: 16 }}
+              >
+                <h2>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      display: "inline-block",
+                      marginRight: "6px",
+                      transform: "translateY(2px)",
+                    }}
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  Settings
+                </h2>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
+                      Self-service account deletion
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-secondary-color)",
+                      }}
+                    >
+                      {accountDeletionEnabled
+                        ? "Users can delete their own account"
+                        : "Disabled — users see a notice instead"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={accountDeletionEnabled}
+                    onClick={toggleAccountDeletion}
+                    title={
+                      accountDeletionEnabled
+                        ? "Disable account deletion"
+                        : "Enable account deletion"
+                    }
+                    style={{
+                      width: 48,
+                      height: 28,
+                      flexShrink: 0,
+                      borderRadius: 999,
+                      border: "2px solid var(--text-primary-color)",
+                      cursor: "pointer",
+                      padding: 0,
+                      background: accountDeletionEnabled
+                        ? "var(--text-primary-color)"
+                        : "var(--background-primary-color)",
+                      position: "relative",
+                      transition: "background 0.2s",
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 3,
+                        left: accountDeletionEnabled ? 23 : 3,
+                        width: 18,
+                        height: 18,
+                        borderRadius: "50%",
+                        background: accountDeletionEnabled
+                          ? "#fff"
+                          : "var(--text-primary-color)",
+                        transition: "left 0.2s, background 0.2s",
+                      }}
+                    />
+                  </button>
+                </div>
+              </div>
+
               {/* Search and Filters Section - MOVED TO TOP */}
               <div className="admin-search-filter-card">
                 <h2>
