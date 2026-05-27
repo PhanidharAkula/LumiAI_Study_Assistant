@@ -83,6 +83,40 @@ function friendlyError(status?: number): string {
   return "Lumi couldn't respond just now. Please try again in a moment.";
 }
 
+/**
+ * Verify the caller's Supabase session. The browser sends its access token as a
+ * Bearer header; we validate it against Supabase's auth endpoint using the
+ * public project URL + anon key (no secrets needed) so this endpoint can't be
+ * used anonymously to burn AI credits. Returns the user id, or null if the
+ * token is missing/invalid.
+ */
+async function getAuthedUserId(req: any): Promise<string | null> {
+  const header: string =
+    req.headers?.authorization || req.headers?.Authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return null;
+
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const anon =
+    process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!url || !anon) {
+    console.error("[chat] Supabase URL/anon key not set — cannot verify session");
+    return null;
+  }
+
+  try {
+    const resp = await fetch(`${url}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: anon },
+    });
+    if (!resp.ok) return null;
+    const user = (await resp.json()) as { id?: string };
+    return user?.id ?? null;
+  } catch (err: any) {
+    console.error("[chat] session verification failed:", err?.message);
+    return null;
+  }
+}
+
 export default async function handler(req: any, res: any): Promise<void> {
   if (req.method !== "POST") {
     return sendJson(res, 405, { error: "Method not allowed" });
@@ -95,6 +129,13 @@ export default async function handler(req: any, res: any): Promise<void> {
     return sendJson(res, 503, {
       error: "Lumi is temporarily unavailable. Please try again soon.",
     });
+  }
+
+  // Require a signed-in user so the endpoint can't be called anonymously to
+  // burn AI credits. (The API key is never exposed to the client either way.)
+  const userId = await getAuthedUserId(req);
+  if (!userId) {
+    return sendJson(res, 401, { error: "Please sign in to use Lumi." });
   }
 
   let body: ChatBody;
