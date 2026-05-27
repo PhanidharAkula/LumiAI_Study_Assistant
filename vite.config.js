@@ -39,6 +39,11 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   if (env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
   if (env.ANTHROPIC_MODEL) process.env.ANTHROPIC_MODEL = env.ANTHROPIC_MODEL;
+  // Expose Supabase URL + anon key to the dev /api/chat so it can verify the
+  // caller's session (in production Vercel provides these to the function).
+  if (env.VITE_SUPABASE_URL) process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL;
+  if (env.VITE_SUPABASE_ANON_KEY)
+    process.env.VITE_SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY;
 
   return {
     plugins: [react(), tailwindcss(), devApiPlugin()],

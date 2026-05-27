@@ -6,6 +6,8 @@
  * (system prompt + messages) and parses the streamed / JSON response.
  */
 
+import { supabase } from "../lib/supabaseClient";
+
 const API_URL = "/api/chat";
 
 type Role = "user" | "assistant";
@@ -125,9 +127,20 @@ async function postJson(
   body: unknown,
   signal?: AbortSignal
 ): Promise<Response> {
+  // Attach the user's Supabase access token so the server can confirm the
+  // request is from a signed-in user ( /api/chat rejects anonymous calls).
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
   return fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
     signal,
   });
