@@ -49,3 +49,27 @@ CREATE POLICY "Allow authenticated users to read files"
         AND public.files.user_id = auth.uid()
     )
   );
+
+-- 5) Backup tables (backup_*). These manual snapshots live in the PUBLIC schema
+--    with RLS off, so the anon key can read everyone's data from them — emails,
+--    profiles, conversations, files, notes, and (worst) a copy of auth.users in
+--    backup_auth_users. They are not used by the app. Lock them down: enable RLS
+--    with no policies = no client access at all (the SQL editor / service role
+--    can still read them for a restore).
+ALTER TABLE IF EXISTS public.backup_auth_users    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.backup_profiles      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.backup_classes       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.backup_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.backup_files         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.backup_notes         ENABLE ROW LEVEL SECURITY;
+
+-- RECOMMENDED if these backups are stale: dropping them is cleaner than keeping
+-- sensitive user data (including auth emails) duplicated in the public schema.
+-- Uncomment to remove them entirely:
+-- DROP TABLE IF EXISTS
+--   public.backup_auth_users,
+--   public.backup_profiles,
+--   public.backup_classes,
+--   public.backup_conversations,
+--   public.backup_files,
+--   public.backup_notes;
