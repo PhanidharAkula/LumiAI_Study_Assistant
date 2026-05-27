@@ -52,8 +52,36 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       assetsDir: "assets",
-      // Chunking is handled automatically by Vite + the React.lazy() route/
-      // overlay boundaries — no manual vendor splitting needed.
+      rollupOptions: {
+        output: {
+          // Peel the heavy, self-contained vendor libraries out of the route
+          // chunks: the chat view pulls in highlight.js + KaTeX + the markdown
+          // pipeline, and the welcome page pulls in Lottie. Splitting them into
+          // their own chunks lets them download in parallel and stay cached
+          // across app deploys instead of bloating a single feature chunk.
+          // Anything unmatched keeps Vite's default React.lazy() chunking.
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return;
+            if (id.includes("/highlight.js/")) return "vendor-highlight";
+            if (id.includes("/katex/")) return "vendor-katex";
+            if (id.includes("/pdfjs-dist/")) return "vendor-pdf";
+            if (
+              /[/\\]node_modules[/\\](react-markdown|remark|rehype|micromark|mdast|hast|unist|unified|vfile|property-information|character-entities|decode-named-character-reference|comma-separated-tokens|space-separated-tokens|html-void-elements|web-namespaces|zwitch|longest-streak|markdown-table|trim-lines|trough|bail|devlop|estree-util|hastscript|parse-entities|stringify-entities|ccount|escape-string-regexp|is-plain-obj|character-reference)/.test(
+                id
+              )
+            )
+              return "vendor-markdown";
+            if (
+              id.includes("/framer-motion/") ||
+              id.includes("/motion-dom/") ||
+              id.includes("/motion-utils/")
+            )
+              return "vendor-motion";
+            if (id.includes("/lottie-web/") || id.includes("/lottie-react/"))
+              return "vendor-lottie";
+          },
+        },
+      },
     },
     server: { port: 5173, host: true },
   };

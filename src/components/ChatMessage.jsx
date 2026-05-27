@@ -203,7 +203,7 @@ const ChatMessage = ({
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
                 components={{
-                  code({ node, inline, className, children, ...props }) {
+                  code({ inline, className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || "");
                     const codeString = getPlainText(children).replace(
                       /\n$/,
@@ -278,7 +278,7 @@ const ChatMessage = ({
                       </code>
                     );
                   },
-                  a: ({ node, ...props }) => {
+                  a: ({ ...props }) => {
                     return (
                       <a
                         {...props}
@@ -306,7 +306,7 @@ const ChatMessage = ({
                       </a>
                     );
                   },
-                  p: ({ node, ...props }) => {
+                  p: ({ ...props }) => {
                     if (typeof props.children === "string") {
                       const content = props.children;
                       const processedContent = content

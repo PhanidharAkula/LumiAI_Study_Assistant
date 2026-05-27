@@ -106,6 +106,7 @@ const Dashboard = ({ session }) => {
     return () => {
       isMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, location.search]);
 
   useEffect(() => {
@@ -170,7 +171,7 @@ const Dashboard = ({ session }) => {
         } else {
           setIsAdmin(false);
         }
-      } catch (pe) {
+      } catch {
         setIsAdmin(false);
       }
 
@@ -205,11 +206,6 @@ const Dashboard = ({ session }) => {
         setInitialLoading(false);
       }
     }
-  };
-
-  const refreshClasses = () => {
-    hasInitialFetch.current = false;
-    fetchClasses();
   };
 
   const handleAddClass = (newClass) => {
@@ -471,31 +467,9 @@ const Dashboard = ({ session }) => {
     },
   };
 
-  const bgVariants = {
-    hidden: (custom) => ({
-      scale: 0.5,
-      opacity: 0,
-      x: custom.x ?? 0,
-      y: custom.y ?? 0,
-      rotate: custom.rotate ?? 0,
-    }),
-    visible: (custom) => ({
-      scale: 1,
-      opacity: custom.opacity ?? 0.3,
-      x: 0,
-      y: 0,
-      rotate: custom.rotate ?? 0,
-      transition: {
-        type: "spring",
-        stiffness: 150,
-        damping: 12,
-      },
-    }),
-  };
-
   const cardVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: ({ index, loaded }) => ({
+    visible: ({ index }) => ({
       opacity: 1,
       y: 0,
       transition: {
@@ -659,7 +633,7 @@ const Dashboard = ({ session }) => {
                 onClick={async (e) => {
                   e.stopPropagation();
                   try {
-                    const { data: files, error } = await supabase
+                    const { data: files } = await supabase
                       .from("files")
                       .select("id")
                       .eq("class_id", classItem.id);

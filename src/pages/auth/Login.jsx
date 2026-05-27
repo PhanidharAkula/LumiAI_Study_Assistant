@@ -59,28 +59,6 @@ const Login = () => {
   };
 
   // Animations
-  const bgVariants = {
-    hidden: (custom) => ({
-      scale: 0.5,
-      opacity: 0,
-      x: custom.x ?? 0,
-      y: custom.y ?? 0,
-      rotate: custom.rotate ?? 0,
-    }),
-    visible: (custom) => ({
-      scale: 1,
-      opacity: custom.opacity ?? 0.3,
-      x: 0,
-      y: 0,
-      rotate: custom.rotate ?? 0,
-      transition: {
-        type: "spring",
-        stiffness: 150,
-        damping: 12,
-      },
-    }),
-  };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {

@@ -6,7 +6,7 @@ import "./TalkComponent.css";
 const TalkComponent = ({
   isOpen = true,
   onClose = () => {},
-  initialClassId = null,
+  _initialClassId = null,
 }) => {
   const [voices, setVoices] = useState([]);
   const [voiceIndex, setVoiceIndex] = useState(0);
@@ -21,7 +21,6 @@ const TalkComponent = ({
   );
   const recognitionRef = useRef(null);
   const abortControllerRef = useRef(null);
-  const playingRef = useRef(false);
   const conversationHistoryRef = useRef([]);
   const circleControls = useAnimation();
   const animationFrameRef = useRef(null);
@@ -35,8 +34,9 @@ const TalkComponent = ({
         try {
           recognitionRef.current.stop();
           recognitionRef.current = null;
-        } catch (e) {}
+        } catch {}
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (synthRef.current) synthRef.current.cancel();
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
@@ -128,6 +128,7 @@ const TalkComponent = ({
       synthRef.current.onvoiceschanged = loadVoices;
     }
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (synthRef.current) synthRef.current.onvoiceschanged = null;
     };
   }, []);
@@ -307,7 +308,7 @@ const TalkComponent = ({
       try {
         recognitionRef.current.stop();
         recognitionRef.current = null;
-      } catch (e) {}
+      } catch {}
     }
     if (synthRef.current) synthRef.current.cancel();
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -326,7 +327,7 @@ const TalkComponent = ({
         try {
           recognitionRef.current.stop();
           recognitionRef.current = null;
-        } catch (e) {}
+        } catch {}
       }
     } else {
       if (started) {

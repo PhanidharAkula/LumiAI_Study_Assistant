@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
 import ConfirmDialog from "./ConfirmDialog";
 import "./ChatInput.css";
 import * as pdfjsLib from "pdfjs-dist";
@@ -197,10 +196,6 @@ const ChatInput = ({
 
     // Reset input
     e.target.value = null;
-  };
-
-  const removeFile = (index) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (

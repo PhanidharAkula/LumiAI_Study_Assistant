@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 import "./TagSelector.css";
 
 const TagSelector = ({
@@ -37,6 +36,7 @@ const TagSelector = ({
     });
 
     setExpandedClasses(expanded);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reconcile initial selections: ensure selectedFiles includes files from any
