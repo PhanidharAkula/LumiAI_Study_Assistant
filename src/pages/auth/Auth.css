@@ -195,6 +195,22 @@
   text-align: center;
 }
 
+.auth-legal-links {
+  margin-top: 24px;
+  font-size: 0.85rem;
+  color: var(--text-secondary-color);
+}
+
+.auth-legal-links a {
+  color: var(--text-secondary-color);
+  text-decoration: none;
+}
+
+.auth-legal-links a:hover {
+  color: var(--text-primary-color);
+  text-decoration: underline;
+}
+
 .success-message {
   background-color: #e8f5e9;
   color: #2e7d32;
