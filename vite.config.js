@@ -57,6 +57,11 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       assetsDir: "assets",
+      // pdfjs-dist (~680 KB) is an irreducible vendor chunk, lazy-loaded only
+      // when a user uploads a PDF, so it legitimately exceeds Vite's default
+      // 500 KB chunk-size warning. Raise the limit just above it to keep the
+      // build log clean — every other chunk stays well under 500 KB.
+      chunkSizeWarningLimit: 750,
       rollupOptions: {
         output: {
           // Peel the heavy, self-contained vendor libraries out of the route

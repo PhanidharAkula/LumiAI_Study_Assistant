@@ -1,10 +1,15 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import LazyLottie from "../components/LazyLottie";
-import books from "../assets/books.json";
-import brain from "../assets/brain.json";
-import notes from "../assets/notes.json";
 import "./WelcomePage.css";
+
+// Heavy Lottie animation JSON (books ~312 KB, brain ~183 KB, notes ~22 KB) is
+// loaded on demand instead of statically imported, so it isn't inlined into
+// the landing-page chunk. Each becomes its own async chunk fetched when the
+// feature cards mount — keeps the homepage's first paint fast.
+const loadBooks = () => import("../assets/books.json");
+const loadBrain = () => import("../assets/brain.json");
+const loadNotes = () => import("../assets/notes.json");
 
 const WelcomePage = ({ session }) => {
   const containerVariants = {
@@ -85,19 +90,19 @@ const WelcomePage = ({ session }) => {
         <div className="welcome-features">
           {[
             {
-              animation: books,
+              load: loadBooks,
               title: "Study Smarter",
               description:
                 "Upload your documents and chat with an AI that understands your course materials.",
             },
             {
-              animation: brain,
+              load: loadBrain,
               title: "Generate Study Aids",
               description:
                 "Create flashcards, practice quizzes, and summaries with one click.",
             },
             {
-              animation: notes,
+              load: loadNotes,
               title: "Take Smart Notes",
               description:
                 "Save important insights and organize your knowledge by class.",
@@ -114,7 +119,7 @@ const WelcomePage = ({ session }) => {
               <div className="feature-icon">
                 <LazyLottie
                   style={{ height: 120 }}
-                  animationData={feature.animation}
+                  getAnimationData={feature.load}
                   loop={true}
                   autoplay={true}
                 />
