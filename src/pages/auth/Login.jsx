@@ -130,7 +130,7 @@ const Login = () => {
         <motion.p variants={itemVariants}>Login & Sign Up</motion.p>
 
         {error && (
-          <motion.div className="error-message" variants={itemVariants}>
+          <motion.div className="auth-error-message" variants={itemVariants}>
             {error}
           </motion.div>
         )}

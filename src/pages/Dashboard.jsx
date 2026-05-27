@@ -49,14 +49,6 @@ const Dashboard = ({ session }) => {
     return sessionStorage.getItem("lumiTalkOpen") === "true";
   });
   const [talkClassId, setTalkClassId] = useState(null);
-  const [bottomComingSoon, setBottomComingSoon] = useState({
-    isOpen: false,
-    feature: "",
-  });
-  const [accountComingSoon, setAccountComingSoon] = useState({
-    isOpen: false,
-    feature: "",
-  });
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
   const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
@@ -1103,40 +1095,6 @@ const Dashboard = ({ session }) => {
         confirmText="Sign Out"
         cancelText="Cancel"
         danger={true}
-      />
-
-      <ConfirmDialog
-        isOpen={bottomComingSoon?.isOpen}
-        onClose={() => setBottomComingSoon({ isOpen: false, feature: "" })}
-        onConfirm={() => setBottomComingSoon({ isOpen: false, feature: "" })}
-        title={
-          bottomComingSoon?.feature
-            ? `${bottomComingSoon.feature} — Coming Soon`
-            : "Coming Soon"
-        }
-        message={`This feature is coming soon. We'll notify you when ${
-          bottomComingSoon?.feature || "it"
-        } is available.`}
-        confirmText="Got it"
-        cancelText=""
-        danger={false}
-      />
-
-      <ConfirmDialog
-        isOpen={accountComingSoon?.isOpen}
-        onClose={() => setAccountComingSoon({ isOpen: false, feature: "" })}
-        onConfirm={() => setAccountComingSoon({ isOpen: false, feature: "" })}
-        title={
-          accountComingSoon?.feature
-            ? `${accountComingSoon.feature} — Coming Soon`
-            : "Coming Soon"
-        }
-        message={`This feature is coming soon. We'll notify you when ${
-          accountComingSoon?.feature || "it"
-        } is available.`}
-        confirmText="Got it"
-        cancelText=""
-        danger={false}
       />
 
       <ConfirmDialog

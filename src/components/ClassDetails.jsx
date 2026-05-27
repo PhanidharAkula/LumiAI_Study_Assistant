@@ -58,10 +58,6 @@ const ClassDetails = ({
   const [showFlashcards, setShowFlashcards] = useState(
     searchParams.get("flashcards") === "true"
   );
-  const [comingSoonConfirm, setComingSoonConfirm] = useState({
-    isOpen: false,
-    feature: "",
-  });
 
   useEffect(() => {
     if (classData) {
@@ -926,24 +922,6 @@ const ClassDetails = ({
             message={`A file named "${uploadConfirmData.file?.name}" already exists. Do you want to upload it anyway?`}
             confirmText="Upload Anyway"
             cancelText="Skip"
-            danger={false}
-          />
-          <ConfirmDialog
-            isOpen={comingSoonConfirm.isOpen}
-            onClose={() => setComingSoonConfirm({ isOpen: false, feature: "" })}
-            onConfirm={() =>
-              setComingSoonConfirm({ isOpen: false, feature: "" })
-            }
-            title={
-              comingSoonConfirm.feature
-                ? `${comingSoonConfirm.feature} — Coming Soon`
-                : "Coming Soon"
-            }
-            message={`This feature is coming soon. We'll notify you when ${
-              comingSoonConfirm.feature || "it"
-            } is available.`}
-            confirmText="Got it"
-            cancelText=""
             danger={false}
           />
         </>
