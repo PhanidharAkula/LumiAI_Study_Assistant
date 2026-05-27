@@ -49,15 +49,8 @@ const Dashboard = ({ session }) => {
     return sessionStorage.getItem("lumiTalkOpen") === "true";
   });
   const [talkClassId, setTalkClassId] = useState(null);
-  const [bottomComingSoon, setBottomComingSoon] = useState({
-    isOpen: false,
-    feature: "",
-  });
-  const [accountComingSoon, setAccountComingSoon] = useState({
-    isOpen: false,
-    feature: "",
-  });
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
+  const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);
 
@@ -336,8 +329,7 @@ const Dashboard = ({ session }) => {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        console.error("No user found to delete");
-        alert("Session expired. Please log in again.");
+        console.warn("No user found to delete; redirecting to login.");
         navigate("/login");
         return;
       }
@@ -404,11 +396,8 @@ const Dashboard = ({ session }) => {
       setAccountDeleteSuccess(true);
     } catch (error) {
       console.error("Error deleting account:", error);
-      alert(
-        `An error occurred while deleting your account: ${
-          error.message || "Please try again or contact support."
-        }`
-      );
+      // Friendly, non-technical message (never the raw RPC/DB error string).
+      setAccountDeleteError(true);
       // Don't sign out on error so user can retry
     }
   };
@@ -1109,40 +1098,6 @@ const Dashboard = ({ session }) => {
       />
 
       <ConfirmDialog
-        isOpen={bottomComingSoon?.isOpen}
-        onClose={() => setBottomComingSoon({ isOpen: false, feature: "" })}
-        onConfirm={() => setBottomComingSoon({ isOpen: false, feature: "" })}
-        title={
-          bottomComingSoon?.feature
-            ? `${bottomComingSoon.feature} — Coming Soon`
-            : "Coming Soon"
-        }
-        message={`This feature is coming soon. We'll notify you when ${
-          bottomComingSoon?.feature || "it"
-        } is available.`}
-        confirmText="Got it"
-        cancelText=""
-        danger={false}
-      />
-
-      <ConfirmDialog
-        isOpen={accountComingSoon?.isOpen}
-        onClose={() => setAccountComingSoon({ isOpen: false, feature: "" })}
-        onConfirm={() => setAccountComingSoon({ isOpen: false, feature: "" })}
-        title={
-          accountComingSoon?.feature
-            ? `${accountComingSoon.feature} — Coming Soon`
-            : "Coming Soon"
-        }
-        message={`This feature is coming soon. We'll notify you when ${
-          accountComingSoon?.feature || "it"
-        } is available.`}
-        confirmText="Got it"
-        cancelText=""
-        danger={false}
-      />
-
-      <ConfirmDialog
         isOpen={deleteAccountConfirm}
         onClose={() => setDeleteAccountConfirm(false)}
         onConfirm={handleDeleteAccount}
@@ -1237,6 +1192,18 @@ const Dashboard = ({ session }) => {
         cancelText=""
         danger={false}
         hideBackground={true}
+      />
+
+      {/* Account delete failure dialog — friendly, never shows the raw error */}
+      <ConfirmDialog
+        isOpen={accountDeleteError}
+        onClose={() => setAccountDeleteError(false)}
+        onConfirm={() => setAccountDeleteError(false)}
+        title="Account Deletion Failed"
+        message="Something went wrong while deleting your account. Please try again in a moment, or contact support if it keeps happening."
+        confirmText="OK"
+        cancelText=""
+        danger={false}
       />
     </>
   );

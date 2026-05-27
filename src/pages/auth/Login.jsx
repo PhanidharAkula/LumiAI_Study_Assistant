@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
 import LazyLottie from "../../components/LazyLottie";
 import google from "../../assets/google.json";
 import "./Auth.css";
+// Login reuses the welcome screen's layout classes (.welcome-container,
+// .welcome-logo-name, .login-btn). Import their stylesheet so a direct hit on
+// /login (session-expiry redirect, bookmark, OAuth bounce) is styled even when
+// the welcome page hasn't been visited yet this session.
+import "../WelcomePage.css";
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -130,7 +135,7 @@ const Login = () => {
         <motion.p variants={itemVariants}>Login & Sign Up</motion.p>
 
         {error && (
-          <motion.div className="error-message" variants={itemVariants}>
+          <motion.div className="auth-error-message" variants={itemVariants}>
             {error}
           </motion.div>
         )}
@@ -158,6 +163,12 @@ const Login = () => {
             {loading ? "Connecting..." : "Continue with Google"}
           </motion.button>
         </motion.div>
+
+        <motion.p className="auth-legal-links" variants={itemVariants}>
+          <Link to="/privacy">Privacy</Link>
+          <span aria-hidden="true"> · </span>
+          <Link to="/terms">Terms</Link>
+        </motion.p>
       </motion.div>
     </>
   );

@@ -1,0 +1,81 @@
+/* Shared layout for the public Privacy Policy and Terms pages. */
+.legal-page {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--background-primary-color);
+  padding: 48px 20px 96px;
+  display: flex;
+  justify-content: center;
+}
+
+.legal-content {
+  width: 100%;
+  max-width: 800px;
+}
+
+/* These are reading pages — don't inherit the app-wide pointer cursor on text. */
+.legal-content,
+.legal-content p,
+.legal-content li,
+.legal-content h1,
+.legal-content h2,
+.legal-content strong {
+  cursor: default;
+}
+
+.legal-home-link {
+  display: inline-block;
+  margin-bottom: 28px;
+  font-weight: 600;
+  color: var(--text-primary-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.legal-home-link:hover {
+  opacity: 0.7;
+}
+
+.legal-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.legal-updated {
+  color: var(--text-secondary-color);
+  margin-bottom: 32px;
+  font-size: 0.95rem;
+}
+
+.legal-content h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 10px;
+}
+
+.legal-content p {
+  line-height: 1.7;
+  margin-bottom: 14px;
+  color: var(--text-primary-color);
+}
+
+.legal-content ul {
+  margin: 6px 0 16px 22px;
+  line-height: 1.7;
+}
+
+.legal-content li {
+  margin-bottom: 8px;
+}
+
+.legal-content a {
+  color: var(--text-primary-color);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.legal-content strong {
+  font-weight: 600;
+}

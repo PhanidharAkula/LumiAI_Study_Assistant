@@ -764,7 +764,10 @@ const ChatComponent = ({
         }
       });
 
-      // Build the full context content for this message (for future reference)
+      // Build the full context content once — it's reused both for the stored
+      // message (history) and for the AI request below. Re-running it would
+      // repeat every file fetch + PDF extraction for no reason (the selected
+      // classes/files don't change within this handler).
       const messageContext = await buildAIContext();
 
       const userMessage = {
@@ -806,7 +809,7 @@ const ChatComponent = ({
         },
       ]);
 
-      const context = await buildAIContext();
+      const context = messageContext; // reuse — see note above (no second extraction)
 
       let fullResponse = "";
       console.log("=== AI Context Debug ===");
@@ -1379,6 +1382,9 @@ const ChatComponent = ({
   };
 
   const handleClose = () => {
+    // Abort any in-flight stream so closing mid-response doesn't keep the
+    // request running (wasted work + setState-after-unmount).
+    if (abortController) abortController.abort();
     onClose();
   };
 

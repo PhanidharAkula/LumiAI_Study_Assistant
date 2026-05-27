@@ -273,7 +273,7 @@ CRITICAL JSON FORMATTING RULES:
 
       let flashcardData = "";
 
-      await fetchStreamingResponse(
+      const aiResult = await fetchStreamingResponse(
         prompt,
         "",
         (chunk) => {
@@ -283,6 +283,19 @@ CRITICAL JSON FORMATTING RULES:
         [],
         []
       );
+
+      // If the AI call failed, show the friendly message rather than a
+      // misleading "couldn't parse the flashcards" content error.
+      if (aiResult?.error && aiResult.errorType !== "aborted") {
+        setErrorDialog({
+          isOpen: true,
+          title: "Couldn't generate flashcards",
+          message: aiResult.error,
+        });
+        setGeneratingCards(false);
+        setLoading(false);
+        return;
+      }
 
       // Parse the flashcard data
       let parsedData;
@@ -554,7 +567,7 @@ CRITICAL JSON FORMATTING RULES:
             {showHistoryDropdown && (
               <>
                 <div
-                  className="dropdown-overlay"
+                  className="flashcards-dropdown-overlay"
                   onClick={() => setShowHistoryDropdown(false)}
                 />
                 <motion.div
@@ -564,13 +577,13 @@ CRITICAL JSON FORMATTING RULES:
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <div className="dropdown-header">
+                  <div className="flashcards-dropdown-header">
                     <h3>Flashcard History</h3>
                     <span className="history-count">
                       {flashcardHistory.length} decks
                     </span>
                   </div>
-                  <div className="dropdown-content">
+                  <div className="flashcards-dropdown-content">
                     {flashcardHistory.length === 0 ? (
                       <div className="flashcards-no-history-modern">
                         <div className="empty-history-icon">

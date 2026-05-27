@@ -72,7 +72,15 @@
 
 /* AI / error message alignment */
 .ai-message { align-self: flex-start; }
-.error-message { align-self: center; width: 80%; }
+.error-message {
+  align-self: center;
+  width: 80%;
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;
+}
 
 /* Shared container + content blocks */
 .message-container {
