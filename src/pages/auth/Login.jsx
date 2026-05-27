@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
 import { detectRegion } from "../../utils/region";
-import Lottie from "lottie-react";
+import LazyLottie from "../../components/LazyLottie";
 import google from "../../assets/google.json";
 import "./Auth.css";
 
@@ -178,7 +178,7 @@ const Login = () => {
             onClick={handleGoogleSignIn}
             disabled={loading}
           >
-            <Lottie
+            <LazyLottie
               style={{ width: 50 }}
               animationData={google}
               loop={true}
