@@ -46,6 +46,9 @@ export default defineConfig(({ mode }) => {
       alias: { "@": path.resolve(__dirname, "./src") },
     },
     base: "/",
+    // Strip debug logging from production builds (kept in dev). console.error
+    // and console.warn are preserved for real error reporting in production.
+    esbuild: { pure: ["console.log", "console.debug", "console.info"] },
     build: {
       outDir: "dist",
       assetsDir: "assets",
