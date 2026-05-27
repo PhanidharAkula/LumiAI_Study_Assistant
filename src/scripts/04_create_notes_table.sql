@@ -1,4 +1,6 @@
-CREATE TABLE public.notes (
+-- Notes: user notes, optionally attached to a class.
+-- Idempotent: safe to re-run (IF NOT EXISTS + drop-then-create policy).
+CREATE TABLE IF NOT EXISTS public.notes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id),
   class_id UUID REFERENCES public.classes(id),
@@ -10,13 +12,14 @@ CREATE TABLE public.notes (
 );
 
 -- Create indexes for faster queries
-CREATE INDEX idx_notes_user_id ON public.notes(user_id);
-CREATE INDEX idx_notes_class_id ON public.notes(class_id);
+CREATE INDEX IF NOT EXISTS idx_notes_user_id ON public.notes(user_id);
+CREATE INDEX IF NOT EXISTS idx_notes_class_id ON public.notes(class_id);
 
 -- Set up Row Level Security
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for user access
+DROP POLICY IF EXISTS "Users can manage their own notes" ON public.notes;
 CREATE POLICY "Users can manage their own notes"
 ON public.notes
 FOR ALL

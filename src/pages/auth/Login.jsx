@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
-import { detectRegion } from "../../utils/region";
 import LazyLottie from "../../components/LazyLottie";
 import google from "../../assets/google.json";
 import "./Auth.css";
@@ -30,24 +29,18 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const userRegion = detectRegion();
-
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           // Send OAuth callbacks to the dedicated callback route where
           // we exchange the URL params for a session and then redirect
           // to the dashboard. This ensures new-user signups are handled
-          // correctly.
+          // correctly. (Region is captured after login via set_my_region;
+          // OAuth signup metadata can't reliably carry custom fields.)
           redirectTo: `${window.location.origin}/auth/callback`,
-          // Pass region in metadata
           queryParams: {
             access_type: "offline",
             // No prompt parameter = consent screen only shown on first login
-          },
-          // Store region in user metadata
-          data: {
-            region: userRegion,
           },
         },
       });

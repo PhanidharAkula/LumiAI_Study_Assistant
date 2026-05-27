@@ -8,25 +8,12 @@ const AuthRedirect = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Helper function to detect and update user region
-  const updateUserRegion = async (userId) => {
+  // Persist the browser-detected region. A direct profiles update is blocked by
+  // RLS, so we go through the set_my_region() SECURITY DEFINER RPC, which only
+  // fills region when it's still empty/Unknown (safe to call on every login).
+  const updateUserRegion = async () => {
     try {
-      const userRegion = detectRegion();
-
-      // Check if region is already set
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("region")
-        .eq("id", userId)
-        .maybeSingle();
-
-      // Only update if region is not set or is "Unknown"
-      if (!profile?.region || profile.region === "Unknown") {
-        await supabase
-          .from("profiles")
-          .update({ region: userRegion })
-          .eq("id", userId);
-      }
+      await supabase.rpc("set_my_region", { p_region: detectRegion() });
     } catch (e) {
       console.log("Could not update region:", e);
       // Don't throw - region update is not critical
@@ -51,6 +38,7 @@ const AuthRedirect = () => {
 
           if (urlError) throw urlError;
           if (session) {
+            await updateUserRegion();
             navigate("/dashboard");
             return;
           }
@@ -92,7 +80,7 @@ const AuthRedirect = () => {
           if (setErr) throw setErr;
           if (data?.session) {
             // Update region in profile if not already set
-            await updateUserRegion(data.session.user.id);
+            await updateUserRegion();
             navigate("/dashboard");
             return;
           }
@@ -106,7 +94,7 @@ const AuthRedirect = () => {
           if (polledSession) {
             sessionFound = true;
             // Update region in profile if not already set
-            await updateUserRegion(polledSession.user.id);
+            await updateUserRegion();
             navigate("/dashboard");
             break;
           }

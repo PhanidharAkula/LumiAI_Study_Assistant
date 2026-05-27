@@ -1,4 +1,6 @@
-CREATE TABLE public.classes (
+-- Classes: the top-level container a user organises files/notes/chats under.
+-- Idempotent: safe to re-run (IF NOT EXISTS + drop-then-create policy).
+CREATE TABLE IF NOT EXISTS public.classes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id),
   name TEXT NOT NULL,
@@ -8,12 +10,13 @@ CREATE TABLE public.classes (
 );
 
 -- Create indexes for faster queries
-CREATE INDEX idx_classes_user_id ON public.classes(user_id);
+CREATE INDEX IF NOT EXISTS idx_classes_user_id ON public.classes(user_id);
 
 -- Set up Row Level Security
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for user access
+DROP POLICY IF EXISTS "Users can manage their own classes" ON public.classes;
 CREATE POLICY "Users can manage their own classes"
 ON public.classes
 FOR ALL
