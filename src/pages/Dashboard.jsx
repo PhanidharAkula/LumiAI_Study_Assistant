@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
+import { detectRegion } from "../utils/region";
 import ClassDetails from "../components/ClassDetails";
 import AddClassForm from "../components/AddClassForm";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -106,6 +107,7 @@ const Dashboard = ({ session }) => {
     return () => {
       isMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, location.search]);
 
   useEffect(() => {
@@ -161,7 +163,7 @@ const Dashboard = ({ session }) => {
       try {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
-          .select("is_admin")
+          .select("is_admin, region")
           .eq("id", user.id)
           .limit(1)
           .maybeSingle();
@@ -170,7 +172,19 @@ const Dashboard = ({ session }) => {
         } else {
           setIsAdmin(false);
         }
-      } catch (pe) {
+        // Backfill region for users created before region capture existed:
+        // if it's still empty/Unknown, persist the browser-detected region.
+        // set_my_region() is a no-op when region is already set, so this is
+        // safe to fire on every load (and harmless if the RPC isn't deployed).
+        if (!profile?.region || profile.region === "Unknown") {
+          supabase
+            .rpc("set_my_region", { p_region: detectRegion() })
+            .then(
+              () => {},
+              () => {}
+            );
+        }
+      } catch {
         setIsAdmin(false);
       }
 
@@ -205,11 +219,6 @@ const Dashboard = ({ session }) => {
         setInitialLoading(false);
       }
     }
-  };
-
-  const refreshClasses = () => {
-    hasInitialFetch.current = false;
-    fetchClasses();
   };
 
   const handleAddClass = (newClass) => {
@@ -471,31 +480,9 @@ const Dashboard = ({ session }) => {
     },
   };
 
-  const bgVariants = {
-    hidden: (custom) => ({
-      scale: 0.5,
-      opacity: 0,
-      x: custom.x ?? 0,
-      y: custom.y ?? 0,
-      rotate: custom.rotate ?? 0,
-    }),
-    visible: (custom) => ({
-      scale: 1,
-      opacity: custom.opacity ?? 0.3,
-      x: 0,
-      y: 0,
-      rotate: custom.rotate ?? 0,
-      transition: {
-        type: "spring",
-        stiffness: 150,
-        damping: 12,
-      },
-    }),
-  };
-
   const cardVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: ({ index, loaded }) => ({
+    visible: ({ index }) => ({
       opacity: 1,
       y: 0,
       transition: {
@@ -659,7 +646,7 @@ const Dashboard = ({ session }) => {
                 onClick={async (e) => {
                   e.stopPropagation();
                   try {
-                    const { data: files, error } = await supabase
+                    const { data: files } = await supabase
                       .from("files")
                       .select("id")
                       .eq("class_id", classItem.id);

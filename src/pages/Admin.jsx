@@ -17,6 +17,7 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { userId, userName, userEmail }
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const navigate = useNavigate();
 
@@ -217,7 +218,6 @@ export default function Admin() {
       }
 
       const filePaths = files?.map((f) => f.path).filter(Boolean) || [];
-      console.log(`Found ${filePaths.length} files to delete from storage`);
 
       // Delete files from storage
       if (filePaths.length > 0) {
@@ -227,8 +227,6 @@ export default function Admin() {
 
         if (storageError) {
           console.error("Error deleting files from storage:", storageError);
-        } else {
-          console.log(`Deleted ${filePaths.length} files from storage`);
         }
       }
 
@@ -245,15 +243,11 @@ export default function Admin() {
         );
       }
 
-      console.log("RPC response:", rpcData);
-
       if (rpcData && rpcData.ok === false) {
         throw new Error(
           `User deletion failed: ${rpcData.error || "Unknown error"}`
         );
       }
-
-      console.log("User deleted successfully");
 
       // Close confirm dialog and show success
       setDeleteConfirm(null);
@@ -263,30 +257,10 @@ export default function Admin() {
       await fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
-      alert(
-        `An error occurred while deleting the user: ${
-          error.message || "Please try again."
-        }`
-      );
       setDeleteConfirm(null);
+      setDeleteError(error?.message || "Please try again.");
     }
   }
-
-  const container = {
-    hidden: { opacity: 1 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.03 },
-    },
-  };
-  const item = {
-    hidden: { opacity: 0, y: 10 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.3, ease: "easeOut" },
-    },
-  };
 
   return (
     <div className="dashboard-container">
@@ -704,13 +678,7 @@ export default function Admin() {
               </h2>
               <div className="admin-summary-grid">
                 {/* Users Card */}
-                <motion.div
-                  className="admin-stat-card"
-                  // whileHover={{
-                  //   y: -5,
-                  //   transition: { type: "spring", stiffness: 300 },
-                  // }}
-                >
+                <motion.div className="admin-stat-card">
                   <div className="admin-stat-card-watermark">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -754,14 +722,7 @@ export default function Admin() {
                 </motion.div>
 
                 {/* Storage Card */}
-                {/* Storage Card */}
-                <motion.div
-                  className="admin-stat-card"
-                  // whileHover={{
-                  //   y: -5,
-                  //   transition: { type: "spring", stiffness: 300 },
-                  // }}
-                >
+                <motion.div className="admin-stat-card">
                   <div className="admin-stat-card-watermark">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -1144,6 +1105,22 @@ export default function Admin() {
           onConfirm={() => setDeleteSuccess(false)}
           title="User Deleted Successfully"
           message="The user account and all associated data have been permanently removed."
+          confirmText="OK"
+          cancelText=""
+          danger={false}
+        />
+
+        {/* Delete error dialog */}
+        <ConfirmDialog
+          isOpen={deleteError !== null}
+          onClose={() => setDeleteError(null)}
+          onConfirm={() => setDeleteError(null)}
+          title="Couldn't Delete User"
+          message={
+            deleteError
+              ? `An error occurred while deleting the user: ${deleteError}`
+              : ""
+          }
           confirmText="OK"
           cancelText=""
           danger={false}

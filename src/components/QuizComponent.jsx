@@ -10,7 +10,7 @@ import "./QuizComponent.css";
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-const QuizComponent = ({ isOpen, onClose, classData, allClasses = [] }) => {
+const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }) => {
   // Quiz configuration
   const [difficulty, setDifficulty] = useState("medium");
   const [numQuestions, setNumQuestions] = useState(10);
@@ -21,7 +21,7 @@ const QuizComponent = ({ isOpen, onClose, classData, allClasses = [] }) => {
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
   const [quizScore, setQuizScore] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   // History - dropdown menu
@@ -31,7 +31,7 @@ const QuizComponent = ({ isOpen, onClose, classData, allClasses = [] }) => {
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
 
   // Debug logs
-  const [debugLogs, setDebugLogs] = useState([]);
+  const [, setDebugLogs] = useState([]);
 
   // Error dialog state
   const [errorDialog, setErrorDialog] = useState({
@@ -58,6 +58,7 @@ const QuizComponent = ({ isOpen, onClose, classData, allClasses = [] }) => {
       // Load quiz history for this class
       loadQuizHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, classData]);
 
   // Prevent background scroll when quiz is open
@@ -399,7 +400,7 @@ CRITICAL JSON FORMATTING RULES:
         try {
           parsedQuiz = JSON.parse(fixedData);
           addDebugLog(`✓ JSON fixed and parsed successfully!`, "success");
-        } catch (secondError) {
+        } catch {
           // Log the problematic JSON for debugging
           addDebugLog(`❌ Raw JSON that failed: ${cleanedData}`, "error");
           throw new Error(

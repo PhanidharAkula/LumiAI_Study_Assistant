@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import FileViewer from "./FileViewer";
 import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "./ConfirmDialog";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { getFilePublicUrl } from "../utils/storageUtils";
 import "./ClassDetails.css";
 
@@ -15,14 +15,12 @@ const FlashcardsComponent = lazy(() => import("./FlashcardsComponent"));
 const ClassDetails = ({
   classData,
   isEditing,
-  onEdit,
+  _onEdit,
   onCancelEdit,
   onUpdate,
   onDelete,
   onBack,
 }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +67,7 @@ const ClassDetails = ({
     if (classData) {
       fetchFiles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classData]);
 
   useEffect(() => {
@@ -99,22 +98,6 @@ const ClassDetails = ({
       console.error("Error fetching files:", err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const confirmDelete = () => {
-    if (files.length > 0) {
-      setDeleteConfirmData({
-        isOpen: true,
-        hasFiles: true,
-        fileCount: files.length,
-      });
-    } else {
-      setDeleteConfirmData({
-        isOpen: true,
-        hasFiles: false,
-        fileCount: 0,
-      });
     }
   };
 
@@ -478,7 +461,7 @@ const ClassDetails = ({
 
   const fileCardVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: ({ index, loaded }) => ({
+    visible: ({ index }) => ({
       opacity: 1,
       y: 0,
       transition: {
