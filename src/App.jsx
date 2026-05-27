@@ -12,6 +12,8 @@ const Login = lazy(() => import("./pages/auth/Login"));
 const AuthRedirect = lazy(() => import("./pages/auth/AuthRedirect"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Admin = lazy(() => import("./pages/Admin"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
 
 const PageLoader = () => (
   <div
@@ -118,6 +120,9 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Public legal pages (must be reachable logged-out for Google OAuth review). */}
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route
           path="/chat/:classId?"
           element={<Navigate to="/dashboard?chat=true" />}
