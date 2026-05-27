@@ -5,6 +5,11 @@ import { supabase } from "../../lib/supabaseClient";
 import LazyLottie from "../../components/LazyLottie";
 import google from "../../assets/google.json";
 import "./Auth.css";
+// Login reuses the welcome screen's layout classes (.welcome-container,
+// .welcome-logo-name, .login-btn). Import their stylesheet so a direct hit on
+// /login (session-expiry redirect, bookmark, OAuth bounce) is styled even when
+// the welcome page hasn't been visited yet this session.
+import "../WelcomePage.css";
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
