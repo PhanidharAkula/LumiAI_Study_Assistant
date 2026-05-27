@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import Lottie from "lottie-react";
+import LazyLottie from "../components/LazyLottie";
 import books from "../assets/books.json";
 import brain from "../assets/brain.json";
 import notes from "../assets/notes.json";
@@ -134,7 +134,7 @@ const WelcomePage = ({ session }) => {
               variants={featureCardVariants}
             >
               <div className="feature-icon">
-                <Lottie
+                <LazyLottie
                   style={{ height: 120 }}
                   animationData={feature.animation}
                   loop={true}
