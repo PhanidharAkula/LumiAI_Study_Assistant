@@ -22,7 +22,14 @@
   font-weight: 600;
 }
 
-.tag-edit-button {
+.context-tags-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tag-edit-button,
+.tag-clear-button {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -36,7 +43,8 @@
   transition: opacity 0.2s;
 }
 
-.tag-edit-button:hover {
+.tag-edit-button:hover,
+.tag-clear-button:hover {
   opacity: 1;
 }
 
@@ -127,4 +135,19 @@
   padding: 10px 20px;
   border-bottom: none;
   background-color: var(--background-primary-color);
+}
+
+/* Uploaded file tags - different visual style */
+.uploaded-file-tag {
+  background-color: #F0F9FF;
+  border-color: #3B82F6;
+}
+
+.uploaded-file-tag .tag-icon {
+  color: #1D4ED8;
+}
+
+.uploaded-file-tag .tag-subtext {
+  color: #1D4ED8;
+  font-style: italic;
 }

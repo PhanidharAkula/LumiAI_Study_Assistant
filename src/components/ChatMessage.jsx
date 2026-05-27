@@ -5,7 +5,14 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "./ChatMessage.css";
 
-const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
+const ChatMessage = ({
+  message,
+  type,
+  errorType,
+  isStreaming = false,
+  files = [],
+  contextFiles = [],
+}) => {
   const isUser = type === "user";
   const isTyping = type === "typing";
   const isError = type === "error";
@@ -180,128 +187,147 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
     } else {
       return (
         <div className="markdown-container">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              code({ node, inline, className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || "");
-                const codeString = getPlainText(children).replace(/\n$/, "");
+          {/* Show "Thinking..." animation when streaming with no content yet */}
+          {isStreaming && (!message || message.trim() === "") ? (
+            <div className="thinking-indicator">
+              <span>Thinking</span>
+              <span className="thinking-dots">
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+              </span>
+            </div>
+          ) : (
+            <>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                components={{
+                  code({ node, inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || "");
+                    const codeString = getPlainText(children).replace(
+                      /\n$/,
+                      ""
+                    );
 
-                if (!inline && match) {
-                  return (
-                    <div className="code-block-wrapper">
-                      <div className="code-block-header">
-                        <span className="code-language">{match[1]}</span>
-                        <button
-                          className="copy-code-button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCopyingCode(match[1]);
-                            copyToClipboard(codeString);
-                            setTimeout(() => setCopyingCode(null), 2000);
-                          }}
-                          aria-label="Copy code"
+                    if (!inline && match) {
+                      return (
+                        <div className="code-block-wrapper">
+                          <div className="code-block-header">
+                            <span className="code-language">{match[1]}</span>
+                            <button
+                              className="copy-code-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCopyingCode(match[1]);
+                                copyToClipboard(codeString);
+                                setTimeout(() => setCopyingCode(null), 2000);
+                              }}
+                              aria-label="Copy code"
+                            >
+                              {copyingCode === match[1] ? (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <rect
+                                    x="9"
+                                    y="9"
+                                    width="13"
+                                    height="13"
+                                    rx="2"
+                                    ry="2"
+                                  ></rect>
+                                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <pre className={className} {...props}>
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          </pre>
+                        </div>
+                      );
+                    }
+                    return (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                  a: ({ node, ...props }) => {
+                    return (
+                      <a
+                        {...props}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="markdown-link"
+                      >
+                        {props.children}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="external-link-icon"
                         >
-                          {copyingCode === match[1] ? (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                          ) : (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <rect
-                                x="9"
-                                y="9"
-                                width="13"
-                                height="13"
-                                rx="2"
-                                ry="2"
-                              ></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                      <pre className={className} {...props}>
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      </pre>
-                    </div>
-                  );
-                }
-                return (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-              a: ({ node, ...props }) => {
-                return (
-                  <a
-                    {...props}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="markdown-link"
-                  >
-                    {props.children}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="external-link-icon"
-                    >
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                      <polyline points="15 3 21 3 21 9"></polyline>
-                      <line x1="10" y1="14" x2="21" y2="3"></line>
-                    </svg>
-                  </a>
-                );
-              },
-              p: ({ node, ...props }) => {
-                if (typeof props.children === "string") {
-                  const content = props.children;
-                  const processedContent = content
-                    .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
-                    .replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                      </a>
+                    );
+                  },
+                  p: ({ node, ...props }) => {
+                    if (typeof props.children === "string") {
+                      const content = props.children;
+                      const processedContent = content
+                        .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
+                        .replace(/@(\w+)/g, '<span class="mention">@$1</span>');
 
-                  return (
-                    <p dangerouslySetInnerHTML={{ __html: processedContent }} />
-                  );
-                }
-                return <p {...props} />;
-              },
-            }}
-          >
-            {message}
-          </ReactMarkdown>
-          {isStreaming && <div className="cursor-blink"></div>}
+                      return (
+                        <p
+                          dangerouslySetInnerHTML={{ __html: processedContent }}
+                        />
+                      );
+                    }
+                    return <p {...props} />;
+                  },
+                }}
+              >
+                {message}
+              </ReactMarkdown>
+              {isStreaming && <div className="cursor-blink"></div>}
+            </>
+          )}
         </div>
       );
     }
@@ -322,7 +348,105 @@ const ChatMessage = ({ message, type, errorType, isStreaming = false }) => {
     >
       <div className="message-container">
         {!isTyping && !isError && isUser ? (
-          <div className="message-content user-content">{renderContent()}</div>
+          <>
+            {/* Render context files ABOVE the message (tagged via context selector) */}
+            {contextFiles && contextFiles.length > 0 && (
+              <div className="message-context-files-above">
+                <div className="context-files-header">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+                    <path d="M7 7h.01"></path>
+                  </svg>
+                  <span>Context:</span>
+                </div>
+                <div className="context-files-list">
+                  {contextFiles.map((file, index) => (
+                    <div key={index} className="context-file-chip">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                      </svg>
+                      <span className="context-file-name">{file.name}</span>
+                      <span className="context-file-class">
+                        ({file.className})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Render attached files ABOVE the message (locally uploaded) */}
+            {files && files.length > 0 && (
+              <div className="message-files-above">
+                <div className="uploaded-files-header">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                  <span>Uploaded:</span>
+                </div>
+                <div className="uploaded-files-list">
+                  {files.map((file, index) => (
+                    <div key={index} className="message-file-item">
+                      {file.base64 &&
+                      file.type &&
+                      file.type.startsWith("image/") ? (
+                        <img
+                          src={file.base64}
+                          alt={file.name}
+                          className="message-file-image"
+                        />
+                      ) : (
+                        <div className="message-file-doc">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                          </svg>
+                          <span>{file.name}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="message-content user-content">
+              {renderContent()}
+            </div>
+          </>
         ) : !isTyping && !isError ? (
           <div
             className={`message-content ai-content ${

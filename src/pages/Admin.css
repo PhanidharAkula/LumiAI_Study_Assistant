@@ -1,0 +1,871 @@
+/* ============================================
+   ADMIN PAGE STYLES - Organized by JSX Structure
+   ============================================ */
+
+/* ============================================
+   1. HEADER SECTION
+   ============================================ */
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30px 10px 20px 10px;
+  border-radius: 16px;
+  /* border: 1.5px solid var(--text-primary-color); */
+  /* box-shadow: 0px 4px 0 var(--text-primary-color); */
+  /* background-color: var(--background-secondary-color); */
+  /* background: linear-gradient(135deg, var(--background-secondary-color) 0%, var(--background-primary-color) 100%); */
+}
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.admin-header-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  border: 1.5px solid var(--text-primary-color);
+  background-color: var(--background-secondary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.admin-header h1 {
+  font-weight: 600;
+  margin: 0;
+  font-size: 28px;
+}
+
+.admin-header-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary-color);
+}
+
+/* ============================================
+   2. MAIN LAYOUT (2-Column Grid)
+   ============================================ */
+.admin-main-layout {
+  display: grid;
+  grid-template-columns: 480px 1fr;
+  gap: 20px;
+  align-items: start;
+  /* border: 2px solid red; */
+  padding: 10px;
+}
+
+.admin-main-layout.single-column {
+  grid-template-columns: 1fr;
+}
+
+/* ============================================
+   3. LEFT COLUMN
+   ============================================ */
+.admin-left-column {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 140px);
+  overflow: visible;
+  /* padding-right: 8px; */
+  align-self: start;
+}
+
+/* Search & Filter Card */
+.admin-search-filter-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  background-color: var(--background-secondary-color);
+}
+
+.admin-search-filter-card h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* .admin-search-filter-card h2 .emoji-icon {
+  display: inline-block;
+  transform: translateY(-40px) !important;
+} */
+
+/* Search Input */
+.admin-search-wrapper {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.admin-search-input {
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  /* background-color: var(--background-primary-color); */
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary-color);
+}
+
+.admin-search-input:focus {
+  outline: none !important;
+  box-shadow: 0px 2px 0 var(--text-primary-color) !important;
+  transform: translateY(0) !important;
+}
+
+.admin-search-icon {
+  position: absolute;
+  right: 12px;
+  top: 25%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Filters Section */
+.admin-filters-section {
+  margin-bottom: 0;
+}
+
+.admin-filter-group {
+  margin-bottom: 20px;
+}
+
+.admin-filter-group:last-child {
+  margin-bottom: 0;
+}
+
+.admin-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary-color);
+  margin-bottom: 8px;
+}
+
+.admin-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Mobile select dropdown - hidden by default */
+.admin-filter-select {
+  display: none;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--text-primary-color);
+  background-color: white;
+  color: var(--text-primary-color);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.admin-filter-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--text-secondary-color);
+  box-shadow: none;
+  background-color: white;
+  color: var(--text-primary-color);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.admin-filter-btn.active {
+  border-color: var(--text-primary-color);
+  /* box-shadow: 0px 2px 0 var(--text-primary-color); */
+  background-color: var(--text-primary-color);
+  color: white;
+}
+
+/* Filter Results Badge */
+.admin-filter-results {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: white;
+  border: 1.5px solid var(--text-primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-filter-results-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary-color);
+}
+
+.clear-filters-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--text-primary-color);
+  background-color: var(--background-secondary-color);
+  color: var(--text-primary-color);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Overview Section */
+.admin-overview-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0px 10px 0px;
+  color: var(--text-primary-color);
+}
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+/* Summary Cards */
+.admin-stat-card {
+  padding: 24px;
+  border-radius: 14px;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  background-color: var(--background-secondary-color);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.admin-stat-card-watermark {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 80px;
+  opacity: 0.2;
+}
+
+.admin-stat-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.admin-stat-card-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 7px;
+  border: 1.5px solid var(--text-primary-color);
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.admin-stat-card-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary-color);
+}
+
+.admin-stat-card-value {
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Compact summary cards in left column */
+.admin-left-column .admin-stat-card {
+  padding: 14px;
+}
+
+.admin-left-column .admin-stat-card-value {
+  font-size: 24px;
+}
+
+.admin-left-column .admin-stat-card-label {
+  font-size: 12px;
+}
+
+.admin-left-column .admin-stat-card-watermark {
+  font-size: 60px;
+  top: -15px;
+  right: -15px;
+}
+
+.admin-left-column .admin-stat-card-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+}
+
+.admin-left-column h2 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+/* ============================================
+   4. RIGHT COLUMN
+   ============================================ */
+.admin-right-column {
+  min-width: 0;
+  align-self: start;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-right-column::-webkit-scrollbar {
+  display: none;
+}
+
+/* Users List */
+.users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+}
+
+/* User Card */
+.admin-user-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px;
+  border-radius: 16px;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  background-color: white;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-user-card-rank {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  /* background-color: var(--background-primary-color); */
+  border: 1px solid var(--text-primary-color);
+  color: var(--text-secondary-color);
+}
+
+.admin-user-card-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  cursor: pointer;
+}
+
+.admin-user-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  font-size: 28px;
+  background-color: var(--background-secondary-color);
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-left: 30px;
+}
+
+.admin-user-info {
+  margin-left: 18px;
+}
+
+.admin-user-name-email {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-user-name {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.admin-user-email {
+  color: var(--text-secondary-color);
+  font-size: 14px;
+  font-weight: 400;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+}
+
+.admin-user-stats {
+  color: var(--text-secondary-color);
+  font-size: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-user-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  /* background-color: var(--background-primary-color); */
+  border: 1px solid var(--text-primary-color);
+  font-weight: 500;
+}
+
+.admin-user-meta {
+  color: var(--text-secondary-color);
+  font-size: 13px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-user-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.admin-user-meta-divider {
+  color: var(--text-secondary-color);
+  opacity: 0.5;
+}
+
+/* Delete Button */
+.admin-user-delete-button {
+  padding: 12px 22px !important;
+  border-radius: 120px !important;
+  border: 1.5px solid var(--text-primary-color) !important;
+  box-shadow: 0px 2px 0 var(--text-primary-color) !important;
+  background-color: #f64646 !important;
+  color: white;
+  font-size: 14px !important;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Empty State */
+.admin-empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary-color);
+}
+
+.admin-not-authorized {
+  font-size: x-large;
+  font-weight: 400;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 70vh;
+  cursor: pointer;
+}
+
+/* ============================================
+   5. RESPONSIVE DESIGN
+   ============================================ */
+
+/* Enhanced hover effects for desktop */
+@media (min-width: 1025px) {
+  .admin-stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .admin-user-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .admin-search-input:focus {
+    outline: none;
+    box-shadow: 0px 3px 0 var(--text-primary-color);
+    transform: translateY(-1px);
+  }
+}
+
+/* Tablet and below */
+@media (max-width: 1200px) {
+  .admin-main-layout {
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
+  }
+
+  .admin-left-column {
+    position: static !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    padding-right: 0;
+  }
+
+  .admin-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .admin-header {
+    padding: 20px 15px;
+  }
+
+  .admin-header h1 {
+    font-size: 24px;
+  }
+}
+
+/* Mobile - Enhanced for better UX */
+@media (max-width: 768px) {
+  /* Header adjustments */
+  .admin-header {
+    gap: 15px;
+    padding: 16px 12px;
+    /* margin-bottom: 15px; */
+    margin-top: 10px;
+  }
+
+  .admin-header-left {
+    text-align: center;
+    justify-content: flex-start;
+    gap: 10px;
+    /* border: 1px solid red; */
+  }
+
+  .admin-header-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+
+  .admin-header-left-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .admin-header h1 {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .admin-header-subtitle {
+    font-size: 13px;
+  }
+
+  /* Search & Filter Card */
+  .admin-search-filter-card {
+    padding: 12px;
+  }
+
+  .admin-search-filter-card h2 {
+    font-size: 13px;
+  }
+
+  .admin-search-input {
+    font-size: 14px;
+    padding: 12px 40px 12px 12px;
+  }
+
+  /* Filter buttons - better touch targets */
+  .admin-filter-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  /* Show select dropdowns on mobile, hide buttons */
+  .desktop-filter {
+    display: none !important;
+  }
+
+  .mobile-filter {
+    display: block !important;
+  }
+
+  .admin-filter-label {
+    font-size: 13px;
+  }
+
+  /* Overview section - keep 2x2 grid on mobile */
+  .admin-overview-title {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .admin-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .admin-left-column .admin-stat-card {
+    padding: 12px;
+  }
+
+  .admin-left-column .admin-stat-card-value {
+    font-size: 20px;
+  }
+
+  .admin-left-column .admin-stat-card-label {
+    font-size: 11px;
+  }
+
+  .admin-left-column .admin-stat-card-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .admin-left-column .admin-stat-card-watermark {
+    font-size: 50px;
+  }
+
+  /* User Cards - Stack vertically */
+  .admin-user-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 15px;
+    padding: 16px 12px;
+  }
+
+  .admin-user-card:first-child {
+    margin-top: 10px;
+  }
+
+  .admin-user-card-rank {
+    top: 8px;
+    left: auto;
+    right: 8px;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .admin-user-card-left {
+    width: 100%;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px;
+  }
+
+  .admin-user-avatar {
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 22px !important;
+    margin-left: 0 !important;
+  }
+
+  .admin-user-info {
+    margin-left: 0 !important;
+    width: 100%;
+    flex: 1;
+  }
+
+  .admin-user-name-email {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    margin-bottom: 6px;
+  }
+
+  .admin-user-name {
+    font-size: 16px;
+  }
+
+  .admin-user-email {
+    font-size: 13px;
+  }
+
+  .admin-user-stats {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+  
+  .admin-user-stat-badge {
+    border-radius: 5px;
+    font-size: 10px;
+    padding: 3px 5px;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 5px 0px;
+  }
+
+  .admin-user-meta {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  /* Delete button - full width for better touch */
+  .admin-user-delete-button {
+    justify-content: center;
+    padding: 14px 18px;
+    font-size: 15px;
+    min-height: 48px;
+    margin: 0 auto;
+  }
+
+  /* Filter results */
+  .admin-filter-results {
+    padding: 10px;
+    margin-top: 8px;
+  }
+
+  .clear-filters-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Small Mobile - Single column everything */
+@media (max-width: 480px) {
+  /* Keep 2x2 grid for summary cards even on small screens */
+  .admin-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Larger cards on small screens */
+  .admin-left-column .admin-stat-card {
+    padding: 16px;
+  }
+
+  .admin-left-column .admin-stat-card-value {
+    font-size: 28px;
+  }
+
+  .admin-left-column .admin-stat-card-label {
+    font-size: 13px;
+  }
+
+  .admin-left-column .admin-stat-card-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .admin-left-column .admin-stat-card-watermark {
+    font-size: 60px;
+  }
+
+  /* Header */
+  .admin-header {
+    padding: 14px 10px;
+  }
+
+  .admin-header h1 {
+    font-size: 20px;
+  }
+
+  .admin-header-subtitle {
+    font-size: 12px;
+  }
+
+  .admin-header-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  /* User card - full width avatar on very small screens */
+  .admin-user-card-left {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .admin-user-avatar {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 24px !important;
+  }
+
+  .admin-user-name {
+    font-size: 17px;
+  }
+
+  .admin-user-email {
+    font-size: 13px;
+    word-break: break-all;
+  }
+
+  /* Stack stats vertically */
+  .admin-user-stats {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 4px !important;
+    width: 100%;
+    flex-wrap: nowrap !important;
+  }
+
+  .admin-user-stat-badge {
+    flex: 1;
+    min-width: 0;
+    font-size: 9px;
+    padding: 8px 4px;
+    justify-content: center;
+  }
+
+  .admin-user-meta {
+    flex-wrap: wrap;
+  }
+
+  /* Filter buttons */
+  .admin-filter-btn {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 80px;
+    justify-content: center;
+  }
+
+  /* Search input */
+  .admin-search-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* ============================================
+   6. SMOOTH TRANSITIONS
+   ============================================ */
+.admin-stat-card,
+.admin-user-card,
+.admin-search-input,
+.admin-filter-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import Lottie from "lottie-react";
+import LazyLottie from "../components/LazyLottie";
 import books from "../assets/books.json";
 import brain from "../assets/brain.json";
 import notes from "../assets/notes.json";
@@ -132,15 +132,9 @@ const WelcomePage = ({ session }) => {
               initial="hidden"
               animate="visible"
               variants={featureCardVariants}
-              whileHover={{
-                y: -10,
-                scale: 1.02,
-                transition: { type: "spring", stiffness: 400, damping: 10 },
-              }}
-              whileTap={{ scale: 0.99 }}
             >
               <div className="feature-icon">
-                <Lottie
+                <LazyLottie
                   style={{ height: 120 }}
                   animationData={feature.animation}
                   loop={true}

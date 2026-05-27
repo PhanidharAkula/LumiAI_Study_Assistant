@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
-import Lottie from "lottie-react";
+import { detectRegion } from "../../utils/region";
+import LazyLottie from "../../components/LazyLottie";
 import google from "../../assets/google.json";
 import "./Auth.css";
 
@@ -29,6 +30,8 @@ const Login = () => {
     setLoading(true);
 
     try {
+      const userRegion = detectRegion();
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -37,6 +40,15 @@ const Login = () => {
           // to the dashboard. This ensures new-user signups are handled
           // correctly.
           redirectTo: `${window.location.origin}/auth/callback`,
+          // Pass region in metadata
+          queryParams: {
+            access_type: "offline",
+            // No prompt parameter = consent screen only shown on first login
+          },
+          // Store region in user metadata
+          data: {
+            region: userRegion,
+          },
         },
       });
       if (error) throw error;
@@ -166,7 +178,7 @@ const Login = () => {
             onClick={handleGoogleSignIn}
             disabled={loading}
           >
-            <Lottie
+            <LazyLottie
               style={{ width: 50 }}
               animationData={google}
               loop={true}

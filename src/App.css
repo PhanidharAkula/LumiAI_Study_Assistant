@@ -15,7 +15,19 @@
   /* outline: 1px solid red; */
 }
 
-p, h1, h2, h3, h4, h5, h6, span, label, a, button, input, textarea {
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+label,
+a,
+button,
+input,
+textarea {
   cursor: pointer;
 }
 
@@ -64,8 +76,13 @@ textarea,
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {
@@ -78,7 +95,7 @@ textarea,
   body {
     font-size: 14px;
   }
-  
+
   .spinner {
     width: 32px;
     height: 32px;

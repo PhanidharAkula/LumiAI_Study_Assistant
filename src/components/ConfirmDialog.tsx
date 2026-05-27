@@ -3,6 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import "./ConfirmDialog.css";
 
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+  hideBackground?: boolean;
+}
+
 const ConfirmDialog = ({
   isOpen,
   onClose,
@@ -12,7 +24,8 @@ const ConfirmDialog = ({
   confirmText = "Delete",
   cancelText = "Cancel",
   danger = false,
-}) => {
+  hideBackground = false,
+}: ConfirmDialogProps) => {
   const overlayVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -68,6 +81,28 @@ const ConfirmDialog = ({
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
       );
+    } else if (
+      title &&
+      (title.includes("Successfully Deleted") ||
+        title.includes("Deleted Successfully"))
+    ) {
+      // Success checkmark icon for account deletion confirmation
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="30"
+          height="30"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      );
     } else if (title && title.includes("File Already Exists")) {
       return (
         <svg
@@ -85,6 +120,30 @@ const ConfirmDialog = ({
           <polyline points="14 2 14 8 20 8" />
           <path d="M12 18v-6" />
           <path d="M12 9h.01" />
+        </svg>
+      );
+    } else if (
+      title &&
+      (title.includes("Unsupported") ||
+        title.includes("No Files") ||
+        title.includes("Failed"))
+    ) {
+      // Alert/Warning icon for error states
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="30"
+          height="30"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
       );
     } else if (title && title.toLowerCase().includes("coming")) {
@@ -126,11 +185,25 @@ const ConfirmDialog = ({
   };
 
   const getIconClass = () => {
-    if (title && title.includes("Sign Out")) return "sign-out-icon";
+    if (title && title.includes("Sign Out")) return "accdel-signout-icon";
+    if (
+      title &&
+      (title.includes("Successfully Deleted") ||
+        title.includes("Deleted Successfully"))
+    )
+      return "accdel-success-icon";
     if (title && title.includes("File Already Exists"))
-      return "file-exists-icon";
-    if (title && title.toLowerCase().includes("coming")) return "info-icon";
-    return "delete-icon";
+      return "accdel-fileexists-icon";
+    if (
+      title &&
+      (title.includes("Unsupported") ||
+        title.includes("No Files") ||
+        title.includes("Failed"))
+    )
+      return "accdel-warning-icon";
+    if (title && title.toLowerCase().includes("coming"))
+      return "accdel-info-icon";
+    return "accdel-delete-icon";
   };
 
   const getDisplayTitle = () => {
@@ -148,23 +221,28 @@ const ConfirmDialog = ({
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (isOpen) {
-      document.body.classList.add("confirm-dialog-open");
+      document.body.classList.add("accdel-dialog-open");
+      if (hideBackground) {
+        document.body.classList.add("accdel-hide-bg");
+      }
       document.body.style.overflow = "hidden";
     } else {
-      document.body.classList.remove("confirm-dialog-open");
+      document.body.classList.remove("accdel-dialog-open");
+      document.body.classList.remove("accdel-hide-bg");
       document.body.style.overflow = "";
     }
     return () => {
-      document.body.classList.remove("confirm-dialog-open");
+      document.body.classList.remove("accdel-dialog-open");
+      document.body.classList.remove("accdel-hide-bg");
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, [isOpen, hideBackground]);
 
   return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="confirm-dialog-overlay"
+          className="accdel-dialog-overlay"
           variants={overlayVariants}
           initial="hidden"
           animate="visible"
@@ -172,40 +250,40 @@ const ConfirmDialog = ({
           onClick={onClose}
         >
           <motion.div
-            className="confirm-dialog"
+            className="accdel-main-dialog"
             variants={dialogVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={`confirm-dialog-icon ${getIconClass()}`}>
+            <div className={`accdel-icon-wrapper ${getIconClass()}`}>
               {renderIcon()}
             </div>
-            <h2 className="confirm-dialog-title">{getDisplayTitle()}</h2>
-            <p className="confirm-dialog-message">{message}</p>
-            <div className="confirm-dialog-actions">
-              {!title || !title.toLowerCase().includes("coming") ? (
+            <h2 className="accdel-dialog-title">{getDisplayTitle()}</h2>
+            <p className="accdel-dialog-message">{message}</p>
+            <div className="accdel-dialog-actions">
+              {cancelText && cancelText.trim() !== "" && (
                 <motion.button
-                  className="confirm-dialog-button confirm-cancel-button"
+                  className="accdel-dialog-btn accdel-cancel-btn"
                   onClick={onClose}
                   whileHover={{
                     scale: 1.03,
                     y: -3,
-                    transition: { type: "spring", stiffness: 300, damping: 5 },
+                    transition: { type: "spring", stiffness: 300, damping: 25 },
                   }}
                   whileTap={{ scale: 0.98 }}
                 >
                   {cancelText}
                 </motion.button>
-              ) : null}
+              )}
 
               <motion.button
-                className={`confirm-dialog-button confirm-confirm-button ${
-                  danger ? "danger" : ""
+                className={`accdel-dialog-btn accdel-confirm-btn ${
+                  danger ? "accdel-danger" : ""
                 } ${
-                  title && title.toLowerCase().includes("coming")
-                    ? "coming-soon"
+                  !cancelText || cancelText.trim() === ""
+                    ? "accdel-single-btn"
                     : ""
                 }`}
                 onClick={onConfirm}
@@ -223,7 +301,7 @@ const ConfirmDialog = ({
         </motion.div>
       )}
     </AnimatePresence>,
-    typeof document !== "undefined" ? document.body : null
+    document.body
   );
 };
 

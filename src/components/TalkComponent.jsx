@@ -1,9 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { motion } from "framer-motion";
-import {
-  fetchAIResponse,
-  fetchStreamingResponse,
-} from "../services/openaiService";
+import { motion, useAnimation } from "framer-motion";
+import { fetchAIResponse } from "../services/aiService";
 import "./TalkComponent.css";
 
 const TalkComponent = ({
@@ -15,46 +12,89 @@ const TalkComponent = ({
   const [voiceIndex, setVoiceIndex] = useState(0);
   const [started, setStarted] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [transcript, setTranscript] = useState([]); // { speaker: 'user'|'assistant', text }
-  const [aiPartial, setAiPartial] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [muted, setMuted] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
-  const utteranceRef = useRef(null);
+
   const synthRef = useRef(
     typeof window !== "undefined" ? window.speechSynthesis : null
   );
   const recognitionRef = useRef(null);
   const abortControllerRef = useRef(null);
-  const tokenBufferRef = useRef("");
-  const flushTimerRef = useRef(null);
-  const aiQueueRef = useRef([]);
   const playingRef = useRef(false);
+  const conversationHistoryRef = useRef([]);
+  const circleControls = useAnimation();
+  const animationFrameRef = useRef(null);
+  const currentUtteranceRef = useRef(null);
+
+  // Cleanup on unmount or page refresh
+  useEffect(() => {
+    return () => {
+      // Stop everything when component unmounts
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+          recognitionRef.current = null;
+        } catch (e) {}
+      }
+      if (synthRef.current) synthRef.current.cancel();
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  // Animate circle with dynamic pulsing based on speech or thinking
+  useEffect(() => {
+    if (speaking) {
+      const animatePulse = () => {
+        const randomScale = 1.05 + Math.random() * 0.15;
+        circleControls.start({
+          scale: randomScale,
+          transition: {
+            duration: 0.12 + Math.random() * 0.08,
+            ease: "easeOut",
+          },
+        });
+        animationFrameRef.current = setTimeout(
+          animatePulse,
+          120 + Math.random() * 80
+        );
+      };
+      animatePulse();
+    } else if (thinking) {
+      // Gentle pulsing while thinking
+      const animateThinking = () => {
+        circleControls.start({
+          scale: [1, 1.08, 1],
+          transition: { duration: 1.2, ease: "easeInOut", repeat: Infinity },
+        });
+      };
+      animateThinking();
+    } else {
+      if (animationFrameRef.current) clearTimeout(animationFrameRef.current);
+      circleControls.start({ scale: 1, transition: { duration: 0.3 } });
+    }
+    return () => {
+      if (animationFrameRef.current) clearTimeout(animationFrameRef.current);
+    };
+  }, [speaking, thinking, circleControls]);
 
   useEffect(() => {
-    // load available voices
     const loadVoices = () => {
-      const all =
-        (synthRef.current &&
-          synthRef.current.getVoices &&
-          synthRef.current.getVoices()) ||
-        [];
-
-      // Prefer high-quality English voices and pick top 5 best matches.
+      const all = synthRef.current?.getVoices?.() || [];
       const preferred = [
-        "google", // Google voices (Chrome)
+        "google",
+        "enhanced",
+        "premium",
         "neural",
-        "wave",
-        "alloy",
-        "alex",
+        "natural",
         "samantha",
+        "alex",
+        "karen",
         "daniel",
-        "en-US",
+        "en-us",
+        "en-gb",
       ];
-
       const lower = (s) => (s || "").toLowerCase();
-
-      // Score voices by presence of preferred substrings
       const scored = all
         .map((v) => ({
           v,
@@ -68,112 +108,85 @@ const TalkComponent = ({
         .sort((a, b) => b.score - a.score || (a.v.name > b.v.name ? 1 : -1))
         .map((s) => s.v);
 
-      // Take top 5; if none match scoring, fall back to first 5 available
-      const top5 = scored.length ? scored.slice(0, 5) : all.slice(0, 5);
+      // Remove duplicates by voice name
+      const uniqueVoices = [];
+      const seenNames = new Set();
+      for (const voice of scored) {
+        if (!seenNames.has(voice.name)) {
+          seenNames.add(voice.name);
+          uniqueVoices.push(voice);
+        }
+      }
+
+      const top5 = uniqueVoices.length
+        ? uniqueVoices.slice(0, 5)
+        : all.slice(0, 5);
       setVoices(top5);
     };
-
     loadVoices();
-    if (
-      synthRef.current &&
-      typeof synthRef.current.onvoiceschanged !== "undefined"
-    ) {
+    if (synthRef.current) {
       synthRef.current.onvoiceschanged = loadVoices;
     }
-
     return () => {
       if (synthRef.current) synthRef.current.onvoiceschanged = null;
     };
   }, []);
 
-  const cycleVoice = () => {
-    if (!voices || voices.length === 0) return;
-    setVoiceIndex((i) => (i + 1) % voices.length);
-  };
+  // Load saved voice index from localStorage
+  useEffect(() => {
+    const savedVoiceIndex = localStorage.getItem("lumiTalkVoiceIndex");
+    if (savedVoiceIndex !== null) {
+      setVoiceIndex(parseInt(savedVoiceIndex, 10));
+    }
+  }, []);
 
   const openVoiceMenu = () => setVoiceMenuOpen((v) => !v);
-
   const selectVoice = (i) => {
     setVoiceIndex(i);
     setVoiceMenuOpen(false);
+    // Save to localStorage
+    localStorage.setItem("lumiTalkVoiceIndex", i.toString());
   };
 
   const speakText = (text) => {
-    if (!synthRef.current) return;
+    if (!synthRef.current || !text || muted) return;
+
+    // Cancel any existing speech
+    if (currentUtteranceRef.current) {
+      synthRef.current.cancel();
+    }
+
     try {
-      // cancel any existing speech
       const u = new SpeechSynthesisUtterance(text);
       if (voices && voices[voiceIndex]) u.voice = voices[voiceIndex];
-      // Make voice slightly faster and a bit lower pitch to sound more human/robotic hybrid
-      u.rate = 1.05;
-      u.pitch = 0.98;
+
+      // Natural, comfortable speech settings
+      u.rate = 1.02;
+      u.pitch = 1.05;
+      u.volume = 1.0;
+
       u.onstart = () => setSpeaking(true);
       u.onend = () => {
         setSpeaking(false);
-        // play next queued chunk if any
-        playingRef.current = false;
-        playAiQueue();
+        currentUtteranceRef.current = null;
       };
-      utteranceRef.current = u;
-      // Queue speaking so incremental chunks don't interrupt
-      aiQueueRef.current.push(u);
-      playAiQueue();
+      u.onerror = (e) => {
+        console.error("Speech error:", e);
+        setSpeaking(false);
+        currentUtteranceRef.current = null;
+      };
+
+      currentUtteranceRef.current = u;
+      synthRef.current.speak(u);
     } catch (e) {
       console.error("Speech synthesis error:", e);
     }
   };
 
-  const playAiQueue = () => {
-    if (playingRef.current) return;
-    const u = aiQueueRef.current.shift();
-    if (!u) return;
-    playingRef.current = true;
-    try {
-      synthRef.current.speak(u);
-    } catch (e) {
-      console.error("Error playing queued utterance:", e);
-      playingRef.current = false;
-    }
-  };
-
-  const flushTokenBuffer = () => {
-    const buf = tokenBufferRef.current;
-    if (!buf) return;
-    tokenBufferRef.current = "";
-    // append to partial AI text
-    setAiPartial((p) => p + buf);
-    // enqueue TTS for the buffered chunk
-    speakText(buf);
-  };
-
-  const handleStart = async () => {
-    // Start the voice-first conversation — user speaks first.
-    setLoading(false);
-    setStarted(true);
-    // Immediately begin listening so the user can speak first.
-    startListening();
-  };
-
-  const handleStop = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-      setListening(false);
-    }
-    if (synthRef.current) synthRef.current.cancel();
-    // stop any streaming
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    tokenBufferRef.current = "";
-    if (flushTimerRef.current) {
-      clearInterval(flushTimerRef.current);
-      flushTimerRef.current = null;
-    }
-    setSpeaking(false);
-    // keep the session started so user can start again if desired
-  };
-
+  // Continuous listening - always on when started
   const startListening = () => {
+    if (muted || recognitionRef.current) return;
+
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -183,24 +196,36 @@ const TalkComponent = ({
 
     const r = new SpeechRecognition();
     r.lang = "en-US";
-    r.interimResults = false;
+    r.interimResults = true;
+    r.continuous = true;
     r.maxAlternatives = 1;
 
-    r.onstart = () => setListening(true);
-    r.onend = () => setListening(false);
-    r.onerror = (e) => {
-      console.error("Speech recognition error:", e);
-      setListening(false);
-    };
     r.onresult = (ev) => {
-      const text = Array.from(ev.results)
-        .map((res) => res[0].transcript)
-        .join(" ");
-      if (text && text.trim()) {
-        // push user transcript
-        setTranscript((t) => [...t, { speaker: "user", text }]);
-        // send to AI streaming
-        sendToAI(text);
+      const last = ev.results[ev.results.length - 1];
+      if (last.isFinal) {
+        const text = last[0].transcript.trim();
+        if (text) {
+          // User spoke - interrupt AI if speaking
+          if (speaking && currentUtteranceRef.current) {
+            synthRef.current.cancel();
+            setSpeaking(false);
+          }
+          conversationHistoryRef.current.push({ role: "user", content: text });
+          sendToAI(text);
+        }
+      }
+    };
+
+    r.onerror = (e) => {
+      if (e.error !== "no-speech" && e.error !== "aborted") {
+        console.error("Speech recognition error:", e);
+      }
+    };
+
+    r.onend = () => {
+      // Auto-restart if still active and not muted
+      if (started && !muted) {
+        setTimeout(() => startListening(), 100);
       }
     };
 
@@ -213,62 +238,100 @@ const TalkComponent = ({
   };
 
   const sendToAI = async (userText) => {
-    setLoading(true);
-    setAiPartial("");
-    tokenBufferRef.current = "";
-    // ensure any previous stream is aborted
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const ac = new AbortController();
     abortControllerRef.current = ac;
 
-    // start periodic flush to group tokens for TTS
-    if (!flushTimerRef.current) {
-      flushTimerRef.current = setInterval(() => {
-        if (tokenBufferRef.current) flushTokenBuffer();
-      }, 400);
-    }
-
     try {
-      const onToken = (token) => {
-        // accumulate tokens into a small buffer, flush periodically
-        tokenBufferRef.current += token;
-        // also update live assistant text for transcript preview
-        setAiPartial((p) => p + token);
-      };
-
-      const result = await fetchStreamingResponse(
+      setThinking(true);
+      // Build conversation history - pass isVoiceMode: true for natural conversation
+      const response = await fetchAIResponse(
         userText,
         "",
-        onToken,
-        ac.signal
+        conversationHistoryRef.current,
+        true
       );
-      if (result && result.text) {
-        setTranscript((t) => [
-          ...t,
-          { speaker: "assistant", text: result.text },
-        ]);
-      } else if (result && result.error && result.text) {
-        setTranscript((t) => [
-          ...t,
-          { speaker: "assistant", text: result.text },
-        ]);
+
+      if (response?.text) {
+        const aiText = response.text;
+        conversationHistoryRef.current.push({
+          role: "assistant",
+          content: aiText,
+        });
+        setThinking(false);
+        speakText(aiText);
+      } else {
+        setThinking(false);
       }
     } catch (e) {
-      if (e.name === "AbortError") {
-        console.log("AI stream aborted");
-      } else {
-        console.error("Error streaming AI response:", e);
+      setThinking(false);
+      if (e.name !== "AbortError") {
+        console.error("Error getting AI response:", e);
       }
     } finally {
-      setLoading(false);
-      // flush any remaining buffer
-      if (tokenBufferRef.current) flushTokenBuffer();
-      if (flushTimerRef.current) {
-        clearInterval(flushTimerRef.current);
-        flushTimerRef.current = null;
-      }
       abortControllerRef.current = null;
-      setAiPartial("");
+    }
+  };
+
+  const startConversation = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+
+      setStarted(true);
+
+      // Simple, natural greeting
+      const greetings = [
+        "Hi! What can I help you with?",
+        "Hello! How can I assist you today?",
+        "Hey! What would you like to know?",
+        "Hi there! What can I do for you?",
+      ];
+
+      const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+      conversationHistoryRef.current = [
+        { role: "assistant", content: greeting },
+      ];
+      speakText(greeting);
+
+      // Start listening immediately
+      setTimeout(() => startListening(), 500);
+    } catch (err) {
+      console.error("Microphone permission denied:", err);
+      alert("Microphone permission is required for voice conversation.");
+    }
+  };
+
+  const handleStop = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (e) {}
+    }
+    if (synthRef.current) synthRef.current.cancel();
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    setSpeaking(false);
+    setThinking(false);
+    setStarted(false);
+    conversationHistoryRef.current = [];
+  };
+
+  const toggleMute = () => {
+    const newMuted = !muted;
+    setMuted(newMuted);
+
+    if (newMuted) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+          recognitionRef.current = null;
+        } catch (e) {}
+      }
+    } else {
+      if (started) {
+        startListening();
+      }
     }
   };
 
@@ -278,12 +341,14 @@ const TalkComponent = ({
     <div className="talk-component">
       <div className="talk-header">
         <div className="header-left">
-          <div style={{ position: "relative" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <button
-                className="history-button"
+          {!started && (
+            <div style={{ position: "relative" }}>
+              <motion.button
+                className="talk-voice-button"
                 title={voices[voiceIndex]?.name || "Change voice"}
                 onClick={openVoiceMenu}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -299,45 +364,53 @@ const TalkComponent = ({
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                 </svg>
-              </button>
-
-              <div className="current-voice-label">
-                {voices[voiceIndex]?.name || "Default"}
-              </div>
-            </div>
-
-            {voiceMenuOpen && (
-              <div className="voice-menu">
-                <div className="voice-menu-list">
+                <span className="talk-voice-label">
+                  {voices[voiceIndex]?.name?.substring(0, 15) || "Voice"}
+                </span>
+              </motion.button>
+              {voiceMenuOpen && (
+                <motion.div
+                  className="talk-voice-menu"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
                   {voices && voices.length ? (
                     voices.map((v, i) => (
-                      <button
+                      <motion.button
                         key={i}
-                        className={`voice-menu-item ${
+                        className={`talk-voice-menu-item ${
                           i === voiceIndex ? "active" : ""
                         }`}
                         onClick={() => selectVoice(i)}
+                        whileHover={{
+                          backgroundColor: "rgba(139,92,246,0.08)",
+                        }}
+                        whileTap={{ scale: 0.98 }}
                       >
-                        {v.name} {v.lang ? `(${v.lang})` : ""}
-                      </button>
+                        {v.name}
+                      </motion.button>
                     ))
                   ) : (
-                    <div className="voice-menu-empty">No voices available</div>
+                    <div className="talk-voice-menu-empty">
+                      No voices available
+                    </div>
                   )}
-                </div>
-              </div>
-            )}
-          </div>
+                </motion.div>
+              )}
+            </div>
+          )}
         </div>
-
         <div className="header-right">
-          <button
-            className="history-button"
+          <motion.button
+            className="talk-close-button"
             onClick={() => {
               handleStop();
               onClose();
             }}
             title="Close"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -353,18 +426,22 @@ const TalkComponent = ({
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
-          </button>
+          </motion.button>
         </div>
       </div>
-
       <div className="talk-body">
         {!started ? (
-          <div className="empty-talk">
-            <div className="empty-talk-icon">
+          <div className="talk-empty">
+            <motion.div
+              className="talk-empty-icon"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="44"
-                height="44"
+                width="48"
+                height="48"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -374,95 +451,99 @@ const TalkComponent = ({
               >
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
               </svg>
-            </div>
+            </motion.div>
             <h3>Talk with AI</h3>
-            <p className="talk-sub">
-              Have a voice-first conversation with the assistant.
-            </p>
-            <button
-              className="start-button"
-              onClick={handleStart}
-              disabled={loading}
+            <p className="talk-sub">Start a natural voice conversation</p>
+            <motion.button
+              className="talk-start-button"
+              onClick={startConversation}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {loading ? "Starting…" : "Start"}
-            </button>
+              Start
+            </motion.button>
           </div>
         ) : (
           <div className="talk-active">
             <motion.div
               className="talk-circle"
-              animate={
-                speaking || listening ? { scale: [1, 1.35, 1] } : { scale: 1 }
-              }
-              transition={{
-                duration: 1.2,
-                repeat: speaking || listening ? Infinity : 0,
-                type: "spring",
-                stiffness: 200,
-              }}
+              animate={circleControls}
+              initial={{ scale: 1 }}
             />
-
-            <div className="talk-bottom-icons">
-              <button
-                className={`icon-button mute-button ${
-                  listening ? "" : "muted"
-                }`}
-                title={listening ? "Mute microphone" : "Unmute microphone"}
-                onClick={() => {
-                  if (listening && recognitionRef.current) {
-                    try {
-                      recognitionRef.current.stop();
-                    } catch (e) {}
-                    setListening(false);
-                  } else {
-                    startListening();
-                  }
-                }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                  <line x1="12" y1="19" x2="12" y2="23"></line>
-                  <line x1="8" y1="23" x2="16" y2="23"></line>
-                </svg>
-              </button>
-
-              <button
-                className="icon-button end-button"
-                title="End conversation"
-                onClick={() => {
-                  handleStop();
-                  onClose();
-                }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
           </div>
         )}
       </div>
+
+      {started && (
+        <div className="talk-controls-fixed">
+          <motion.button
+            className={`talk-button-mute ${muted ? "muted" : ""}`}
+            title={muted ? "Unmute" : "Mute"}
+            onClick={toggleMute}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {muted ? (
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            ) : (
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            )}
+          </motion.button>
+          <motion.button
+            className="talk-button-stop"
+            title="End conversation"
+            onClick={handleStop}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </motion.button>
+        </div>
+      )}
     </div>
   );
 };
