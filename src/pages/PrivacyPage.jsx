@@ -39,8 +39,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Usage and device data.</strong> Standard technical
-            information such as browser type and basic interaction logs needed to
-            operate and secure the Service.
+            information such as browser type and basic interaction logs needed
+            to operate and secure the Service.
           </li>
         </ul>
 
@@ -88,9 +88,9 @@ export default function PrivacyPage() {
 
         <h2>Your rights</h2>
         <p>
-          Depending on where you live, you may have the right to access, correct,
-          export, or delete your personal information. To make a request, contact
-          us at akulaphanidhar@gmail.com.
+          Depending on where you live, you may have the right to access,
+          correct, export, or delete your personal information. To make a
+          request, contact us at support@studywithlumi.com.
         </p>
 
         <h2>Children&apos;s privacy</h2>
@@ -109,8 +109,8 @@ export default function PrivacyPage() {
         <h2>Contact us</h2>
         <p>
           Questions about this policy? Email us at{" "}
-          <a href="mailto:akulaphanidhar@gmail.com">
-            akulaphanidhar@gmail.com
+          <a href="mailto:support@studywithlumi.com">
+            support@studywithlumi.com
           </a>
           .
         </p>

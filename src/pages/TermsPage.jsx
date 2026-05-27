@@ -35,8 +35,8 @@ export default function TermsPage() {
           You retain ownership of the classes, files, notes, and other content
           you upload or create ("Your Content"). You grant us a limited license
           to store and process Your Content solely to operate and provide the
-          Service to you. You are responsible for ensuring you have the rights to
-          any content you upload.
+          Service to you. You are responsible for ensuring you have the rights
+          to any content you upload.
         </p>
 
         <h2>Acceptable use</h2>
@@ -53,9 +53,9 @@ export default function TermsPage() {
         <h2>AI-generated content</h2>
         <p>
           Study features are powered by AI and may produce inaccurate or
-          incomplete information. AI output is provided for study assistance only
-          and is not professional, legal, medical, or academic advice. Always
-          verify important information and follow your institution&apos;s
+          incomplete information. AI output is provided for study assistance
+          only and is not professional, legal, medical, or academic advice.
+          Always verify important information and follow your institution&apos;s
           academic-integrity policies.
         </p>
 
@@ -96,8 +96,8 @@ export default function TermsPage() {
         <h2>Contact</h2>
         <p>
           Questions about these Terms? Email us at{" "}
-          <a href="mailto:akulaphanidhar@gmail.com">
-            akulaphanidhar@gmail.com
+          <a href="mailto:support@studywithlumi.com">
+            support@studywithlumi.com
           </a>
           .
         </p>
