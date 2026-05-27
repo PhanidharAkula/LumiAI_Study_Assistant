@@ -16,6 +16,23 @@
   overflow: hidden;
 }
 
+.welcome-footer {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary-color);
+  z-index: 1;
+}
+
+.welcome-footer a {
+  color: var(--text-secondary-color);
+  text-decoration: none;
+}
+
+.welcome-footer a:hover {
+  color: var(--text-primary-color);
+  text-decoration: underline;
+}
+
 /* Animated Background Gradient */
 .welcome-container::before {
   content: '';

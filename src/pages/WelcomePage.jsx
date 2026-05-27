@@ -135,6 +135,12 @@ const WelcomePage = ({ session }) => {
             </motion.div>
           ))}
         </div>
+
+        <motion.footer className="welcome-footer" variants={itemVariants}>
+          <Link to="/privacy">Privacy Policy</Link>
+          <span aria-hidden="true"> · </span>
+          <Link to="/terms">Terms of Service</Link>
+        </motion.footer>
       </motion.div>
     </>
   );
