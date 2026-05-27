@@ -57,6 +57,8 @@ const Dashboard = ({ session }) => {
     feature: "",
   });
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
+  const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
+  const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -142,6 +144,18 @@ const Dashboard = ({ session }) => {
       }
 
       setUser(user);
+
+      // Global self-service account-deletion toggle (admin-controlled).
+      try {
+        const { data: setting } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "account_deletion_enabled")
+          .maybeSingle();
+        if (setting) setAccountDeletionEnabled(setting.value !== false);
+      } catch {
+        // default to enabled
+      }
 
       // fetch profile to determine admin flag
       try {
@@ -297,6 +311,10 @@ const Dashboard = ({ session }) => {
 
   const confirmDeleteAccount = () => {
     setShowMenu(false);
+    if (!accountDeletionEnabled) {
+      setDeletionDisabledNotice(true);
+      return;
+    }
     setDeleteAccountConfirm(true);
   };
 
@@ -1146,6 +1164,18 @@ const Dashboard = ({ session }) => {
         confirmText="Delete Account"
         cancelText="Cancel"
         danger={true}
+      />
+
+      {/* Self-service deletion disabled notice (admin-controlled toggle) */}
+      <ConfirmDialog
+        isOpen={deletionDisabledNotice}
+        onClose={() => setDeletionDisabledNotice(false)}
+        onConfirm={() => setDeletionDisabledNotice(false)}
+        title="Account Deletion Unavailable"
+        message="Account deletion is temporarily disabled. If you need to close your account, please contact support."
+        confirmText="Got it"
+        cancelText=""
+        danger={false}
       />
 
       {/* Class delete confirm dialog (reuses ConfirmDialog component) */}
