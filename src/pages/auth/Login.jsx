@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabaseClient";
 import LazyLottie from "../../components/LazyLottie";
@@ -158,6 +158,12 @@ const Login = () => {
             {loading ? "Connecting..." : "Continue with Google"}
           </motion.button>
         </motion.div>
+
+        <motion.p className="auth-legal-links" variants={itemVariants}>
+          <Link to="/privacy">Privacy</Link>
+          <span aria-hidden="true"> · </span>
+          <Link to="/terms">Terms</Link>
+        </motion.p>
       </motion.div>
     </>
   );
