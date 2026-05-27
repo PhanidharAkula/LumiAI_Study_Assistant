@@ -1,6 +1,12 @@
 -- Safe trigger setup: creates an error log table and a fail-soft trigger
 -- function for auth.users insert events. Run this if your current
 -- trigger/function throws errors and aborts user signups.
+--
+-- This is the ACTIVE signup trigger (it replaces the basic handle_new_user from
+-- migration 00). It now also captures `region` from signup metadata when present
+-- (depends on the region column from 13). For OAuth signups that don't carry a
+-- region, the client fills it in after login via set_my_region() (15).
+-- Depends on deleted_accounts (12).
 
 CREATE TABLE IF NOT EXISTS public.auth_error_log (
   id bigserial PRIMARY KEY,
@@ -16,28 +22,28 @@ DECLARE
 BEGIN
   BEGIN
     -- Check if this email was recently deleted
-    SELECT * INTO deletion_record 
-    FROM public.deleted_accounts 
-    WHERE email = lower(NEW.email) 
+    SELECT * INTO deletion_record
+    FROM public.deleted_accounts
+    WHERE email = lower(NEW.email)
     AND can_reregister_at > now()
     LIMIT 1;
-    
+
     -- If account was recently deleted, prevent profile creation
     IF deletion_record IS NOT NULL THEN
       -- Log that we blocked re-registration
       INSERT INTO public.auth_error_log (context, error_text)
       VALUES (
         'Blocked re-registration for recently deleted account: ' || NEW.email,
-        'Account deleted on ' || deletion_record.deleted_at::text || 
+        'Account deleted on ' || deletion_record.deleted_at::text ||
         '. Can re-register after ' || deletion_record.can_reregister_at::text
       );
       -- Don't create profile, but don't block auth (user will get empty state)
       RETURN NEW;
     END IF;
-    
-    -- Normal profile creation
+
+    -- Normal profile creation (captures region from metadata when provided)
     INSERT INTO public.profiles (
-      id, email, full_name, avatar_url, metadata, created_at, updated_at
+      id, email, full_name, avatar_url, metadata, region, created_at, updated_at
     )
     VALUES (
       NEW.id,
@@ -45,6 +51,7 @@ BEGIN
       NEW.raw_user_meta_data->> 'full_name',
       NEW.raw_user_meta_data->> 'avatar_url',
       COALESCE(NEW.raw_user_meta_data::jsonb, '{}'::jsonb),
+      NEW.raw_user_meta_data->> 'region',
       now(),
       now()
     )

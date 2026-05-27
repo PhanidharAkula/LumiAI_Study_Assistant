@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../lib/supabaseClient";
+import { detectRegion } from "../utils/region";
 import ClassDetails from "../components/ClassDetails";
 import AddClassForm from "../components/AddClassForm";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -162,7 +163,7 @@ const Dashboard = ({ session }) => {
       try {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
-          .select("is_admin")
+          .select("is_admin, region")
           .eq("id", user.id)
           .limit(1)
           .maybeSingle();
@@ -170,6 +171,18 @@ const Dashboard = ({ session }) => {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
+        }
+        // Backfill region for users created before region capture existed:
+        // if it's still empty/Unknown, persist the browser-detected region.
+        // set_my_region() is a no-op when region is already set, so this is
+        // safe to fire on every load (and harmless if the RPC isn't deployed).
+        if (!profile?.region || profile.region === "Unknown") {
+          supabase
+            .rpc("set_my_region", { p_region: detectRegion() })
+            .then(
+              () => {},
+              () => {}
+            );
         }
       } catch {
         setIsAdmin(false);
