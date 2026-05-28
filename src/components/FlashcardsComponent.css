@@ -311,13 +311,16 @@
    ================================================== */
 
 .flashcards-content-area {
+  /* Scrollable region between the fixed header and the bottom of the overlay.
+     flex:1 + min-height:0 lets it own the remaining height and scroll its own
+     overflow — instead of a fixed 100vh box (wrong on mobile) that clipped its
+     content with overflow:hidden and centred it so the top was unreachable.
+     Child views (max-width + margin:0 auto) stay horizontally centred. */
   flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 20px;
-  height: calc(100vh - 92px);
   background: transparent;
 }
 
