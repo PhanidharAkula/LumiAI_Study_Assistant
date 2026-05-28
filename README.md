@@ -5,35 +5,47 @@
 🔗 **Live:** [studywithlumi.com](https://studywithlumi.com) · 👥 **55+ active students**
 
 Lumi AI lets students upload their class materials, then study with an AI tutor
-grounded in _their_ content — answering questions, generating flashcards and
-summaries, all scoped to the documents they uploaded.
+grounded in *their* content — answering questions, generating quizzes and
+flashcards, and scheduling spaced-repetition review, all scoped to the documents
+they uploaded.
 
 ![Lumi AI interface](docs/screenshot-main.png)
 
 ## ✨ Features
 
-- **AI-powered chat** grounded in your uploaded study materials
-- **Document management** — upload and organize materials by class
-- **Contextual understanding** — references your specific documents for relevant answers
-- **Targeted responses** — select specific documents for focused questions
-- **Study tools** — auto-generate flashcards, summaries, and study outlines
-- **Conversation history** — save and revisit past AI interactions
+- **Document-grounded AI chat** — answers come from the student's own uploaded materials
+- **Auto-generated quizzes & flashcards** from selected files
+- **Spaced-repetition review** — SM-2 scheduling with ease factors, intervals, and due dates
+- **Voice mode** — hands-free spoken study via the Web Speech API
+- **Class organization** — upload and organize materials per class
+- **Admin panel** — user analytics, account management, support triage, feature kill-switch
 
 ![Lumi AI study tools](docs/screenshot-quiz.png)
 
 ## 🏗️ Tech Stack
 
-**Frontend:** React, TypeScript, Vite
-**Backend & Data:** Supabase (PostgreSQL, Auth, Storage)
-**AI:** OpenAI API, called via a **Supabase Edge Function** so the API key never reaches the client
-**Hosting:** Custom domain (studywithlumi.com)
+**Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Framer Motion
+**Backend & Data:** Supabase (PostgreSQL with Row-Level Security, Auth, Storage)
+**AI:** Anthropic Claude, called via a **Vercel serverless function** that verifies each caller's token so the API key never reaches the client
+**Auth:** Supabase Auth (Google OAuth)
+**Hosting:** Vercel (frontend + serverless), custom domain
+
+## 🔒 Security Architecture
+
+- **Row-Level Security** on every table — users can only access their own data
+- **Server-side AI** — Claude is only reachable through a serverless function that verifies a valid Supabase token; anonymous calls are rejected, and the API key is never bundled into the client
+- **Hardened RPCs** — privileged operations use `SECURITY DEFINER` functions with restricted search paths and execute grants
+
+## 📚 Full Technical Documentation
+
+For complete architecture, data model, AI flow, and deployment detail, see
+[`docs/OVERVIEW.md`](docs/OVERVIEW.md).
 
 ## 🧑‍💻 What I Built
 
-Solo-designed, built, deployed, and operate the full platform end-to-end —
-frontend, authentication, database, file storage, AI integration, and production
-hosting. OpenAI calls run server-side through a Supabase Edge Function to keep
-credentials off the client. Currently serving 55+ active student users.
+Solo-designed, built, deployed, and operate the entire platform end-to-end —
+frontend, authentication, database, file storage, AI integration, serverless
+backend, and production hosting. Currently serving 55+ active student users.
 
 ## 📫 Contact
 
