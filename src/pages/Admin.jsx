@@ -3,8 +3,26 @@ import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmDialog from "../components/ConfirmDialog";
+import {
+  adminGetAllTickets,
+  adminSetTicketStatus,
+} from "../services/supportService";
 import "./Dashboard.css";
 import "./Admin.css";
+
+const TICKET_STATUS_LABELS = {
+  open: "Open",
+  in_progress: "In progress",
+  resolved: "Resolved",
+};
+
+const TICKET_CATEGORY_LABELS = {
+  general: "General question",
+  account: "Account & login",
+  bug: "Something's broken",
+  feature: "Feature request",
+  other: "Other",
+};
 
 export default function Admin() {
   const [users, setUsers] = useState([]);
@@ -19,6 +37,10 @@ export default function Admin() {
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketFilter, setTicketFilter] = useState("all");
+  const [savingTicketId, setSavingTicketId] = useState(null);
   const navigate = useNavigate();
 
   function formatBytes(bytes) {
@@ -79,6 +101,7 @@ export default function Admin() {
       if (admin) {
         await fetchUsers();
         await fetchSettings();
+        await fetchTickets();
       }
     } catch (err) {
       console.error("init error:", err);
@@ -188,6 +211,32 @@ export default function Admin() {
     }
   }
 
+  async function fetchTickets() {
+    setTicketsLoading(true);
+    try {
+      const { data } = await adminGetAllTickets();
+      setTickets(data);
+    } catch (e) {
+      console.error("Error loading tickets:", e);
+    } finally {
+      setTicketsLoading(false);
+    }
+  }
+
+  async function handleTicketStatusChange(id, status) {
+    setSavingTicketId(id);
+    // Optimistic update; refetch from the server if the write fails.
+    setTickets((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status } : t))
+    );
+    const { error: updErr } = await adminSetTicketStatus(id, status);
+    if (updErr) {
+      console.error("Error updating ticket:", updErr);
+      await fetchTickets();
+    }
+    setSavingTicketId(null);
+  }
+
   async function toggleAccountDeletion() {
     const next = !accountDeletionEnabled;
     setAccountDeletionEnabled(next); // optimistic
@@ -261,6 +310,11 @@ export default function Admin() {
       setDeleteError(error?.message || "Please try again.");
     }
   }
+
+  const filteredTickets =
+    ticketFilter === "all"
+      ? tickets
+      : tickets.filter((t) => t.status === ticketFilter);
 
   return (
     <div className="dashboard-container">
@@ -865,6 +919,118 @@ export default function Admin() {
           {/* RIGHT COLUMN - User Data */}
           <div className="admin-right-column">
             {error && <div className="auth-error">{error}</div>}
+
+            {/* Support tickets triage */}
+            {isAdmin === true && (
+              <motion.div
+                className="admin-tickets-section"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              >
+                <div className="admin-tickets-header">
+                  <h2 className="admin-tickets-title">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ marginRight: 8, transform: "translateY(3px)" }}
+                    >
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Support tickets
+                  </h2>
+                  <span className="admin-tickets-count">{tickets.length}</span>
+                </div>
+
+                <div className="admin-tickets-filters">
+                  {[
+                    { value: "all", label: "All" },
+                    { value: "open", label: "Open" },
+                    { value: "in_progress", label: "In progress" },
+                    { value: "resolved", label: "Resolved" },
+                  ].map((f) => (
+                    <motion.button
+                      key={f.value}
+                      className={`admin-filter-btn ${
+                        ticketFilter === f.value ? "active" : ""
+                      }`}
+                      onClick={() => setTicketFilter(f.value)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {f.label}
+                    </motion.button>
+                  ))}
+                </div>
+
+                {ticketsLoading ? (
+                  <div className="admin-tickets-empty">Loading tickets…</div>
+                ) : filteredTickets.length === 0 ? (
+                  <div className="admin-tickets-empty">
+                    {tickets.length === 0
+                      ? "No support tickets yet."
+                      : "No tickets match this filter."}
+                  </div>
+                ) : (
+                  <div className="admin-tickets-list">
+                    {filteredTickets.map((t) => (
+                      <div key={t.id} className="admin-ticket-card">
+                        <div className="admin-ticket-top">
+                          <span className="admin-ticket-subject">
+                            {t.subject}
+                          </span>
+                          <select
+                            className="admin-ticket-status-select"
+                            value={t.status}
+                            disabled={savingTicketId === t.id}
+                            onChange={(e) =>
+                              handleTicketStatusChange(t.id, e.target.value)
+                            }
+                          >
+                            <option value="open">Open</option>
+                            <option value="in_progress">In progress</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                        </div>
+                        <div className="admin-ticket-meta">
+                          {t.email && (
+                            <>
+                              <a
+                                className="admin-ticket-email"
+                                href={`mailto:${t.email}?subject=Re: ${encodeURIComponent(
+                                  t.subject
+                                )}`}
+                              >
+                                {t.email}
+                              </a>
+                              <span className="admin-ticket-dot">•</span>
+                            </>
+                          )}
+                          <span>
+                            {TICKET_CATEGORY_LABELS[t.category] || t.category}
+                          </span>
+                          <span className="admin-ticket-dot">•</span>
+                          <span>{formatDate(t.created_at)}</span>
+                          <span
+                            className={`admin-ticket-pill admin-ticket-pill--${t.status}`}
+                          >
+                            {TICKET_STATUS_LABELS[t.status] || t.status}
+                          </span>
+                        </div>
+                        <p className="admin-ticket-message">{t.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {loading ? (
               <div className="classes-loading">

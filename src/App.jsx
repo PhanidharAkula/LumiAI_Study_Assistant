@@ -14,6 +14,8 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Admin = lazy(() => import("./pages/Admin"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
+const Support = lazy(() => import("./pages/Support"));
+const Review = lazy(() => import("./pages/Review"));
 
 const PageLoader = () => (
   <div
@@ -117,6 +119,22 @@ function App() {
           element={
             <ProtectedRoute session={session}>
               <Admin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support"
+          element={
+            <ProtectedRoute session={session}>
+              <Support session={session} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/review"
+          element={
+            <ProtectedRoute session={session}>
+              <Review />
             </ProtectedRoute>
           }
         />

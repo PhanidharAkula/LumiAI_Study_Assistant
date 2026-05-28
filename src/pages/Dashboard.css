@@ -125,6 +125,73 @@
   font-weight: 500;
 }
 
+/* Support button (matches the menu button styles, brand-sage accent) */
+.support-menu-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.support-menu-button:hover {
+  background: var(--background-secondary-color);
+}
+
+.support-menu-button p {
+  font-size: medium;
+  font-weight: 500;
+}
+
+/* Review button (daily spaced-repetition entry, with a due-count badge) */
+.review-menu-button {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.review-menu-button:hover {
+  background: var(--background-secondary-color);
+}
+
+.review-menu-button p {
+  font-size: medium;
+  font-weight: 500;
+}
+
+.review-due-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 100px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Admin page styles */
 .users-list {
   display: flex;
