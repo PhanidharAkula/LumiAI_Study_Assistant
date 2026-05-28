@@ -1,5 +1,5 @@
 .dashboard-container {
-  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   padding: 0 50px 50px 50px;
   /* allow popups to overflow the container so the menu isn't clipped on short pages */
@@ -392,7 +392,7 @@
 
 /* Ensure the main classes container fills the viewport minus header/footer so vh-based min-heights behave as expected */
 .classes-container {
-  min-height: calc(100vh - 220px);
+  min-height: calc(100dvh - 220px);
 }
 
 .header-left h1 {
@@ -577,7 +577,7 @@
 .empty-classes {
   text-align: center;
   padding: 60px 20px;
-  height: 70vh;
+  height: 70dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -623,7 +623,7 @@
 }
 
 .classes-loading.full-page {
-  height: 100vh;
+  height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;

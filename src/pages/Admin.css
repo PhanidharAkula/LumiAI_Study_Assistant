@@ -71,7 +71,7 @@
 .admin-left-column {
   position: sticky;
   top: 0;
-  max-height: calc(100vh - 140px);
+  max-height: calc(100dvh - 140px);
   overflow: visible;
   /* padding-right: 8px; */
   align-self: start;
@@ -498,7 +498,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 70vh;
+  height: 70dvh;
   cursor: pointer;
 }
 

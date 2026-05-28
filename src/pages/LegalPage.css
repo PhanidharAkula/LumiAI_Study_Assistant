@@ -1,6 +1,6 @@
 /* Shared layout for the public Privacy Policy and Terms pages. */
 .legal-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   background-color: var(--background-primary-color);
   padding: 48px 20px 96px;

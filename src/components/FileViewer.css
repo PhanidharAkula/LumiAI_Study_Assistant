@@ -17,7 +17,7 @@
   border-radius: 12px;
   width: 90vw;
   max-width: 1200px;
-  height: 90vh;
+  height: 90dvh;
   max-height: 800px;
   box-shadow: var(--shadow-xl);
   display: flex;
@@ -28,7 +28,7 @@
 .file-viewer-content {
   width: 90%;
   max-width: 1000px;
-  height: 85vh;
+  height: 85dvh;
   background-color: white;
   border-radius: 15px;
   border: 1.5px solid var(--text-primary-color);
@@ -182,7 +182,7 @@
 @media (max-width: 768px) {
   .file-viewer-content {
     width: 95%;
-    height: 90vh;
+    height: 90dvh;
   }
   
   .file-viewer-title {
