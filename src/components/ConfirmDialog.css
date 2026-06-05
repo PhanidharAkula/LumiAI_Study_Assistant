@@ -161,6 +161,8 @@ body.accdel-hide-bg>*:not(.accdel-dialog-overlay) {
 @media (max-width: 768px) {
   .accdel-main-dialog {
     width: 100%;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
   }
 
   .accdel-icon-wrapper svg {
@@ -200,9 +202,14 @@ body.accdel-hide-bg>*:not(.accdel-dialog-overlay) {
     margin-bottom: 25px;
   }
 
+  .accdel-dialog-actions {
+    gap: 10px;
+  }
+
   .accdel-dialog-btn {
-    padding: 10px 18px;
+    flex: 1 1 0;
+    padding: 12px 12px;
     font-size: 14px;
-    min-width: 100px;
+    min-width: 0;
   }
 }

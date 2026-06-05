@@ -239,15 +239,9 @@
 
 @media (max-width: 768px) {
   .chat-input-container {
-    padding: 15px;
+    padding: 8px 14px;
     background-color: var(--background-primary-color);
     /* ensure it is opaque on mobile */
-  }
-}
-
-@media (max-width: 768px) {
-  .chat-input-container {
-    padding: 8px 0;
   }
   .chat-form {
     gap: 8px;
@@ -255,27 +249,24 @@
   }
   .chat-input {
     font-size: 15px;
-    padding: 10px 12px;
+    padding: 11px 14px;
   }
   .send-button, .upload-button, .tag-button-bottom, .stop-button {
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
     box-sizing: border-box;
     padding: 0 !important;
-  }
-  .chat-input-container {
-    background-color: var(--background-primary-color);
   }
 
   /* Enforce stop button square and icon size */
   .stop-button {
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
-    min-height: 40px !important;
-    max-width: 40px !important;
-    max-height: 40px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
     padding: 0 !important;
     line-height: 0 !important;
     box-sizing: border-box !important;
@@ -290,5 +281,39 @@
     display: block !important;
     width: 18px !important;
     height: 18px !important;
+  }
+
+  .uploaded-files-preview {
+    padding: 8px;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-input-container {
+    padding: 8px 12px;
+  }
+  .chat-form {
+    gap: 6px;
+  }
+  .chat-input {
+    padding: 10px 12px;
+  }
+  .send-button, .upload-button, .tag-button-bottom {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+  }
+  .stop-button {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+  }
+  .file-preview-item {
+    width: 64px;
+    height: 64px;
   }
 }

@@ -230,22 +230,77 @@
   font-size: 1rem;  cursor: pointer;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
+  .review-content {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
   .review-page {
-    padding: 72px 14px 40px;
+    padding: 72px 16px 40px;
   }
   .review-page .back-button {
     top: 16px;
     left: 16px;
   }
+  .review-title {
+    font-size: 1.5rem;
+  }
+  .review-card {
+    padding: 22px;
+  }
   .review-card-front {
     font-size: 1.2rem;
+  }
+  .review-card-back {
+    font-size: 1.05rem;
   }
   .review-rate-hint {
     display: none;
   }
   .review-rate-btn {
-    padding: 12px 4px;
+    padding: 13px 4px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .review-show-btn {
+    min-height: 48px;
+  }
+  .review-primary-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .review-page {
+    padding: 68px 14px 36px;
+  }
+  .review-title {
+    font-size: 1.3rem;
+  }
+  .review-card {
+    padding: 18px;
+    min-height: 200px;
+  }
+  .review-card-front {
+    font-size: 1.1rem;
+  }
+  .review-ratings {
+    gap: 6px;
+  }
+  .review-rate-btn {
+    padding: 13px 2px;
+    border-radius: 10px;
+  }
+  .review-rate-label {
+    font-size: 0.85rem;
+  }
+  .review-empty {
+    padding: 32px 20px;
+  }
+  .review-status {
+    padding: 48px 0;
   }
 }
 

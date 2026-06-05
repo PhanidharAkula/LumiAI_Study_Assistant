@@ -504,6 +504,36 @@
   .user-message-text { width: 100%; box-sizing: border-box; }
   .ai-message { align-self: stretch; }
 
+  /* Prevent long words / URLs / inline code from overflowing the bubble */
+  .user-message-text,
+  .markdown-container,
+  .markdown-container p,
+  .markdown-container li,
+  .markdown-link {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Inline code can hold long unbreakable tokens */
+  .markdown-container code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Wide tables must scroll instead of overflowing the viewport */
+  .markdown-container table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Code blocks stay inside the bubble and scroll horizontally */
+  .code-block-wrapper { max-width: 100%; }
+  .code-block-wrapper pre,
+  .markdown-container pre { max-width: 100%; }
+
   /* On mobile, always show copy controls (no hover there) */
   .copy-message-button,
   .message-actions,
@@ -740,4 +770,59 @@
 .markdown-container.markdown-container h2 {
   border-bottom: 1px solid rgba(0, 0, 0, 0.10) !important;
   padding-bottom: 0.35em !important;
+}
+
+/* =========================
+   Responsive — tap targets & phone refinements
+   (placed last so they win over base rules above)
+   ========================= */
+@media (max-width: 768px) {
+  /* Comfortable tap targets for copy controls */
+  .copy-message-button {
+    padding: 8px 10px;
+    min-height: 36px;
+  }
+
+  .copy-code-button {
+    padding: 8px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Trim oversized desktop padding on phones */
+  .user-message-text {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+
+  .markdown-container { font-size: 15px; }
+
+  /* Scale down headings so they don't overflow the bubble */
+  .markdown-container h1 { font-size: 1.3em; }
+  .markdown-container h2 { font-size: 1.15em; }
+  .markdown-container h3 { font-size: 1.05em; }
+
+  /* Tighter code blocks / tables */
+  .code-block-wrapper pre,
+  .markdown-container pre { padding: 10px; }
+
+  .code-block-header { padding: 8px 10px; }
+
+  .markdown-container th,
+  .markdown-container td { padding: 8px 10px; }
+
+  /* Reduce list indentation so wrapped lines keep more width */
+  .markdown-container ul,
+  .markdown-container ol { padding-left: 1.4em; }
+
+  /* Keep attached/context file blocks from overflowing */
+  .message-file-item { max-width: 100%; }
+
+  .context-files-list,
+  .uploaded-files-list { width: 100%; }
+
+  /* Comfortable tap target for context chips */
+  .context-file-chip { padding: 6px 12px; }
 }
