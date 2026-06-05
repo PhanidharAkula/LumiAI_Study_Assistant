@@ -192,6 +192,32 @@
   justify-content: center;
 }
 
+/* Progress button (study stats + streak entry) */
+.progress-menu-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.progress-menu-button:hover {
+  background: var(--background-secondary-color);
+}
+
+.progress-menu-button p {
+  font-size: medium;
+  font-weight: 500;
+}
+
 /* Admin page styles */
 .users-list {
   display: flex;

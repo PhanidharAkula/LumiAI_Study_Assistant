@@ -16,6 +16,7 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const Support = lazy(() => import("./pages/Support"));
 const Review = lazy(() => import("./pages/Review"));
+const Progress = lazy(() => import("./pages/Progress"));
 
 const PageLoader = () => (
   <div
@@ -135,6 +136,14 @@ function App() {
           element={
             <ProtectedRoute session={session}>
               <Review />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/progress"
+          element={
+            <ProtectedRoute session={session}>
+              <Progress />
             </ProtectedRoute>
           }
         />
