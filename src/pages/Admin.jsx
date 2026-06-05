@@ -30,6 +30,7 @@ export default function Admin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all"); // all, today, week, month, year
+  const [adminFilter, setAdminFilter] = useState("all"); // all, admin, member
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(null);
@@ -41,6 +42,10 @@ export default function Admin() {
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketFilter, setTicketFilter] = useState("all");
   const [savingTicketId, setSavingTicketId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [adminToggleConfirm, setAdminToggleConfirm] = useState(null); // { userId, userName, makeAdmin }
+  const [savingAdminId, setSavingAdminId] = useState(null);
+  const [adminActionError, setAdminActionError] = useState(null);
   const navigate = useNavigate();
 
   function formatBytes(bytes) {
@@ -86,6 +91,7 @@ export default function Admin() {
       }
 
       const userId = session.user.id;
+      setCurrentUserId(userId);
       const { data: profile, error: profileErr } = await supabase
         .from("profiles")
         .select("is_admin")
@@ -130,6 +136,7 @@ export default function Admin() {
         avatar_url: user.avatar_url,
         created_at: user.created_at,
         region: user.region || "Unknown",
+        is_admin: user.is_admin === true,
         classesCount: parseInt(user.classes_count) || 0,
         filesCount: parseInt(user.files_count) || 0,
         totalStorage: parseInt(user.total_storage) || 0,
@@ -195,8 +202,15 @@ export default function Admin() {
       });
     }
 
+    // Admin access filter
+    if (adminFilter !== "all") {
+      filtered = filtered.filter((user) =>
+        adminFilter === "admin" ? user.is_admin : !user.is_admin
+      );
+    }
+
     setFilteredUsers(filtered);
-  }, [searchQuery, regionFilter, dateFilter, users]);
+  }, [searchQuery, regionFilter, dateFilter, adminFilter, users]);
 
   async function fetchSettings() {
     try {
@@ -248,6 +262,35 @@ export default function Admin() {
       setAccountDeletionEnabled(!next); // revert on failure
       console.error("Error updating setting:", updErr);
     }
+  }
+
+  async function confirmToggleAdmin() {
+    if (!adminToggleConfirm) return;
+    const { userId, makeAdmin } = adminToggleConfirm;
+    setAdminToggleConfirm(null);
+    setSavingAdminId(userId);
+
+    // Optimistic: flip the flag locally; the filter effect re-derives the list.
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, is_admin: makeAdmin } : u))
+    );
+
+    const { data, error } = await supabase.rpc("admin_set_user_admin", {
+      target_user_id: userId,
+      make_admin: makeAdmin,
+    });
+
+    if (error || (data && data.ok === false)) {
+      console.error("admin_set_user_admin failed:", error || data);
+      // Revert on failure.
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, is_admin: !makeAdmin } : u))
+      );
+      setAdminActionError(
+        "Couldn't update admin access. Please try again."
+      );
+    }
+    setSavingAdminId(null);
   }
 
   async function handleDeleteUser() {
@@ -676,12 +719,63 @@ export default function Admin() {
                       <option value="year">Last Year</option>
                     </select>
                   </div>
+
+                  {/* Admin Access Filter */}
+                  <div className="admin-filter-group">
+                    <label className="admin-filter-label">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      <span style={{ marginLeft: "4px" }}>Admin Access</span>
+                    </label>
+                    {/* Desktop: Buttons */}
+                    <div className="admin-filter-buttons desktop-filter">
+                      {[
+                        { value: "all", label: "All" },
+                        { value: "admin", label: "Admins" },
+                        { value: "member", label: "Members" },
+                      ].map((option) => (
+                        <motion.button
+                          key={option.value}
+                          className={`admin-filter-btn ${
+                            adminFilter === option.value ? "active" : ""
+                          }`}
+                          onClick={() => setAdminFilter(option.value)}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {option.label}
+                        </motion.button>
+                      ))}
+                    </div>
+                    {/* Mobile: Select Dropdown */}
+                    <select
+                      className="admin-filter-select mobile-filter"
+                      value={adminFilter}
+                      onChange={(e) => setAdminFilter(e.target.value)}
+                    >
+                      <option value="all">All Users</option>
+                      <option value="admin">Admins Only</option>
+                      <option value="member">Members Only</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Filter Results */}
                 {(searchQuery ||
                   regionFilter !== "all" ||
-                  dateFilter !== "all") && (
+                  dateFilter !== "all" ||
+                  adminFilter !== "all") && (
                   <motion.div
                     className="admin-filter-results"
                     initial={{ opacity: 0, y: -10 }}
@@ -696,6 +790,7 @@ export default function Admin() {
                         setSearchQuery("");
                         setRegionFilter("all");
                         setDateFilter("all");
+                        setAdminFilter("all");
                       }}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -1216,29 +1311,62 @@ export default function Admin() {
                         </div>
                       </div>
 
-                      {/* Delete button */}
-                      <motion.button
-                        className="admin-user-delete-button"
-                        onClick={() =>
-                          setDeleteConfirm({
-                            userId: u.id,
-                            userName: u.full_name || u.email.split("@")[0],
-                            userEmail: u.email,
-                          })
-                        }
-                        whileHover={{
-                          scale: 1.08,
-                          y: -3,
-                          transition: {
-                            type: "spring",
-                            stiffness: 400,
-                            damping: 15,
-                          },
-                        }}
-                        whileTap={{ scale: 0.95, y: 0 }}
-                      >
-                        Delete
-                      </motion.button>
+                      {/* Actions: admin toggle (left) + delete (right) */}
+                      <div className="admin-user-actions">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={u.is_admin}
+                          className={`admin-role-toggle ${
+                            u.is_admin ? "is-admin" : ""
+                          }`}
+                          disabled={
+                            u.id === currentUserId || savingAdminId === u.id
+                          }
+                          title={
+                            u.id === currentUserId
+                              ? "You can't change your own admin access"
+                              : u.is_admin
+                              ? "Revoke admin access"
+                              : "Make this user an admin"
+                          }
+                          onClick={() =>
+                            setAdminToggleConfirm({
+                              userId: u.id,
+                              userName: u.full_name || u.email.split("@")[0],
+                              makeAdmin: !u.is_admin,
+                            })
+                          }
+                        >
+                          <span className="admin-role-toggle-label">Admin</span>
+                          <span className="admin-role-toggle-track">
+                            <span className="admin-role-toggle-thumb" />
+                          </span>
+                        </button>
+
+                        <motion.button
+                          className="admin-user-delete-button"
+                          onClick={() =>
+                            setDeleteConfirm({
+                              userId: u.id,
+                              userName: u.full_name || u.email.split("@")[0],
+                              userEmail: u.email,
+                            })
+                          }
+                          whileHover={{
+                            scale: 1.08,
+                            y: -3,
+                            transition: {
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 15,
+                            },
+                          }}
+                          whileTap={{ scale: 0.95, y: 0 }}
+                        >
+                          Delete
+                        </motion.button>
+                      </div>
                     </div>
                   ))}
               </motion.div>
@@ -1247,6 +1375,40 @@ export default function Admin() {
           {/* End RIGHT COLUMN */}
         </div>
         {/* End 2-Column Layout */}
+
+        {/* Admin role toggle confirmation */}
+        <ConfirmDialog
+          isOpen={adminToggleConfirm !== null}
+          onClose={() => setAdminToggleConfirm(null)}
+          onConfirm={confirmToggleAdmin}
+          title={
+            adminToggleConfirm?.makeAdmin
+              ? "Grant Admin Access"
+              : "Revoke Admin Access"
+          }
+          message={
+            adminToggleConfirm
+              ? adminToggleConfirm.makeAdmin
+                ? `Give ${adminToggleConfirm.userName} admin access? They'll be able to view all users, change admin access, delete accounts, and manage support.`
+                : `Remove admin access from ${adminToggleConfirm.userName}? They'll lose access to the admin dashboard.`
+              : ""
+          }
+          confirmText={adminToggleConfirm?.makeAdmin ? "Make Admin" : "Revoke"}
+          cancelText="Cancel"
+          danger={false}
+        />
+
+        {/* Admin toggle error */}
+        <ConfirmDialog
+          isOpen={adminActionError !== null}
+          onClose={() => setAdminActionError(null)}
+          onConfirm={() => setAdminActionError(null)}
+          title="Couldn't Update Admin Access"
+          message={adminActionError || ""}
+          confirmText="OK"
+          cancelText=""
+          danger={false}
+        />
 
         {/* Delete confirmation dialog */}
         <ConfirmDialog

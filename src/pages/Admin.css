@@ -485,6 +485,74 @@
   gap: 8px;
 }
 
+/* Per-user actions: admin toggle (left) + delete (right) */
+.admin-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+/* Admin role toggle (switch) */
+.admin-role-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 120px;
+  border: 1.5px solid var(--text-primary-color);
+  box-shadow: 0px 2px 0 var(--text-primary-color);
+  background-color: white;
+  color: var(--text-primary-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-role-toggle.is-admin {
+  background-color: var(--background-secondary-color);
+}
+
+.admin-role-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-role-toggle-label {
+  line-height: 1;
+}
+
+.admin-role-toggle-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 100px;
+  border: 1.5px solid var(--text-primary-color);
+  background-color: var(--background-primary-color);
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.admin-role-toggle.is-admin .admin-role-toggle-track {
+  background-color: var(--text-primary-color);
+}
+
+.admin-role-toggle-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--text-primary-color);
+  transition: left 0.15s ease, background-color 0.15s ease;
+}
+
+.admin-role-toggle.is-admin .admin-role-toggle-thumb {
+  left: 17px;
+  background-color: white;
+}
+
 /* Empty State */
 .admin-empty-state {
   text-align: center;
@@ -734,13 +802,23 @@
     gap: 8px;
   }
 
-  /* Delete button - full width for better touch */
+  /* Actions row - full width, toggle + delete side by side */
+  .admin-user-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  /* Delete button - larger touch target */
   .admin-user-delete-button {
     justify-content: center;
     padding: 14px 18px;
     font-size: 15px;
     min-height: 48px;
-    margin: 0 auto;
+  }
+
+  .admin-role-toggle {
+    min-height: 48px;
   }
 
   /* Filter results */
