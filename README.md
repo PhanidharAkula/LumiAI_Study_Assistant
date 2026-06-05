@@ -1,51 +1,55 @@
 # 🎓 Lumi AI — Your AI Study Assistant
 
-**An AI tutoring platform that helps students learn from their own course materials.**
+**Turn your own course materials into a personal AI tutor.**
 
 🔗 **Live:** [studywithlumi.com](https://studywithlumi.com) · 👥 **55+ active students**
 
-Lumi AI lets students upload their class materials, then study with an AI tutor
-grounded in *their* content — answering questions, generating quizzes and
-flashcards, and scheduling spaced-repetition review, all scoped to the documents
-they uploaded.
+Lumi AI is a study platform where students upload their class materials and learn
+with an AI tutor that actually knows *their* content. Instead of generic answers,
+Lumi works from the exact documents you give it — your lecture notes, textbooks,
+and slides — to answer questions, quiz you, and help you remember what you learn.
 
 ![Lumi AI interface](docs/screenshot-main.png)
 
+## 🎯 Who It's For
+
+Students who want to study smarter from their own materials — anyone preparing for
+an exam, working through a course, or trying to actually retain what they read.
+Upload what you're studying, and Lumi becomes a tutor that has read all of it.
+
 ## ✨ Features
 
-- **Document-grounded AI chat** — answers come from the student's own uploaded materials
-- **Auto-generated quizzes & flashcards** from selected files
-- **Spaced-repetition review** — SM-2 scheduling with ease factors, intervals, and due dates
-- **Voice mode** — hands-free spoken study via the Web Speech API
-- **Class organization** — upload and organize materials per class
-- **Admin panel** — user analytics, account management, support triage, feature kill-switch
+- **AI chat, grounded in your materials** — ask questions and get answers drawn from your own uploaded documents, not the open web
+- **Quizzes** — auto-generate practice quizzes from your files, take them, and get scored with a full review
+- **Flashcards** — turn your materials into flashcard decks in a click
+- **Spaced-repetition review** — a daily review queue that resurfaces cards right before you'd forget them, so what you learn actually sticks
+- **Voice mode** — study hands-free with a spoken back-and-forth
+- **Classes** — organize your materials by class and keep everything in one place
+- **Notes & history** — take notes and revisit past study sessions anytime
+- **Support** — built-in help whenever you get stuck
 
 ![Lumi AI study tools](docs/screenshot-quiz.png)
 
-## 🏗️ Tech Stack
+## 📖 How to Use It
 
-**Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Framer Motion
-**Backend & Data:** Supabase (PostgreSQL with Row-Level Security, Auth, Storage)
-**AI:** Anthropic Claude, called via a **Vercel serverless function** that verifies each caller's token so the API key never reaches the client
-**Auth:** Supabase Auth (Google OAuth)
-**Hosting:** Vercel (frontend + serverless), custom domain
+1. **Sign in** with Google.
+2. **Create a class** — for example, "Biology 101."
+3. **Upload your materials** — PDFs, notes, and documents for that class.
+4. **Chat** — ask Lumi anything; answers come straight from your uploaded materials.
+5. **Generate study aids** — make a quiz or a flashcard deck from your files.
+6. **Review daily** — work through the cards that are due and let spaced repetition do the rest.
+7. **Talk** — switch to voice mode for a hands-free study session.
 
-## 🔒 Security Architecture
+## 🧠 Powered by AI
 
-- **Row-Level Security** on every table — users can only access their own data
-- **Server-side AI** — Claude is only reachable through a serverless function that verifies a valid Supabase token; anonymous calls are rejected, and the API key is never bundled into the client
-- **Hardened RPCs** — privileged operations use `SECURITY DEFINER` functions with restricted search paths and execute grants
+Lumi is built on large language models (LLMs) fine-tuned for studying. Every answer
+is grounded in the student's own uploaded materials, so responses stay relevant to
+exactly what they're learning — never generic, off-topic internet answers.
 
-## 📚 Full Technical Documentation
+## 🧑‍💻 About
 
-For complete architecture, data model, AI flow, and deployment detail, see
-[`docs/OVERVIEW.md`](docs/OVERVIEW.md).
-
-## 🧑‍💻 What I Built
-
-Solo-designed, built, deployed, and operate the entire platform end-to-end —
-frontend, authentication, database, file storage, AI integration, serverless
-backend, and production hosting. Currently serving 55+ active student users.
+Solo-designed, built, and operated end-to-end — product, design, and engineering.
+Currently serving 55+ active student users at [studywithlumi.com](https://studywithlumi.com).
 
 ## 📫 Contact
 
