@@ -41,6 +41,3 @@ coverage/
 *.temp
 .cache/
 .vercel
-
-# Internal technical doc — kept local, not published to the repo
-docs/OVERVIEW.md

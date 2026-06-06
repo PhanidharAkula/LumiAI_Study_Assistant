@@ -5,11 +5,9 @@
 🔗 **Live:** [studywithlumi.com](https://studywithlumi.com) · 👥 **55+ active students**
 
 Lumi AI is a study platform where students upload their class materials and learn
-with an AI tutor that actually knows *their* content. Instead of generic answers,
+with an AI tutor that actually knows _their_ content. Instead of generic answers,
 Lumi works from the exact documents you give it (your lecture notes, textbooks,
 and slides) to answer questions, quiz you, and help you remember what you learn.
-
-![Lumi AI interface](docs/screenshot-main.png)
 
 ## 🎯 Who It's For
 
@@ -27,8 +25,6 @@ and Lumi becomes a tutor that has read all of it.
 - **Classes:** organize your materials by class and keep everything in one place
 - **Notes & history:** take notes and revisit past study sessions anytime
 - **Support:** built-in help whenever you get stuck
-
-![Lumi AI study tools](docs/screenshot-quiz.png)
 
 ## 📖 How to Use It
 
