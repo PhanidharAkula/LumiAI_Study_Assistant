@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { supabase } from "./lib/supabaseClient";
+import { isInAppBrowser } from "./lib/inAppBrowser";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
@@ -17,6 +18,7 @@ const TermsPage = lazy(() => import("./pages/TermsPage"));
 const Support = lazy(() => import("./pages/Support"));
 const Review = lazy(() => import("./pages/Review"));
 const Progress = lazy(() => import("./pages/Progress"));
+const OpenInBrowser = lazy(() => import("./components/OpenInBrowser"));
 
 const PageLoader = () => (
   <div
@@ -109,17 +111,40 @@ function App() {
     return <PageLoader />;
   }
 
+  // Google OAuth is blocked inside embedded in-app browsers (LinkedIn,
+  // Instagram, etc.). When detected, the sign-in entry points show a screen
+  // guiding the user to open Lumi AI in their real browser instead of letting
+  // them hit a dead-end "disallowed_useragent" error. Legal pages stay
+  // reachable so OAuth verification (run in a real browser) is unaffected.
+  const inAppBrowser = isInAppBrowser();
+
   return (
     <Suspense fallback={<PageLoader />}>
       <ScrollToTop />
       <Routes>
         <Route
           path="/"
-          element={session ? <Navigate to="/dashboard" /> : <WelcomePage />}
+          element={
+            session ? (
+              <Navigate to="/dashboard" />
+            ) : inAppBrowser ? (
+              <OpenInBrowser />
+            ) : (
+              <WelcomePage />
+            )
+          }
         />
         <Route
           path="/login"
-          element={session ? <Navigate to="/dashboard" /> : <Login />}
+          element={
+            session ? (
+              <Navigate to="/dashboard" />
+            ) : inAppBrowser ? (
+              <OpenInBrowser />
+            ) : (
+              <Login />
+            )
+          }
         />
         <Route path="/auth/callback" element={<AuthRedirect />} />
         <Route
