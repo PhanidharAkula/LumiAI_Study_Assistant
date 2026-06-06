@@ -262,19 +262,6 @@
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .talk-header {
-    padding: 18px 16px;
-  }
-
-  .talk-voice-menu {
-    min-width: 220px;
-    max-width: 92vw;
-  }
-
-  .talk-body {
-    padding: 76px 16px 32px 16px;
-  }
-
   .talk-circle {
     width: 180px;
     height: 180px;
@@ -306,19 +293,6 @@
 }
 
 @media (max-width: 480px) {
-  .talk-header {
-    padding: 14px 14px;
-  }
-
-  .talk-voice-menu {
-    min-width: 200px;
-    max-width: 92vw;
-  }
-
-  .talk-body {
-    padding: 70px 14px 28px 14px;
-  }
-
   .talk-circle {
     width: 160px;
     height: 160px;
@@ -336,16 +310,12 @@
   }
 
   .talk-voice-button {
-    height: 44px;
-    padding: 0 14px;
-  }
-
-  .talk-voice-label {
-    max-width: 90px;
+    height: 40px;
+    padding: 0 12px;
   }
 
   .talk-close-button {
-    height: 44px;
-    width: 44px;
+    height: 40px;
+    width: 40px;
   }
 }

@@ -339,24 +339,31 @@
 /* Tablet Large */
 @media (max-width: 1024px) {
   .welcome-features {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     padding: 0 16px;
-    max-width: 700px;
   }
 
   .feature-card {
     padding: 32px 24px;
   }
 
+  .welcome-logo-name {
+    font-size: clamp(50px, 10vw, 90px);
+  }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .welcome-features {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 700px;
+  }
+
   .feature-card:last-child {
     grid-column: 1 / -1;
     max-width: 340px;
     justify-self: center;
-  }
-
-  .welcome-logo-name {
-    font-size: clamp(50px, 10vw, 90px);
   }
 }
 
@@ -470,10 +477,9 @@
   }
 
   .welcome-login-btn {
-    padding: 13px 36px;
+    padding: 12px 36px;
     font-size: 13px;
-    max-width: 100%;
-    box-shadow:
+    box-shadow: 
       0px 2px 0 var(--text-primary-color),
       0 6px 24px rgba(147, 193, 193, 0.25);
   }
@@ -515,6 +521,61 @@
   .feature-card p:last-child {
     font-size: 12px;
     line-height: 1.4;
+  }
+}
+
+/* Extra Small Mobile */
+@media (max-width: 360px) {
+  .welcome-container {
+    padding: 20px 12px;
+    padding-top: 50px;
+    gap: 12px;
+  }
+
+  .welcome-logo-name {
+    font-size: 36px;
+  }
+
+  .welcome-logo-name::after {
+    width: 40px;
+  }
+
+  .welcome-sub-logo {
+    font-size: 9px;
+    padding: 5px 12px;
+    letter-spacing: 1.5px;
+  }
+
+  .welcome-description {
+    font-size: 12px;
+  }
+
+  .welcome-login-btn {
+    padding: 10px 28px;
+    font-size: 12px;
+  }
+
+  .welcome-features {
+    margin-top: 20px;
+    gap: 10px;
+  }
+
+  .feature-card {
+    padding: 16px 12px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+
+  .feature-icon > div {
+    height: 60px !important;
+  }
+
+  .feature-name {
+    font-size: 14px;
+  }
+
+  .feature-card p:last-child {
+    font-size: 11px;
   }
 }
 

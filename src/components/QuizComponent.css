@@ -1718,9 +1718,6 @@
 
   .quiz-center-container {
     max-width: 100%;
-    margin-top: 40px;
-    padding: 0 16px;
-    box-sizing: border-box;
   }
 
   .quiz-setup-header {
@@ -1823,13 +1820,6 @@
     font-size: 15px;
   }
 
-  /* Actual generate button class used in markup */
-  .quiz-generate-btn-modern {
-    width: 100%;
-    padding: 14px 20px;
-    font-size: 15px;
-  }
-
   /* ===== QUIZ TAKING - SIMPLE MOBILE ===== */
   .quiz-taking-container {
     height: auto;
@@ -1844,26 +1834,9 @@
     gap: 0;
   }
 
-  /* Collapse the sidebar panel on mobile, but keep the action buttons reachable.
-     (Hiding the whole panel would also hide Submit/Quit, leaving no way to
-     finish the quiz on phones.) Strip the panel chrome and hide its
-     informational sections; only .quiz-header-actions stays visible. */
+  /* Hide sidebar completely on mobile */
   .quiz-taking-header {
-    position: static;
-    display: contents;
-    max-height: none;
-    overflow: visible;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0;
-  }
-
-  .quiz-info-header,
-  .quiz-progress,
-  .quiz-stats-grid,
-  .quiz-info-details {
-    display: none;
+    display: none !important;
   }
 
   /* Questions take full width */
@@ -1912,21 +1885,6 @@
     gap: 8px;
   }
 
-  /* Actual option class used in markup */
-  .quiz-option {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  /* Avoid horizontal shift that can cause overflow on touch */
-  .quiz-option:hover {
-    transform: none;
-  }
-
-  .quiz-option span {
-    font-size: 14px;
-  }
-
   .option-letter {
     width: 24px;
     height: 24px;
@@ -1965,10 +1923,6 @@
     padding: 14px 20px;
     font-size: 15px;
     margin: 0;
-  }
-
-  .quiz-header-actions {
-    padding: 0 12px 12px;
   }
 
   .quiz-quit-button {
@@ -2020,22 +1974,9 @@
     padding: 12px 0;
   }
 
-  .quiz-score-circle {
-    width: 96px;
-    height: 96px;
-  }
-
   .quiz-results-score svg {
     width: 80px;
     height: 80px;
-  }
-
-  .score-percentage-large {
-    font-size: 24px;
-  }
-
-  .score-fraction-text {
-    font-size: 12px;
   }
 
   .score-percentage {
@@ -2091,12 +2032,6 @@
     gap: 8px;
   }
 
-  .results-action-btn {
-    flex: 1;
-    padding: 13px 14px;
-    font-size: 13px;
-  }
-
   .quiz-action-button {
     flex: 1;
     padding: 12px 16px;
@@ -2135,29 +2070,6 @@
     padding: 10px;
     font-size: 12px;
   }
-
-  /* Actual review-card classes used in markup */
-  .quiz-review-card {
-    padding: 14px;
-    border-radius: 10px;
-  }
-
-  .quiz-review-question-text {
-    font-size: 14px;
-  }
-
-  .quiz-review-answers {
-    padding: 12px;
-  }
-
-  .quiz-review-answers p {
-    font-size: 13px;
-  }
-
-  .quiz-explanation {
-    padding: 12px;
-    font-size: 13px;
-  }
 }
 
 /* Mobile (480px and below) */
@@ -2168,11 +2080,7 @@
   }
 
   .quiz-header-text h1 {
-    font-size: 15px;
-  }
-
-  .quiz-setup-header h2 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .quiz-header-text p {
@@ -2202,5 +2110,20 @@
   .quiz-number-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
+  }
+}
+
+/* Extra small devices (360px and below) */
+@media (max-width: 360px) {
+  .quiz-header-text h1 {
+    font-size: 14px;
+  }
+
+  .quiz-setup-header h2 {
+    font-size: 18px;
+  }
+
+  .quiz-number-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

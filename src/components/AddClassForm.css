@@ -134,19 +134,17 @@
   .add-class-form .form-input {
     width: 100% !important;
     max-width: 100%;
-    padding: 12px;
-    font-size: 16px;
+    padding: 10px 12px;
+    font-size: 15px;
   }
 
   .form-actions {
-    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 12px;
   }
 
   .form-cancel-button, .submit-button {
-    padding: 12px 20px;
-    min-height: 44px;
+    padding: 10px 20px;
     font-size: small;
   }
 }
@@ -169,14 +167,18 @@
   }
 
   .form-actions {
+    /* display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch; */
     gap: 10px;
+    /* margin-top: 6px; */
   }
 
   .form-cancel-button, .submit-button {
-    flex: 1 1 auto;
-    padding: 12px 15px;
+    /* width: 100%; */
+    padding: 10px 15px;
     min-width: 0;
-    min-height: 44px;
+    /* border-radius: 10px; */
   }
 
   .submit-button {

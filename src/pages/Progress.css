@@ -223,9 +223,9 @@
   cursor: pointer;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .progress-page {
-    padding: 72px 16px 40px;
+    padding: 72px 14px 40px;
   }
   .progress-page .back-button {
     top: 16px;
@@ -247,36 +247,5 @@
   }
   .progress-streak-number {
     font-size: 3rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .progress-page {
-    padding: 68px 14px 36px;
-  }
-  .progress-title {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-  }
-  .progress-streak-card {
-    padding: 26px 18px;
-  }
-  .progress-streak-number {
-    font-size: 2.7rem;
-  }
-  .progress-section-title {
-    font-size: 1.15rem;
-  }
-  .progress-mastery-row {
-    padding: 14px 16px;
-  }
-  .progress-empty {
-    padding: 32px 20px;
-  }
-  .progress-empty-title {
-    font-size: 1.2rem;
-  }
-  .progress-primary-btn {
-    padding: 13px 26px;
   }
 }

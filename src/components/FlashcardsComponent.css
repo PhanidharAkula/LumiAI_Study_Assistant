@@ -1107,7 +1107,7 @@
    RESPONSIVE DESIGN
    ================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .flashcards-config-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: auto;
@@ -1135,8 +1135,8 @@
 
 @media (max-width: 768px) {
   .flashcards-header-modern {
-    padding: 15px 16px;
-    gap: 12px;
+    padding: 15px 20px;
+    gap: 15px;
   }
 
   .flashcards-back-btn-modern {
@@ -1148,18 +1148,13 @@
     font-size: large;
   }
 
-  .flashcards-history-dropdown-btn {
-    padding: 12px 14px;
-  }
-
   .flashcards-history-dropdown-btn span:not(.history-count-badge) {
     display: none;
   }
 
   .flashcards-history-dropdown-menu {
     width: 320px;
-    max-width: 92vw;
-    right: 0;
+    right: -10px;
   }
 
   .flashcards-config-grid {
@@ -1219,45 +1214,7 @@
 
 @media (max-width: 480px) {
   .flashcards-content-area {
-    padding: 14px;
-  }
-
-  .flashcards-header-modern {
-    padding: 12px 14px;
-  }
-
-  .flashcards-history-dropdown-menu {
-    width: 92vw;
-    max-width: 92vw;
-    right: 0;
-  }
-
-  .flashcards-dropdown-header {
-    padding: 16px;
-  }
-
-  .flashcards-dropdown-content {
-    padding: 14px;
-  }
-
-  .files-actions button {
-    padding: 9px 14px;
-  }
-
-  .flashcards-setup-header {
-    padding: 24px 16px;
-  }
-
-  .flashcards-setup-header h2 {
-    font-size: large;
-  }
-
-  .flashcards-completed-modern {
-    padding: 24px 16px;
-  }
-
-  .flashcards-completed-modern h2 {
-    font-size: 22px;
+    padding: 10px;
   }
 
   .flashcards-study-modern {

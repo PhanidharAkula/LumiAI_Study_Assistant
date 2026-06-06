@@ -592,7 +592,7 @@
 }
 
 /* Tablet and below */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .admin-main-layout {
     grid-template-columns: 1fr !important;
     gap: 15px !important;
@@ -673,9 +673,9 @@
 
   /* Filter buttons - better touch targets */
   .admin-filter-btn {
-    padding: 10px 14px;
+    padding: 8px 14px;
     font-size: 12px;
-    min-height: 44px;
+    min-height: 36px;
   }
 
   /* Show select dropdowns on mobile, hide buttons */
@@ -830,27 +830,6 @@
   .clear-filters-btn {
     padding: 6px 12px;
     font-size: 12px;
-  }
-
-  /* Support tickets - trim padding, stack header */
-  .admin-tickets-section {
-    padding: 16px 14px;
-  }
-
-  .admin-ticket-card {
-    padding: 14px 12px;
-  }
-
-  /* Subject + status select stack so the select isn't squished */
-  .admin-ticket-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .admin-ticket-status-select {
-    padding: 10px;
-    min-height: 44px;
   }
 }
 

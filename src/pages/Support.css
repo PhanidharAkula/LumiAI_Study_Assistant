@@ -228,15 +228,9 @@
   cursor: default;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 600px) {
   .support-page {
-    padding: 80px 18px 52px;
-  }
-}
-
-@media (max-width: 768px) {
-  .support-page {
-    padding: 72px 16px 40px;
+    padding: 72px 14px 40px;
   }
   .support-page .back-button {
     top: 16px;
@@ -246,35 +240,6 @@
     padding: 18px;
   }
   .support-title {
-    font-size: 1.7rem;
-  }
-  .support-section-title {
-    font-size: 1.15rem;
-  }
-  .support-submit {
-    padding: 14px 28px;
-  }
-}
-
-@media (max-width: 480px) {
-  .support-page {
-    padding: 68px 14px 36px;
-  }
-  .support-card {
-    padding: 16px;
-    margin-bottom: 32px;
-  }
-  .support-title {
-    font-size: 1.5rem;
-  }
-  .support-subtitle {
-    margin-bottom: 22px;
-  }
-  .support-submit {
-    align-self: stretch;
-    text-align: center;
-  }
-  .support-ticket-card {
-    padding: 16px;
+    font-size: 1.6rem;
   }
 }

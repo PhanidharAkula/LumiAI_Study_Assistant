@@ -241,21 +241,6 @@
   .history-panel {
     margin-top: 64px;
   }
-
-  /* Comfortable tap target for the history panel close control */
-  .close-history-button {
-    height: 40px;
-    width: 40px;
-  }
-
-  /* Trim oversized desktop padding on phones */
-  .document-selector {
-    padding: 12px 14px;
-  }
-
-  .uploaded-local-files {
-    padding: 10px 14px;
-  }
 }
 
 .uploaded-local-files {
@@ -714,33 +699,18 @@
   }
 
   .history-sidebar {
-    width: min(280px, 90vw);
+    width: 280px;
   }
 
   .history-dropdown {
-    width: min(300px, 92vw);
-    left: 0;
-    right: auto;
-    /* Keep the dropdown anchored on-screen below the history button */
-  }
-
-  .history-dropdown-header h3 {
-    font-size: large;
+    width: 280px;
+    right: -20px;
+    /* Offset to center better on mobile */
   }
 
   .history-dropdown::after {
     right: 24px;
     /* Adjust triangle position */
-  }
-
-  .history-item-actions {
-    /* Touch devices don't hover; keep the row actions reachable */
-    opacity: 1;
-  }
-
-  .history-action-button {
-    width: 38px;
-    height: 38px;
   }
 }
 
@@ -751,38 +721,13 @@
   }
 
   .history-dropdown {
-    width: min(300px, 92vw);
-    left: 0;
-    right: auto;
-    /* Stay pinned to the left edge so it never runs off-screen */
+    width: 280px;
+    right: -100px;
+    /* Position it more centrally on small screens */
   }
 
   .with-history-sidebar .chat-content-area {
     width: 0;
     overflow: hidden;
-  }
-
-  .chat-header {
-    padding: 12px;
-  }
-
-  .chat-component {
-    padding: 8px;
-  }
-
-  .chat-messages {
-    padding: 8px 10px 80px 10px;
-  }
-
-  .empty-chat {
-    padding: 24px 16px;
-  }
-
-  .empty-chat h3 {
-    font-size: 20px;
-  }
-
-  .empty-chat p {
-    font-size: 14px;
   }
 }

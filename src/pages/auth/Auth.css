@@ -284,17 +284,12 @@
   }
   
   .login-btn {
-    width: min(350px, 92vw);
-    max-width: 100%;
+    width: 300px;
     padding: 0px 30px;
   }
-
+  
   .auth-card {
     padding: 25px;
-  }
-
-  .auth-container {
-    padding: 16px;
   }
   
   .back-navigation {
@@ -324,19 +319,14 @@
   }
   
   .login-btn {
-    width: min(300px, 92vw);
-    max-width: 100%;
+    width: 300px;
     padding: 0px 20px;
     font-size: small;
   }
-
+  
   .back-navigation {
     top: 20px;
     left: 20px;
-  }
-
-  .auth-card {
-    padding: 20px;
   }
   
   .welcome-logo-name {
