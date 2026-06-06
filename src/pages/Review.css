@@ -4,7 +4,6 @@
 .review-page {
   min-height: 100dvh;
   width: 100%;
-  background-color: var(--background-primary-color);
   padding: 84px 20px 60px;
   position: relative;
 }

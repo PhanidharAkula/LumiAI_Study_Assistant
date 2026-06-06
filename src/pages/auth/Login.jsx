@@ -97,7 +97,7 @@ const Login = () => {
   return (
     <>
       <motion.div
-        className="welcome-container"
+        className="welcome-container login-screen"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
@@ -108,7 +108,7 @@ const Login = () => {
           onClick={() => navigate("/")}
           variants={itemBackVariants}
           whileHover={{
-            x: -3,
+            x: -5,
             transition: { type: "spring", stiffness: 300, damping: 5 },
           }}
           whileTap={{ scale: 0.98 }}

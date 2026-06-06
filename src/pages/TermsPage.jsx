@@ -1,13 +1,37 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import "./LegalPage.css";
 
 export default function TermsPage() {
+  const navigate = useNavigate();
   return (
     <div className="legal-page">
       <div className="legal-content">
-        <Link to="/" className="legal-home-link">
-          ← Lumi AI
-        </Link>
+        <motion.button
+          className="back-button legal-back"
+          onClick={() => navigate("/")}
+          whileHover={{
+            x: -5,
+            transition: { type: "spring", stiffness: 300, damping: 5 },
+          }}
+          whileTap={{ scale: 0.98 }}
+          aria-label="Back to home"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </motion.button>
 
         <h1>Terms of Service</h1>
         <p className="legal-updated">Last updated: May 26, 2026</p>

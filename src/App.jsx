@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { supabase } from "./lib/supabaseClient";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
@@ -43,6 +43,20 @@ const PageLoader = () => (
     <p>Loading...</p>
   </div>
 );
+
+// Reset scroll to the top on every route change (keyed on pathname, so
+// in-page query-param navigation — e.g. the dashboard's ?chat / ?classId — is
+// left alone). Without this, SPA navigation keeps the previous page's scroll.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  // useLayoutEffect runs before paint, and behavior:"instant" bypasses the
+  // global `scroll-behavior: smooth` — so the new route paints at the top
+  // immediately instead of rendering then animating up.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname]);
+  return null;
+}
 
 function App() {
   const [session, setSession] = useState(null);
@@ -97,6 +111,7 @@ function App() {
 
   return (
     <Suspense fallback={<PageLoader />}>
+      <ScrollToTop />
       <Routes>
         <Route
           path="/"

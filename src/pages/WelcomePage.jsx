@@ -36,18 +36,23 @@ const WelcomePage = ({ session }) => {
     },
   };
 
+  // Entrance stagger lives on the parent so each card's own transition has no
+  // delay — otherwise framer reuses that delayed transition for the hover-out,
+  // making the card wait ~1s before dropping back down.
+  const featuresContainerVariants = {
+    hidden: {},
+    visible: {
+      transition: { delayChildren: 0.3, staggerChildren: 0.15 },
+    },
+  };
+
   const featureCardVariants = {
     hidden: { opacity: 0, y: 50 },
-    visible: (i) => ({
+    visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-        delay: 0.8 + i * 0.2,
-      },
-    }),
+      transition: { type: "spring", stiffness: 100, damping: 14 },
+    },
   };
 
   const targetRoute = session ? "/dashboard" : "/login";
@@ -87,34 +92,40 @@ const WelcomePage = ({ session }) => {
           </Link>
         </motion.div>
 
-        <div className="welcome-features">
+        <motion.div
+          className="welcome-features"
+          initial="hidden"
+          animate="visible"
+          variants={featuresContainerVariants}
+        >
           {[
             {
               load: loadBooks,
-              title: "Study Smarter",
+              title: "Chat With Your Materials",
               description:
-                "Upload your documents and chat with an AI that understands your course materials.",
+                "Ask questions and get answers grounded in your own uploaded documents.",
             },
             {
               load: loadBrain,
-              title: "Generate Study Aids",
+              title: "Quizzes & Flashcards",
               description:
-                "Create flashcards, practice quizzes, and summaries with one click.",
+                "Generate practice quizzes and flashcard decks from any class instantly.",
             },
             {
               load: loadNotes,
-              title: "Take Smart Notes",
+              title: "Notes & Review",
               description:
-                "Save important insights and organize your knowledge by class.",
+                "Keep notes and lock them in with spaced-repetition review that sticks.",
             },
           ].map((feature, i) => (
             <motion.div
               className="feature-card"
               key={i}
-              custom={i}
-              initial="hidden"
-              animate="visible"
               variants={featureCardVariants}
+              whileHover={{
+                y: -10,
+                transition: { duration: 0.2, ease: "easeOut" },
+              }}
             >
               <div className="feature-icon">
                 <LazyLottie
@@ -124,22 +135,11 @@ const WelcomePage = ({ session }) => {
                   autoplay={true}
                 />
               </div>
-              <motion.p
-                className="feature-name"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { delay: 1.0 + i * 0.2 } }}
-              >
-                {feature.title}
-              </motion.p>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { delay: 1.2 + i * 0.2 } }}
-              >
-                {feature.description}
-              </motion.p>
+              <p className="feature-name">{feature.title}</p>
+              <p>{feature.description}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <motion.footer className="welcome-footer" variants={itemVariants}>
           <Link to="/privacy">Privacy Policy</Link>
