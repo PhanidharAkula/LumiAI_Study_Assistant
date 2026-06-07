@@ -1,0 +1,100 @@
+/*
+ * Tailwind v4 entry — utilities + theme only, NO preflight.
+ *
+ * The app already ships its own global reset and hand-written component CSS, so
+ * we deliberately skip Tailwind's preflight to guarantee the existing design is
+ * untouched. Tailwind utilities are additive: used as components are migrated.
+ *
+ * The app's global reset lives in the `base` layer (below `utilities`) so that
+ * Tailwind utilities reliably win over the universal `*` reset. Without this,
+ * an unlayered `* { margin:0; padding:0; color; letter-spacing }` would override
+ * layered utilities regardless of specificity, and `p-*`/`text-*`/`tracking-*`
+ * would silently do nothing.
+ */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Design tokens — mirror the existing palette so utilities match 1:1. */
+@theme {
+  --color-cream: #f0ebe1; /* background — primary */
+  --color-sage: #93c1c1; /* background — secondary / accent */
+  --color-ink: #000000; /* text — primary */
+  --color-muted: #707070; /* text — secondary */
+
+  --font-display: "Winky Sans", sans-serif;
+
+  /* Chat streaming indicators (used via animate-* utilities in ChatMessage). */
+  --animate-blink: blink 1s infinite;
+  --animate-thinking-fade: thinking-fade 1.4s infinite;
+  --animate-typing-bounce: typing-bounce 1.5s infinite ease-in-out;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes thinking-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Quiz history score ring — animates the SVG dash-array in from 0 on mount
+   (was in QuizComponent.css, moved here so it survives that file's deletion). */
+@keyframes progress {
+  0% {
+    stroke-dasharray: 0 100;
+  }
+}
+
+/* Global reset (moved here from App.css so it sits in the `base` layer and
+   never overrides Tailwind utilities). Identical declarations to before. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Winky Sans", sans-serif;
+    font-weight: 300;
+    letter-spacing: 1px;
+    scroll-behavior: smooth;
+    color: var(--text-primary-color);
+  }
+
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  span,
+  label,
+  a,
+  button {
+    cursor: pointer;
+  }
+}

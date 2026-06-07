@@ -1,0 +1,1054 @@
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@shared/lib/supabaseClient";
+import FileViewer from "./FileViewer";
+import AddClassForm from "./AddClassForm";
+import ConfirmDialog from "@shared/components/ConfirmDialog";
+import { useSearchParams } from "react-router-dom";
+import { getFilePublicUrl } from "@shared/utils/storageUtils";
+
+// Study tools are heavy (pdf.js, AI) — load them only when opened.
+const QuizComponent = lazy(() => import("@features/quiz/QuizComponent"));
+const FlashcardsComponent = lazy(() => import("@features/flashcards/FlashcardsComponent"));
+
+// A class row from Supabase. Permissive — extra columns are allowed.
+interface ClassData {
+  id: string | number;
+  name: string;
+  description?: string | null;
+  created_at: string;
+  [key: string]: any;
+}
+
+// A stored file row from Supabase. Permissive index signature for extra cols.
+interface FileRow {
+  id: string | number;
+  name: string;
+  path?: string | null;
+  type?: string | null;
+  size?: number | null;
+  created_at: string;
+  [key: string]: any;
+}
+
+interface DeleteConfirmState {
+  isOpen: boolean;
+  hasFiles: boolean;
+  fileCount: number;
+}
+
+interface FileDeleteConfirmState {
+  isOpen: boolean;
+  fileId: string | number | null;
+  filePath: string | null;
+  fileName: string;
+}
+
+interface UploadConfirmState {
+  isOpen: boolean;
+  file: File | null;
+  pendingFiles: File[];
+  currentIndex: number;
+}
+
+interface Props {
+  classData: ClassData | null;
+  isEditing: boolean;
+  // Dashboard passes `onEdit`; the binding below is the unused `_onEdit`.
+  // Accept both so the prop surface matches what callers actually pass.
+  onEdit?: () => void;
+  _onEdit?: () => void;
+  onCancelEdit: () => void;
+  onUpdate: (cls: any) => void;
+  onDelete: (id: string | number) => void;
+  onBack: () => void;
+}
+
+const ClassDetails = ({
+  classData,
+  isEditing,
+  _onEdit,
+  onCancelEdit,
+  onUpdate,
+  onDelete,
+  onBack,
+}: Props) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [files, setFiles] = useState<FileRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [viewingFile, setViewingFile] = useState<FileRow | null>(null);
+  const [fileUrl, setFileUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteConfirmData, setDeleteConfirmData] =
+    useState<DeleteConfirmState>({
+      isOpen: false,
+      hasFiles: false,
+      fileCount: 0,
+    });
+
+  const [fileDeleteConfirm, setFileDeleteConfirm] =
+    useState<FileDeleteConfirmState>({
+      isOpen: false,
+      fileId: null,
+      filePath: null,
+      fileName: "",
+    });
+
+  const [uploadConfirmData, setUploadConfirmData] =
+    useState<UploadConfirmState>({
+      isOpen: false,
+      file: null,
+      pendingFiles: [],
+      currentIndex: 0,
+    });
+
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Quiz state - initialize from URL parameter
+  const [showQuiz, setShowQuiz] = useState(searchParams.get("quiz") === "true");
+  // Flashcards state - initialize from URL parameter
+  const [showFlashcards, setShowFlashcards] = useState(
+    searchParams.get("flashcards") === "true"
+  );
+
+  useEffect(() => {
+    if (classData) {
+      fetchFiles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchFiles = async () => {
+    if (!classData?.id) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("files")
+        .select("*")
+        .eq("class_id", classData.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setFiles((data as FileRow[]) || []);
+    } catch (err) {
+      console.error("Error fetching files:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    setDeleteConfirmData({
+      isOpen: false,
+      hasFiles: false,
+      fileCount: 0,
+    });
+    onDelete(classData!.id);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmData({
+      isOpen: false,
+      hasFiles: false,
+      fileCount: 0,
+    });
+  };
+
+  const handleFileDelete = (
+    fileId: string | number,
+    filePath: string | null | undefined,
+    fileName: string
+  ) => {
+    setFileDeleteConfirm({
+      isOpen: true,
+      fileId,
+      filePath: filePath ?? null,
+      fileName: fileName || "this file",
+    });
+  };
+
+  const confirmFileDelete = async () => {
+    try {
+      const { fileId, filePath } = fileDeleteConfirm;
+
+      if (filePath) {
+        await supabase.storage.from("files").remove([filePath]);
+      }
+
+      const { error } = await supabase.from("files").delete().eq("id", fileId);
+
+      if (error) throw error;
+
+      setFiles((prev) => prev.filter((file) => file.id !== fileId));
+    } catch (err) {
+      console.error("Error deleting file:", err);
+    } finally {
+      cancelFileDelete();
+    }
+  };
+
+  const cancelFileDelete = () => {
+    setFileDeleteConfirm({
+      isOpen: false,
+      fileId: null,
+      filePath: null,
+      fileName: "",
+    });
+  };
+
+  const handleFileView = async (file: FileRow) => {
+    try {
+      const { url, error } = await getFilePublicUrl(
+        "files",
+        file.path as string
+      );
+
+      if (error) {
+        console.error("Error getting URL:", error);
+        return;
+      }
+
+      if (url) {
+        setViewingFile(file);
+        setFileUrl(url);
+      } else {
+        console.error("No URL returned");
+      }
+    } catch (error) {
+      console.error("Error viewing file:", error);
+    }
+  };
+
+  const handleCloseFileViewer = () => {
+    setViewingFile(null);
+    setFileUrl("");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files as FileList);
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      uploadFiles(files);
+    }
+  };
+
+  const openFileSelector = () => {
+    fileInputRef.current?.click();
+  };
+
+  const uploadFiles = async (filesToUpload: File[]) => {
+    if (!filesToUpload.length) return;
+
+    try {
+      setUploading(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return;
+      }
+
+      setUploadConfirmData({
+        isOpen: false,
+        file: null,
+        pendingFiles: filesToUpload,
+        currentIndex: 0,
+      });
+
+      processNextFile(filesToUpload, 0, user);
+    } catch (error) {
+      console.error("Error in upload process:", error);
+      setUploading(false);
+    }
+  };
+
+  const processNextFile = async (
+    files: File[],
+    index: number,
+    user: User
+  ) => {
+    if (index >= files.length) {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      fetchFiles();
+      setUploading(false);
+      return;
+    }
+
+    const currentFile = files[index];
+
+    try {
+      const { data: existingFiles } = await supabase
+        .from("files")
+        .select("name")
+        .eq("class_id", classData!.id)
+        .eq("name", currentFile.name);
+
+      if (existingFiles && existingFiles.length > 0) {
+        setUploadConfirmData({
+          isOpen: true,
+          file: currentFile,
+          pendingFiles: files,
+          currentIndex: index,
+        });
+      } else {
+        await uploadSingleFile(currentFile, user);
+        processNextFile(files, index + 1, user);
+      }
+    } catch (error) {
+      console.error("Error processing file:", error);
+      processNextFile(files, index + 1, user);
+    }
+  };
+
+  const uploadSingleFile = async (file: File, user: User) => {
+    try {
+      const filePath = `${classData!.id}/${Date.now()}-${file.name.replace(
+        /\s+/g,
+        "_"
+      )}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("files")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("File upload error:", uploadError);
+        return;
+      }
+
+      const { error: dbError } = await supabase.from("files").insert({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        path: filePath,
+        class_id: classData!.id,
+        user_id: user.id,
+      });
+
+      if (dbError) {
+        console.error("Database error:", dbError);
+
+        await supabase.storage
+          .from("files")
+          .remove([filePath])
+          .catch((err) => console.error("Error cleaning up file:", err));
+      }
+    } catch (err) {
+      console.error("Error uploading file:", err);
+    }
+  };
+
+  const handleConfirmUpload = async () => {
+    const { file, pendingFiles, currentIndex } = uploadConfirmData;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setUploadConfirmData({
+      ...uploadConfirmData,
+      isOpen: false,
+    });
+
+    await uploadSingleFile(file as File, user as User);
+
+    processNextFile(pendingFiles, currentIndex + 1, user as User);
+  };
+
+  const handleCancelUpload = async () => {
+    const { pendingFiles, currentIndex } = uploadConfirmData;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setUploadConfirmData({
+      ...uploadConfirmData,
+      isOpen: false,
+    });
+
+    processNextFile(pendingFiles, currentIndex + 1, user as User);
+  };
+
+  const toggleMenu = () => {
+    setShowMenu(!showMenu);
+  };
+
+  const handleFlashcards = () => {
+    setShowMenu(false);
+    setShowFlashcards(true);
+    // Add flashcards parameter to URL
+    const params = new URLSearchParams(searchParams);
+    params.set("flashcards", "true");
+    setSearchParams(params, { replace: true });
+  };
+
+  const handleQuiz = () => {
+    setShowMenu(false);
+    setShowQuiz(true);
+    // Add quiz parameter to URL
+    const params = new URLSearchParams(searchParams);
+    params.set("quiz", "true");
+    setSearchParams(params, { replace: true });
+  };
+
+  function formatBytes(bytes: number | null | undefined) {
+    if (!bytes) return "0 B";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let i = 0;
+    let val = bytes;
+    while (val >= 1024 && i < units.length - 1) {
+      val /= 1024;
+      i += 1;
+    }
+    return `${Math.round(val * 10) / 10} ${units[i]}`;
+  }
+
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  // Small in-file components for the study buttons so they include navigation
+  function MotionFlashcardsButton({ popup }: { popup?: boolean }) {
+    return (
+      <motion.button
+        className={`${
+          popup ? "hidden w-full max-md:flex" : "inline-flex max-md:hidden"
+        } items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-transparent px-[30px] py-3 text-[medium] font-medium text-ink shadow-[0px_2px_0_#000] [transition:all_0.2s_ease-in-out] hover:bg-[#3B82F6] hover:[&_svg]:text-white max-md:p-2.5`}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleFlashcards}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        Flashcards
+      </motion.button>
+    );
+  }
+
+  function MotionQuizButton({ popup }: { popup?: boolean }) {
+    return (
+      <motion.button
+        className={`${
+          popup ? "hidden w-full max-md:flex" : "inline-flex max-md:hidden"
+        } items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-transparent px-[30px] py-3 text-[medium] font-medium text-ink shadow-[0px_2px_0_#000] [transition:all_0.2s_ease-in-out] hover:bg-[#8B5CF6] hover:[&_svg]:text-white max-md:p-2.5`}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleQuiz}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        Quiz
+      </motion.button>
+    );
+  }
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12,
+      },
+    },
+  };
+
+  const fileCardVariants: Variants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: ({ index }: { index: number }) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.15,
+        delay: index * 0.05,
+        when: "afterChildren",
+      },
+    }),
+    hover: {
+      y: -5,
+      scale: 1.01,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 8,
+      },
+    },
+    tap: { scale: 0.98 },
+  };
+
+  const menuVariants: Variants = {
+    hidden: { opacity: 0, y: -20, scale: 0.8 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+      },
+    },
+    exit: {
+      opacity: 0,
+      y: -20,
+      scale: 0.8,
+      transition: { duration: 0.2 },
+    },
+  };
+
+  if (!classData) return null;
+
+  if (isEditing) {
+    return (
+      <div className="mx-auto w-full max-w-[600px]">
+        <AddClassForm
+          isEditing={true}
+          initialData={classData as any}
+          onCancel={onCancelEdit}
+          onClassUpdated={onUpdate}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      className="h-full w-full pt-[30px]"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ type: "spring", stiffness: 100, damping: 15 }}
+    >
+      {/* Hide all ClassDetails content when quiz or flashcards is open */}
+      {!showQuiz && !showFlashcards && (
+        <>
+          <motion.div
+            className="flex items-center gap-5 border-0 border-b border-solid border-ink px-2.5 pb-5"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.button
+              className="back-button"
+              onClick={onBack}
+              variants={itemVariants}
+              whileHover={{
+                x: -3,
+                transition: { type: "spring", stiffness: 300, damping: 5 },
+              }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </motion.button>
+
+            <motion.div className="m-0 flex-1" variants={itemVariants}>
+              <p className="mb-[5px] text-[xx-large] font-semibold leading-[1.12] text-ink">
+                {classData.name}
+              </p>
+              <p className="mt-0 text-[small] leading-[1.1] text-muted">
+                Created on {new Date(classData.created_at).toLocaleDateString()}
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="m-0 flex justify-end gap-[15px] max-[480px]:flex-wrap max-[480px]:gap-2.5"
+              variants={itemVariants}
+            >
+              {/* Study tool buttons: navigate to full-screen study pages */}
+              <MotionFlashcardsButton />
+              <MotionQuizButton />
+              <div className="relative" ref={menuRef}>
+                <motion.button
+                  className="hidden h-[50px] w-[50px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage text-ink shadow-[0px_2px_0_#000] max-md:flex"
+                  onClick={toggleMenu}
+                  whileHover={{
+                    scale: 1.05,
+                    transition: { type: "spring", stiffness: 300, damping: 5 },
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </svg>
+                </motion.button>
+
+                <AnimatePresence>
+                  {showMenu && (
+                    <motion.div
+                      className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[300px] flex-col gap-2.5 rounded-xl border-[1.5px] border-solid border-ink bg-cream p-5 shadow-[0px_5px_15px_rgba(0,0,0,0.1)]"
+                      variants={menuVariants}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                    >
+                      {/* Intentionally empty: no menu items on ClassDetails */}
+                      <MotionFlashcardsButton popup />
+                      <MotionQuizButton popup />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          <motion.div
+            className="flex flex-col items-center justify-center gap-5 px-5 py-[30px]"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                transition: {
+                  duration: 0.4,
+                },
+              }}
+              style={{ width: "100%" }}
+            >
+              <motion.div
+                className={`mx-auto my-5 flex min-h-[200px] w-[60%] cursor-pointer flex-col items-center justify-center gap-[100px] rounded-[10px] border-[1.5px] border-dashed border-ink p-[30px] [transition:all_0.2s_ease-in-out] max-[1024px]:w-[80%] max-[1024px]:gap-[70px] max-[1024px]:p-[25px] max-md:w-full max-md:gap-[50px] max-md:p-5 ${
+                  dragActive ? "scale-[1.02]" : ""
+                } ${uploading ? "cursor-default" : ""}`}
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                onClick={openFileSelector}
+              >
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                  ref={fileInputRef}
+                  accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.py,.ipynb,.zip,.rar,.csv,.xlsx,.xls,.md"
+                />
+
+                {uploading ? (
+                  <div className="flex flex-col items-center gap-2.5">
+                    <div className="spinner mb-0!"></div>
+                    <p className="font-semibold">Uploading files...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2.5">
+                    <div className="mb-2.5 flex h-[60px] w-[60px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-white shadow-[0_2px_0_#000]">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="30"
+                        height="30"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                      </svg>
+                    </div>
+                    <p className="mb-[5px] text-[18px] font-semibold">
+                      Upload Files or Drag & Drop Here
+                    </p>
+                    <p className="text-[14px] text-muted">
+                      PDF, DOC, PPT, JPG, PNG, etc.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+
+            {loading ? (
+              <motion.div
+                className="flex w-full flex-col items-center justify-center py-[60px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="spinner"></div>
+                <span>Loading files...</span>
+              </motion.div>
+            ) : files.length === 0 ? (
+              <motion.div
+                className="flex flex-col items-center justify-center gap-[15px] p-[30px] text-center"
+                variants={itemVariants}
+              >
+                <div className="mt-[50px] flex h-20 w-20 items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage shadow-[0px_2px_0_#000]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                  </svg>
+                </div>
+                <h4 className="text-[24px] font-semibold">No Files Yet</h4>
+                <p className="text-muted">Upload files to get started</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                className="grid w-full grid-cols-[repeat(auto-fill,minmax(350px,1fr))] gap-5 max-md:grid-cols-1 max-md:gap-3.5 max-md:py-2.5"
+                variants={containerVariants}
+                initial="hidden"
+                animate={loading ? "hidden" : "visible"}
+                key="files-grid"
+              >
+                <AnimatePresence mode="wait">
+                  {files.map((file, i) => (
+                    <motion.div
+                      key={file.id}
+                      className="relative flex flex-col overflow-hidden rounded-[10px] bg-white p-5 max-md:w-full max-md:flex-row max-md:items-center max-md:gap-3 max-md:rounded-lg max-md:p-3.5"
+                      custom={{ index: i, loaded: !loading }}
+                      variants={fileCardVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                      whileTap="tap"
+                    >
+                      <div
+                        className={`mb-[15px] flex h-[50px] w-[50px] items-center justify-center rounded-lg border-[1.5px] border-solid [transition:all_0.2s_ease] max-md:mb-0 max-md:h-12 max-md:w-12 max-md:flex-[0_0_48px] ${
+                          file.type?.includes("image")
+                            ? "border-[#10B981] bg-[rgba(16,185,129,0.1)] shadow-[0px_2px_0_#10B981] [&_svg]:text-[#10B981]"
+                            : file.type?.includes("pdf")
+                            ? "border-[#EF4444] bg-[rgba(239,68,68,0.1)] shadow-[0px_2px_0_#EF4444] [&_svg]:text-[#EF4444]"
+                            : file.type?.includes("word") ||
+                              file.type?.includes("doc")
+                            ? "border-[#3B82F6] bg-[rgba(59,130,246,0.1)] shadow-[0px_2px_0_#3B82F6] [&_svg]:text-[#3B82F6]"
+                            : file.type?.includes("spreadsheet") ||
+                              file.type?.includes("excel") ||
+                              file.type?.includes("csv")
+                            ? "border-[#D97706] bg-[#FEF3C7] shadow-[0px_2px_0_#D97706] [&_svg]:text-[#D97706]"
+                            : "border-[#8B5CF6] bg-[rgba(139,92,246,0.1)] shadow-[0px_2px_0_#8B5CF6] [&_svg]:text-[#8B5CF6]"
+                        }`}
+                      >
+                        {file.type?.includes("image") ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <rect
+                              x="3"
+                              y="3"
+                              width="18"
+                              height="18"
+                              rx="2"
+                              ry="2"
+                            ></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                          </svg>
+                        ) : file.type?.includes("pdf") ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="mb-2 break-words text-[18px] font-semibold max-md:mb-1 max-md:text-[16px]">
+                          {file.name}
+                        </h4>
+                        <p className="text-[12px] text-muted">
+                          {formatBytes(file.size)} •{" "}
+                          {new Date(file.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="mt-5 flex justify-end gap-2.5 max-md:ml-2 max-md:mt-0 max-md:gap-2">
+                        <motion.button
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-solid border-ink bg-sage shadow-[0px_1px_0_#000] [transition:none] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:stroke-ink max-md:h-9 max-md:w-9"
+                          onClick={() => handleFileView(file)}
+                          title="View file"
+                          whileHover={{
+                            scale: 1.1,
+                            transition: {
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 10,
+                            },
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                        </motion.button>
+                        <motion.button
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-solid border-ink bg-[#EF4444] shadow-[0px_1px_0_#000] [transition:none] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:stroke-white max-md:h-9 max-md:w-9"
+                          onClick={() =>
+                            handleFileDelete(file.id, file.path, file.name)
+                          }
+                          title="Delete file"
+                          whileHover={{
+                            scale: 1.1,
+                            transition: {
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 10,
+                            },
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1-2 2v2"></path>
+                          </svg>
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </motion.div>
+          <AnimatePresence>
+            {viewingFile && (
+              <FileViewer
+                file={viewingFile as any}
+                url={fileUrl}
+                onClose={handleCloseFileViewer}
+              />
+            )}
+          </AnimatePresence>
+          {/* Study pages are opened in full-screen routes now */}
+          <ConfirmDialog
+            isOpen={deleteConfirmData.isOpen}
+            onClose={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+            title={
+              deleteConfirmData.hasFiles
+                ? "Delete Class and Files"
+                : "Delete Class"
+            }
+            message={
+              deleteConfirmData.hasFiles
+                ? `This class contains ${deleteConfirmData.fileCount} file(s). Deleting the class will also delete all associated files. This action cannot be undone. Are you sure you want to proceed?`
+                : `Are you sure you want to delete ${classData?.name}? This action cannot be undone.`
+            }
+            confirmText={deleteConfirmData.hasFiles ? "Delete All" : "Delete"}
+            danger={true}
+          />
+          <ConfirmDialog
+            isOpen={fileDeleteConfirm.isOpen}
+            onClose={cancelFileDelete}
+            onConfirm={confirmFileDelete}
+            title="Delete File"
+            message={`Are you sure you want to delete "${fileDeleteConfirm.fileName}"? This action cannot be undone.`}
+            confirmText="Delete"
+            danger={true}
+          />
+          <ConfirmDialog
+            isOpen={uploadConfirmData.isOpen}
+            onClose={handleCancelUpload}
+            onConfirm={handleConfirmUpload}
+            title="File Already Exists"
+            message={`A file named "${uploadConfirmData.file?.name}" already exists. Do you want to upload it anyway?`}
+            confirmText="Upload Anyway"
+            cancelText="Skip"
+            danger={false}
+          />
+        </>
+      )}
+
+      {/* Quiz Component */}
+      <AnimatePresence>
+        {showQuiz && (
+          <Suspense fallback={null}>
+            <QuizComponent
+              isOpen={showQuiz}
+              onClose={() => {
+                setShowQuiz(false);
+                // Remove quiz parameter from URL
+                const params = new URLSearchParams(searchParams);
+                params.delete("quiz");
+                setSearchParams(params, { replace: true });
+              }}
+              classData={{ ...classData, files }}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* Flashcards Component */}
+      <AnimatePresence>
+        {showFlashcards && (
+          <Suspense fallback={null}>
+            <FlashcardsComponent
+              isOpen={showFlashcards}
+              onClose={() => {
+                setShowFlashcards(false);
+                // Remove flashcards parameter from URL
+                const params = new URLSearchParams(searchParams);
+                params.delete("flashcards");
+                setSearchParams(params, { replace: true });
+              }}
+              classData={{ ...classData, files } as any}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+export default ClassDetails;

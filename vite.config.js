@@ -48,7 +48,12 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss(), devApiPlugin()],
     resolve: {
-      alias: { "@": path.resolve(__dirname, "./src") },
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+        "@app": path.resolve(__dirname, "./src/app"),
+        "@features": path.resolve(__dirname, "./src/features"),
+        "@shared": path.resolve(__dirname, "./src/shared"),
+      },
     },
     base: "/",
     // Strip debug logging from production builds (kept in dev). console.error
