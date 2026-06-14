@@ -400,11 +400,11 @@ const ChatComponent = ({
   // Content growth never LOWERS scrollTop, so if it drops below this the user
   // scrolled up - and we let go instead of slamming back, which removes the
   // residual one-frame scroll fight at its source.
+  // The last bottom (scrollHeight - clientHeight) we parked at. A scrollTop drop
+  // BELOW this is the user; a drop because the bottom itself moved up (a content
+  // shrink OR the context-tags block collapsing, which changes clientHeight) is
+  // just the browser clamping - not the user.
   const followParkRef = useRef(-1);
-  // The scrollHeight at the last park. A scrollTop drop with a SMALLER height is
-  // a content shrink clamping the view down (e.g. the thinking label collapsing
-  // into the first streamed line), NOT the user scrolling up.
-  const followHeightRef = useRef(-1);
 
   // Guards the "create a new conversation" insert so two rapid saves can't both
   // insert a row before the first conversation id propagates (would duplicate).
@@ -425,8 +425,7 @@ const ChatComponent = ({
     const container = chatContainerRef.current;
     if (container) {
       container.scrollTop = container.scrollHeight;
-      followParkRef.current = container.scrollTop;
-      followHeightRef.current = container.scrollHeight;
+      followParkRef.current = container.scrollHeight - container.clientHeight;
     }
   };
 
@@ -438,23 +437,22 @@ const ChatComponent = ({
     if (!pinnedToBottom.current) return;
     const container = chatContainerRef.current;
     if (!container) return;
-    // A drop in scrollTop is the user scrolling up ONLY if the content didn't
-    // shrink. When the bubble shrinks (the thinking label collapsing into the
-    // first streamed line) the browser clamps scrollTop down to the new bottom -
-    // that's not the user, so keep following instead of letting go.
-    const shrank = container.scrollHeight < followHeightRef.current;
+    // Let go ONLY on a real scroll-up: scrollTop dropped below the parked bottom
+    // AND the bottom didn't move up under it. A shrinking bubble or a collapsing
+    // context block raises the bottom (smaller scrollHeight or larger
+    // clientHeight) and clamps scrollTop down - that's layout, not the user.
+    const bottom = container.scrollHeight - container.clientHeight;
     if (
       followParkRef.current >= 0 &&
-      !shrank &&
-      container.scrollTop < followParkRef.current - 2
+      container.scrollTop < followParkRef.current - 2 &&
+      bottom >= followParkRef.current
     ) {
       pinnedToBottom.current = false;
       setShowJumpButton(true);
       return;
     }
     container.scrollTop = container.scrollHeight;
-    followParkRef.current = container.scrollTop;
-    followHeightRef.current = container.scrollHeight;
+    followParkRef.current = bottom;
   };
 
   // Re-pin and snap to the latest turn (used on send/submit and the jump btn).
@@ -495,21 +493,22 @@ const ChatComponent = ({
     // genuinely back at the bottom. (The old pure-distance threshold re-pinned
     // on every small scroll, so the per-frame auto-scroll kept winning.)
     let lastScrollTop = container.scrollTop;
-    let lastScrollHeight = container.scrollHeight;
+    let lastBottom = container.scrollHeight - container.clientHeight;
     const handleScroll = () => {
       const top = container.scrollTop;
-      const height = container.scrollHeight;
-      const distanceFromBottom = height - top - container.clientHeight;
-      // A scrollTop decrease is the user scrolling up ONLY if the content didn't
-      // shrink - a shrink clamps scrollTop down to the new bottom (not the user).
-      if (top < lastScrollTop - 1 && height >= lastScrollHeight) {
+      const bottom = container.scrollHeight - container.clientHeight;
+      const distanceFromBottom = bottom - top;
+      // Unpin on a genuine scroll-up only: scrollTop dropped AND the bottom
+      // didn't move up under it. A shrink or a collapsing context block raises
+      // the bottom and clamps scrollTop down - that's layout, not the user.
+      if (top < lastScrollTop - 1 && bottom >= lastBottom) {
         pinnedToBottom.current = false;
       } else if (distanceFromBottom < PIN_AT_BOTTOM) {
         pinnedToBottom.current = true;
         followParkRef.current = -1; // re-pinned by the user: allow catch-up
       }
       lastScrollTop = top;
-      lastScrollHeight = height;
+      lastBottom = bottom;
       const pinned = pinnedToBottom.current;
       // Only flip state when it actually changes (avoids per-frame re-renders
       // during a streaming-driven scroll storm).
@@ -528,6 +527,16 @@ const ChatComponent = ({
     container.addEventListener("scroll", handleScroll, { passive: true });
     container.addEventListener("wheel", handleWheel, { passive: true });
     container.addEventListener("touchmove", handleTouchMove, { passive: true });
+    // When the container itself resizes - the context-tags block opening or
+    // collapsing on send, the textarea growing, a window resize - the bottom
+    // moves under us. Keep the latest turn in view while we're still following.
+    const resizeObserver = new ResizeObserver(() => {
+      if (pinnedToBottom.current) {
+        container.scrollTop = container.scrollHeight;
+        followParkRef.current = container.scrollHeight - container.clientHeight;
+      }
+    });
+    resizeObserver.observe(container);
     // The container exists only once the chat has loaded; on that first attach
     // (a fresh open or a page refresh) land at the bottom - the latest turn -
     // instead of the top. rAF waits for layout so scrollHeight is final.
@@ -536,14 +545,14 @@ const ChatComponent = ({
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
       lastScrollTop = container.scrollTop;
-      lastScrollHeight = container.scrollHeight;
-      followParkRef.current = container.scrollTop;
-      followHeightRef.current = container.scrollHeight;
+      lastBottom = container.scrollHeight - container.clientHeight;
+      followParkRef.current = lastBottom;
     });
     return () => {
       container.removeEventListener("scroll", handleScroll);
       container.removeEventListener("wheel", handleWheel);
       container.removeEventListener("touchmove", handleTouchMove);
+      resizeObserver.disconnect();
     };
   }, [initialLoading]);
 
