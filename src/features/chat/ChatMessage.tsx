@@ -79,6 +79,24 @@ const PROSE = [
   "[&_.hljs-built_in]:text-[#e3b34f] [&_.hljs-type]:text-[#e3b34f] [&_.hljs-class]:text-[#e3b34f] [&_.hljs-literal]:text-[#d98e73] [&_.hljs-symbol]:text-[#d98e73] [&_.hljs-bullet]:text-[#d98e73] [&_.hljs-name]:text-gold [&_.hljs-selector-tag]:text-gold [&_.hljs-section]:text-gold [&_.hljs-attribute]:text-[#c9b8e8] [&_.hljs-variable]:text-starlight [&_.hljs-template-variable]:text-starlight [&_.hljs-params]:text-starlight [&_.hljs-regexp]:text-sage [&_.hljs-meta]:text-starlight/70 [&_.hljs-doctag]:text-starlight/70 [&_.hljs-addition]:text-sage [&_.hljs-addition]:bg-sage/10 [&_.hljs-deletion]:text-[#e8a08c] [&_.hljs-deletion]:bg-vermilion/15",
 ].join(" ");
 
+// Escape currency dollar signs so remark-math doesn't pair "$5 ... $10" into an
+// inline-math span (which renders the text between as italic math). Uses the
+// SAME currency-vs-math test as the copy path (markdownToPlainText) so the
+// screen and the clipboard agree: a $...$ span is left as real math unless it
+// looks like currency, in which case its $ are escaped (KaTeX then ignores them
+// and they render as literal dollar signs).
+const escapeCurrency = (md: string): string =>
+  md.replace(/\$([^$\n]+?)\$/g, (m, inner) => {
+    const s = String(inner);
+    const isMath =
+      !/^\s|\s$/.test(s) && // padded -> currency
+      (/[\^_\\{}]/.test(s) || // math symbols
+        /^[^\d]/.test(s) || // starts non-digit
+        /^\d[A-Za-z]/.test(s) || // digit then letter (3x)
+        /[A-Za-z]/.test(s)); // digit-led but has a letter (5x)
+    return isMath ? m : "\\$" + s + "\\$";
+  });
+
 // Small ghost key - copy actions on parchment. The lift comes from framer
 // (`keyPress`); CSS animates color/border only (motion doctrine §7).
 const COPY_BTN =
@@ -610,7 +628,7 @@ const ChatMessage = ({
                   ),
                 }}
               >
-                {message as string}
+                {escapeCurrency(message as string)}
               </ReactMarkdown>
               {isStreaming && (
                 <span
