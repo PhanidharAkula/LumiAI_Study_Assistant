@@ -272,7 +272,6 @@ const ChatInput = ({
           onChange={handleChange}
           onKeyDown={handleKeyPress}
           placeholder="Ask a question..."
-          disabled={loading && !isGenerating}
         />
 
         {isGenerating ? (

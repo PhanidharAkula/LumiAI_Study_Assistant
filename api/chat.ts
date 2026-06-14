@@ -39,14 +39,18 @@ interface ChatBody {
 }
 
 /** Read + parse the JSON body whether or not the runtime pre-parsed it. */
+// Bound the body so a client can't exhaust function memory with an unbounded
+// upload (cost / DoS). 16 MB comfortably covers a few base64 images.
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
+
 async function readBody(req: any): Promise<ChatBody> {
   if (req.body && typeof req.body === "object") return req.body as ChatBody;
   if (typeof req.body === "string" && req.body.length) {
+    if (req.body.length > MAX_BODY_BYTES) {
+      throw new Error("Request body too large");
+    }
     return JSON.parse(req.body);
   }
-  // Bound the streamed body so a client can't exhaust function memory with an
-  // unbounded upload (cost / DoS). 16 MB comfortably covers a few base64 images.
-  const MAX_BODY_BYTES = 16 * 1024 * 1024;
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of req) {
@@ -119,18 +123,23 @@ function friendlyError(status?: number, raw?: string): string {
   return "Lumi couldn't respond just now. Please try again in a moment.";
 }
 
+type AuthResult =
+  | { ok: true; userId: string }
+  | { ok: false; status: 401 | 503 };
+
 /**
  * Verify the caller's Supabase session. The browser sends its access token as a
  * Bearer header; we validate it against Supabase's auth endpoint using the
  * public project URL + anon key (no secrets needed) so this endpoint can't be
- * used anonymously to burn AI credits. Returns the user id, or null if the
- * token is missing/invalid.
+ * used anonymously to burn AI credits. Distinguishes a bad/missing token (401)
+ * from the auth service being unreachable (503) so a brief Supabase blip doesn't
+ * tell a signed-in user to sign in again.
  */
-async function getAuthedUserId(req: any): Promise<string | null> {
+async function getAuthedUser(req: any): Promise<AuthResult> {
   const header: string =
     req.headers?.authorization || req.headers?.Authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return null;
+  if (!token) return { ok: false, status: 401 };
 
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const anon =
@@ -139,19 +148,29 @@ async function getAuthedUserId(req: any): Promise<string | null> {
     console.error(
       "[chat] Supabase URL/anon key not set - cannot verify session"
     );
-    return null;
+    return { ok: false, status: 503 };
   }
 
   try {
     const resp = await fetch(`${url}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}`, apikey: anon },
+      // Don't let a hung auth endpoint hang the whole chat request.
+      signal: AbortSignal.timeout(8000),
     });
-    if (!resp.ok) return null;
+    // A real auth rejection is the only "please sign in" case; anything else
+    // (5xx, unexpected) is a service problem, not the user's token.
+    if (resp.status === 401 || resp.status === 403) {
+      return { ok: false, status: 401 };
+    }
+    if (!resp.ok) return { ok: false, status: 503 };
     const user = (await resp.json()) as { id?: string };
-    return user?.id ?? null;
+    return user?.id
+      ? { ok: true, userId: user.id }
+      : { ok: false, status: 401 };
   } catch (err: any) {
+    // Network error / timeout: the auth service is unreachable, not a bad token.
     console.error("[chat] session verification failed:", err?.message);
-    return null;
+    return { ok: false, status: 503 };
   }
 }
 
@@ -171,9 +190,14 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   // Require a signed-in user so the endpoint can't be called anonymously to
   // burn AI credits. (The API key is never exposed to the client either way.)
-  const userId = await getAuthedUserId(req);
-  if (!userId) {
-    return sendJson(res, 401, { error: "Please sign in to use Lumi." });
+  const auth = await getAuthedUser(req);
+  if (!auth.ok) {
+    return sendJson(res, auth.status, {
+      error:
+        auth.status === 401
+          ? "Please sign in to use Lumi."
+          : "Lumi is temporarily unavailable. Please try again soon.",
+    });
   }
 
   let body: ChatBody;
@@ -271,7 +295,9 @@ export default async function handler(req: any, res: any): Promise<void> {
       res.setHeader("X-Accel-Buffering", "no");
 
       const streaming = client.messages.stream(request as any);
+      let textStarted = false;
       streaming.on("text", (delta: string) => {
+        textStarted = true;
         res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
       });
 
@@ -282,7 +308,14 @@ export default async function handler(req: any, res: any): Promise<void> {
       // robust to any phrasing or language (no preamble pattern-matching).
       let clearedPreamble = false;
       streaming.on("streamEvent", (event: any) => {
-        if (event?.type !== "content_block_start" || clearedPreamble) return;
+        // Only treat pre-search text as a discardable preamble if NO answer text
+        // has streamed yet; a search that begins mid-answer must not wipe it.
+        if (
+          event?.type !== "content_block_start" ||
+          clearedPreamble ||
+          textStarted
+        )
+          return;
         const blockType = event.content_block?.type;
         if (
           blockType === "server_tool_use" ||

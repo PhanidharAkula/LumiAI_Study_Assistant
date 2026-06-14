@@ -390,6 +390,10 @@ const ChatComponent = ({
   // Mirror of the abort controller so the unmount cleanup can reach the live
   // stream without it being a render dependency.
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Synchronous mirror of currentConversationId: a rapid follow-up save runs
+  // before setCurrentConversationId commits, so reading this ref keeps a
+  // stop-then-send from inserting a second row for the same session.
+  const currentConvIdRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const historyDropdownRef = useRef<HTMLDivElement>(null);
   // Pinned-to-bottom model: while the view is glued to the bottom we follow
@@ -528,6 +532,11 @@ const ChatComponent = ({
   useEffect(() => {
     abortControllerRef.current = abortController;
   }, [abortController]);
+
+  // Mirror the conversation id synchronously for the save path.
+  useEffect(() => {
+    currentConvIdRef.current = currentConversationId;
+  }, [currentConversationId]);
 
   // On unmount (chat closed by ANY path, not just the close button) stop
   // everything in flight - abort the stream and cancel the pending persist
@@ -1421,20 +1430,28 @@ const ChatComponent = ({
           const allAiResponses = payload.answer;
           const messagesMetadataJson = payload.messages_metadata;
 
-          // Only write context tags when the live selection is non-empty.
-          // Selections are cleared on send, so a follow-up turn would otherwise
-          // overwrite the conversation's saved tags with [] and lose them on
-          // reload. Omitting the keys leaves the existing values untouched.
+          // Read the conversation id from the synchronous ref first - a rapid
+          // follow-up save can run before setCurrentConversationId commits.
+          const convId = currentConvIdRef.current ?? currentConversationId;
+
+          // Derive the turn's tags from the LAST user message (it captured them
+          // at send time), NOT live state - live state is cleared on send, so a
+          // retried turn would otherwise persist []. Only write the keys when
+          // non-empty, so a follow-up turn doesn't clobber the saved tags.
+          const lastUserMsg: any = [...currentMessages]
+            .reverse()
+            .find((m) => m.type === "user");
+          const saveClasses: any[] = lastUserMsg?.selectedClasses || [];
+          const saveFiles: any[] = lastUserMsg?.selectedFiles || [];
           const contextUpdate: {
             context_classes?: any[];
             context_files?: any[];
           } = {};
-          if (selectedClasses.length > 0)
-            contextUpdate.context_classes = selectedClasses;
-          if (selectedFiles.length > 0)
-            contextUpdate.context_files = selectedFiles;
+          if (saveClasses.length > 0)
+            contextUpdate.context_classes = saveClasses;
+          if (saveFiles.length > 0) contextUpdate.context_files = saveFiles;
 
-          if (currentConversationId) {
+          if (convId) {
             // Update an explicitly-selected conversation
 
             const updatedConversation = {
@@ -1448,7 +1465,7 @@ const ChatComponent = ({
             const { error: updateError } = await supabase
               .from("conversations")
               .update(updatedConversation)
-              .eq("id", currentConversationId);
+              .eq("id", convId);
 
             if (updateError)
               console.error("Error updating conversation:", updateError);
@@ -1492,6 +1509,7 @@ const ChatComponent = ({
                   updateErr
                 );
               } else {
+                currentConvIdRef.current = existingConvId;
                 setCurrentConversationId(existingConvId);
               }
             } else if (!creatingConvRef.current) {
@@ -1522,8 +1540,8 @@ const ChatComponent = ({
                   document_ids: selectedDocs,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
-                  context_classes: selectedClasses,
-                  context_files: selectedFiles,
+                  context_classes: saveClasses,
+                  context_files: saveFiles,
                   session_id: currentSessionId,
                   title: title || "New Conversation",
                   messages_metadata: messagesMetadataJson,
@@ -1536,6 +1554,7 @@ const ChatComponent = ({
                 if (error) {
                   console.error("Error saving conversation:", error);
                 } else if (data && data[0]) {
+                  currentConvIdRef.current = data[0].id;
                   setCurrentConversationId(data[0].id);
                 }
               } finally {
