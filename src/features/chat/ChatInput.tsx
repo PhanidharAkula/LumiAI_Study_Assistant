@@ -26,6 +26,9 @@ interface ChatInputProps {
   onStopGeneration?: () => void;
   isGenerating?: boolean;
   onUploadFiles?: ((files: LocalUploadedFile[]) => void) | null;
+  /** Controlled list of attached files (owned by the parent, so removing a pill
+   *  there actually removes it from what gets sent). */
+  uploadedFiles?: LocalUploadedFile[];
 }
 
 interface FileSizeError {
@@ -40,9 +43,9 @@ const ChatInput = ({
   onStopGeneration,
   isGenerating = false,
   onUploadFiles = null,
+  uploadedFiles = [],
 }: ChatInputProps) => {
   const [message, setMessage] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<LocalUploadedFile[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileSizeError, setFileSizeError] = useState<FileSizeError>({
@@ -88,7 +91,7 @@ const ChatInput = ({
     if ((message.trim() || uploadedFiles.length > 0) && !loading) {
       onSendMessage(message, uploadedFiles);
       setMessage("");
-      setUploadedFiles([]);
+      // The parent owns the file list and clears it on send.
 
       // Clear the saved draft after sending
       localStorage.removeItem(DRAFT_MESSAGE_KEY);
@@ -191,8 +194,7 @@ const ChatInput = ({
         message: errorMessage,
       });
     } else if (validFiles.length > 0) {
-      setUploadedFiles((prev) => [...prev, ...validFiles]);
-      // Also notify parent component to show in unified ContextTags
+      // The parent owns the file list (shown in ContextTags + sent on submit).
       if (onUploadFiles) {
         onUploadFiles(validFiles);
       }

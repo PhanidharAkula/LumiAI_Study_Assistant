@@ -406,6 +406,11 @@ const ChatComponent = ({
   // insert a row before the first conversation id propagates (would duplicate).
   const creatingConvRef = useRef(false);
 
+  // Mirror of `loading` for the scroll handler (which closes over a stale value),
+  // plus a debounce handle for the localStorage write.
+  const loadingRef = useRef(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // How close to the bottom (px) counts as "at the bottom" for RE-PINNING when
   // the user scrolls back down. Kept small: unpinning is driven by scroll-up
   // INTENT (below), not by distance, so this only governs snapping follow back
@@ -486,7 +491,10 @@ const ChatComponent = ({
         container.scrollHeight - top - container.clientHeight;
       if (top < lastScrollTop - 1) {
         pinnedToBottom.current = false;
-      } else if (distanceFromBottom < PIN_AT_BOTTOM) {
+      } else if (!loadingRef.current && distanceFromBottom < PIN_AT_BOTTOM) {
+        // Re-pin by distance only when NOT streaming, so a touch-inertia
+        // overshoot that decelerates back into the bottom zone mid-reply can't
+        // re-pin the user who just scrolled away. (The jump button still re-pins.)
         pinnedToBottom.current = true;
         followParkRef.current = -1; // re-pinned by the user: allow catch-up
       }
@@ -526,34 +534,57 @@ const ChatComponent = ({
     };
   }, [initialLoading]);
 
+  // Keep the ref in sync synchronously so async handlers read the latest thread.
   useEffect(() => {
-    // keep a ref in sync so async handlers can access the latest messages
     messagesRef.current = messages;
+  }, [messages]);
 
-    if (messages.length > 0) {
-      const storageKey = `${STORAGE_KEY_PREFIX}${initialClassId || "global"}`;
-      // Persist a clean snapshot: drop an empty in-flight assistant placeholder
-      // and never store the live `isStreaming` flag, or a reload mid-stream would
-      // restore a message stuck "thinking" forever.
+  // Mirror `loading` into a ref the scroll handler can read without re-binding.
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  // Persist a lightweight snapshot for the 24h fast-restore - DEBOUNCED so the
+  // ~33fps streaming setMessages can't thrash localStorage, and with the heavy
+  // per-turn contextContent stripped (the DB v2 snapshot is the source of truth
+  // for materials; keeping full PDF text here janked the main thread and risked
+  // a QuotaExceededError mid-render). Also persist the conversation id so a
+  // reopen targets the existing row instead of forking a duplicate.
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const storageKey = `${STORAGE_KEY_PREFIX}${initialClassId || "global"}`;
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
       const persistable = messages
         .filter((m) => !(m.type === "assistant" && m.isStreaming && !m.content))
-        .map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m));
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          messages: persistable,
-          selectedClasses,
-          selectedFiles,
-          // Persist the session id so reopening this chat (the component
-          // unmounts when closed) continues the SAME conversation instead of
-          // inserting a duplicate row under a fresh session.
-          sessionId: currentSessionId,
-          timestamp: Date.now(),
-        })
-      );
-    }
+        .map((m) => {
+          const clean = m.isStreaming ? { ...m, isStreaming: false } : m;
+          return clean.contextContent ? { ...clean, contextContent: "" } : clean;
+        });
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            messages: persistable,
+            selectedClasses,
+            selectedFiles,
+            sessionId: currentSessionId,
+            conversationId: currentConversationId,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (e) {
+        console.warn("Could not persist chat to localStorage:", e);
+      }
+    }, 500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, selectedClasses, selectedFiles, currentSessionId]);
+  }, [
+    messages,
+    selectedClasses,
+    selectedFiles,
+    currentSessionId,
+    currentConversationId,
+  ]);
 
   useEffect(() => {
     // Follow new/updated messages via the guarded follow so a scrolled-up user
@@ -580,15 +611,18 @@ const ChatComponent = ({
             selectedClasses: savedClasses,
             selectedFiles: savedFiles,
             sessionId: savedSessionId,
+            conversationId: savedConversationId,
             timestamp,
           } = JSON.parse(savedChat);
           if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
-            // Restore the session so a continued turn updates the existing
-            // conversation (found by session) instead of inserting a duplicate.
+            // Restore the session + conversation so a continued turn updates the
+            // existing row instead of inserting a duplicate.
             if (savedSessionId) setCurrentSessionId(savedSessionId);
+            if (savedConversationId)
+              setCurrentConversationId(savedConversationId);
             setInitialLoading(false);
             return;
           }
@@ -609,15 +643,18 @@ const ChatComponent = ({
             selectedClasses: savedClasses,
             selectedFiles: savedFiles,
             sessionId: savedSessionId,
+            conversationId: savedConversationId,
             timestamp,
           } = JSON.parse(savedChat);
           if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
-            // Restore the session so a continued turn updates the existing
-            // conversation (found by session) instead of inserting a duplicate.
+            // Restore the session + conversation so a continued turn updates the
+            // existing row instead of inserting a duplicate.
             if (savedSessionId) setCurrentSessionId(savedSessionId);
+            if (savedConversationId)
+              setCurrentConversationId(savedConversationId);
             setInitialLoading(false);
             return;
           }
@@ -821,6 +858,10 @@ const ChatComponent = ({
           messageArray.push(...messagesFromConv(conv));
         }
 
+        // Re-pin and clear the park before committing so the [messages] effect
+        // snaps to the latest turn immediately (no flash if scrolled up earlier).
+        pinnedToBottom.current = true;
+        followParkRef.current = -1;
         setMessages(messageArray);
         setCurrentConversationId(id);
         setCurrentSessionId(data.session_id || `session-${Date.now()}`);
@@ -1271,9 +1312,14 @@ const ChatComponent = ({
               cancelAnimationFrame(smoothRaf);
               smoothRaf = null;
             }
+            // Show a fresh "thinking" label again (the rotation timer was
+            // cleared when the preamble's first char painted, so reset the
+            // label rather than leave it frozen on a stale value).
             setMessages((prev) =>
               prev.map((msg) =>
-                msg.id === aiMessageId ? { ...msg, content: "" } : msg
+                msg.id === aiMessageId
+                  ? { ...msg, content: "", statusLabel: THINKING_PHRASES[0] }
+                  : msg
               )
             );
             return;
@@ -1505,17 +1551,30 @@ const ChatComponent = ({
       console.error("Error sending message:", error);
       // Don't show an error message if the request was aborted
       if ((error as { name?: string })?.name !== "AbortError") {
-        // Drop any still-streaming (empty) assistant placeholder first, so a
-        // thrown failure never leaves a dangling "Lumi" bubble above the error.
-        setMessages((prev) => [
-          ...prev.filter((m) => !(m.type === "assistant" && m.isStreaming)),
-          {
-            type: "error",
-            content:
-              "Sorry, there was an error processing your request. Please try again.",
-            id: nextMessageId("error"),
-          },
-        ]);
+        // Keep a partial answer the user already watched stream in (freeze it);
+        // drop only an empty in-flight bubble. Sync the ref so the persist
+        // snapshot (and any later save/retry) matches what's on screen.
+        const base = Array.isArray(messagesRef.current)
+          ? messagesRef.current
+          : messages;
+        const errorMsg: ChatMsg = {
+          type: "error",
+          content:
+            "Sorry, there was an error processing your request. Please try again.",
+          id: nextMessageId("error"),
+        };
+        const next = base
+          .filter(
+            (m) => !(m.type === "assistant" && m.isStreaming && !m.content)
+          )
+          .map((m) =>
+            m.type === "assistant" && m.isStreaming
+              ? { ...m, isStreaming: false }
+              : m
+          )
+          .concat(errorMsg);
+        messagesRef.current = next;
+        setMessages(next);
       }
     } finally {
       if (statusTimer) clearInterval(statusTimer);
@@ -1596,7 +1655,7 @@ const ChatComponent = ({
     if (type === "class") {
       setSelectedClasses((prev) => prev.filter((classId) => classId !== id));
       const classFiles =
-        allClasses.find((c: any) => c.id === id)?.files.map((f: any) => f.id) ||
+        allClasses.find((c: any) => c.id === id)?.files?.map((f: any) => f.id) ||
         [];
       setSelectedFiles((prev) =>
         prev.filter((fileId) => !classFiles.includes(fileId))
@@ -1661,6 +1720,8 @@ const ChatComponent = ({
       messageArray.push(...messagesFromConv(conv));
     }
 
+    pinnedToBottom.current = true;
+    followParkRef.current = -1;
     setMessages(messageArray);
 
     if (conversationPair.context_classes) {
@@ -2220,6 +2281,7 @@ const ChatComponent = ({
               onShowTagSelector={() => setShowTagSelector(true)}
               onStopGeneration={handleStopGeneration}
               isGenerating={!!abortController}
+              uploadedFiles={uploadedLocalFiles}
               onUploadFiles={(files) => {
                 // Add uploaded files to the unified context display
                 setUploadedLocalFiles((prev) => [...prev, ...files]);

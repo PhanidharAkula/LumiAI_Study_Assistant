@@ -130,59 +130,100 @@ const ChatMessage = ({
   const markdownToPlainText = (md: string): string => {
     if (!md || typeof md !== "string") return "";
     const stash: string[] = [];
+    const SENT = String.fromCharCode(0); // NUL - cannot occur in markdown text
     let t = md;
     // Protect code (fenced + inline) so their contents aren't stripped.
     t = t.replace(/```[^\n]*\n?([\s\S]*?)```/g, (_m, code) => {
       stash.push(String(code).replace(/\n$/, ""));
-      return `@@C${stash.length - 1}@@`;
+      return SENT + (stash.length - 1) + SENT;
     });
     t = t.replace(/`([^`\n]+)`/g, (_m, code) => {
       stash.push(String(code));
-      return `@@C${stash.length - 1}@@`;
+      return SENT + (stash.length - 1) + SENT;
     });
     t = t
       .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1") // images -> alt text
       .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // links -> link text
-      .replace(/^\s{0,3}#{1,6}\s+/gm, "") // headings
-      .replace(/^\s{0,3}>\s?/gm, "") // blockquotes
-      // Emphasis, flanking-aware: a spaced "*" (multiplication / glob like
-      // *.js) and an intra-word "_" (identifiers like my_var_name) are left
-      // intact - the old single regex deleted both. Flanking is enforced with a
-      // lookahead + a trailing \S inside the capture (NOT lookbehind, which
-      // throws a SyntaxError on Safari <16.4 and would break the whole module).
+      // Headings/blockquotes: trim only horizontal space ([ \t]) so the regex
+      // can't swallow the preceding blank line and glue blocks together on copy.
+      .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, "") // headings
+      .replace(/^[ \t]{0,3}>[ \t]?/gm, "") // blockquotes
+      // Thematic breaks (***, ___, ---, * * *) BEFORE emphasis - otherwise the
+      // emphasis rules chew a run of * / _ down into a stray bullet/underscore.
+      .replace(/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm, "")
       .replace(/~~(?=\S)(.*?\S)~~/g, "$1") // strikethrough
-      .replace(/(\*\*\*|\*\*|\*)(?=\S)(.*?\S)\1/g, "$2") // bold/italic
-      .replace(
-        /(^|[^A-Za-z0-9])(___|__|_)(?=\S)(.*?\S)\2(?![A-Za-z0-9])/g,
-        "$1$3"
-      ) // underscore emphasis (word-bounded; $1 keeps the preceding char)
-      .replace(/^(\s*)[-*+]\s+/gm, "$1• ") // bullet markers
-      .replace(/^\s*([-*_])(?:\s*\1){2,}\s*$/gm, "") // horizontal rules
-      // Table separator row: remove the whole line incl. its newline, so the
-      // following data row can't be merged onto the header on copy.
-      .replace(/^[ \t]*\|?[ \t:|-]{3,}\|?[ \t]*(?:\r?\n|$)/gm, "")
-      // Table data rows -> spaced cells. Trim only horizontal space ([ \t]) so
-      // the row's own newline is never consumed (the bug that glued rows).
-      .replace(/^[ \t]*\|(.+?)\|?[ \t]*$/gm, (_m, row) =>
-        String(row)
-          .split("|")
-          .map((c) => c.trim())
-          .filter(Boolean)
-          .join("  ")
-      ) // table rows -> spaced cells
-      .replace(/\$\$([\s\S]*?)\$\$/g, "$1") // display-math delimiters
-      // Inline math: unwrap real math (incl. digit-led like $3x$ or $2\pi r$)
-      // but leave currency ($5, "$5 and $10") and lone amounts alone.
-      .replace(/\$([^$\n]+?)\$/g, (m, inner) => {
+      .replace(/(\*\*\*|\*\*|\*)(?=\S)(.*?\S)\1/g, "$2") // bold/italic (asterisk)
+      // Underscore emphasis is intentionally NOT stripped: `__init__`/`__name__`
+      // dunders and snake_case identifiers are far more common in study prose
+      // than `_italic_`, and mangling them silently corrupts copied answers.
+      .replace(/^([ \t]*)[-*+][ \t]+/gm, "$1• "); // bullet markers
+    // Inline math unwrap (shared so table cells get their FINAL width before
+    // padding): real math (incl. digit-led like $3x$, $5+x$, $2\pi r$) is
+    // unwrapped; currency ($5, "$5 and $10") and lone amounts are kept.
+    const unwrapInlineMath = (str: string) =>
+      str.replace(/\$([^$\n]+?)\$/g, (m, inner) => {
         const s = String(inner);
         if (/^\s|\s$/.test(s)) return m; // padded -> currency-ish, keep
         if (/[\^_\\{}]/.test(s)) return s; // has math symbols
         if (/^[^\d]/.test(s)) return s; // starts non-digit
         if (/^\d[A-Za-z]/.test(s)) return s; // digit then letter, e.g. 3x
+        if (/[A-Za-z]/.test(s)) return s; // digit-led but contains a letter, e.g. 5+x
         return m; // pure number ($5) -> currency, keep
       });
-    // Restore protected code verbatim.
-    t = t.replace(/@@C(\d+)@@/g, (_m, i) => stash[Number(i)] ?? "");
+    // Tables -> aligned columns. Only a real block (a |-bearing header line
+    // immediately followed by a separator row) is converted, so prose that
+    // merely contains a | is never touched. Handles outer-pipe and pipe-less,
+    // and pads each column to its widest cell so it lines up in monospace.
+    const isTableSep = (l: string) =>
+      /^[ \t]*\|?[ \t]*:?-+:?[ \t]*(\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$/.test(l);
+    const splitCells = (l: string) =>
+      l
+        .replace(/^[ \t]*\|/, "")
+        .replace(/\|[ \t]*$/, "")
+        .split("|")
+        .map((c) => unwrapInlineMath(c.trim()));
+    const lines = t.split("\n");
+    const tableOut: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (
+        i + 1 < lines.length &&
+        /\|/.test(lines[i]) &&
+        isTableSep(lines[i + 1])
+      ) {
+        const rows: string[][] = [splitCells(lines[i])]; // header
+        i++; // skip the separator row
+        while (i + 1 < lines.length && /\|/.test(lines[i + 1])) {
+          i++;
+          rows.push(splitCells(lines[i]));
+        }
+        const cols = Math.max(...rows.map((r) => r.length));
+        const widths: number[] = [];
+        for (let c = 0; c < cols; c++) {
+          widths[c] = Math.max(...rows.map((r) => (r[c] || "").length));
+        }
+        for (const r of rows) {
+          tableOut.push(
+            r
+              .map((cell, c) =>
+                c < cols - 1 ? (cell || "").padEnd(widths[c]) : cell || ""
+              )
+              .join("  ")
+              .replace(/[ \t]+$/, "") // never leave trailing padding
+          );
+        }
+      } else {
+        tableOut.push(lines[i]);
+      }
+    }
+    // Non-table math (table cells were already unwrapped above).
+    t = unwrapInlineMath(
+      tableOut.join("\n").replace(/\$\$([\s\S]*?)\$\$/g, "$1")
+    );
+    // Restore protected code verbatim (the NUL sentinel can't collide with text).
+    t = t.replace(
+      new RegExp(SENT + "(\\d+)" + SENT, "g"),
+      (_m, i) => stash[Number(i)] ?? ""
+    );
     return t.replace(/\n{3,}/g, "\n\n").trim();
   };
 
