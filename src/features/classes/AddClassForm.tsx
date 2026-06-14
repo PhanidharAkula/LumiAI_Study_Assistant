@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
+import { UI } from "@shared/components/atlas";
+import { Button } from "@shared/components/controls";
+import Modal from "@shared/components/Modal";
+import { spring } from "@shared/motion";
 
 interface ClassRecord {
   id?: string;
@@ -16,6 +20,8 @@ interface AddClassFormProps {
   onClassUpdated?: (cls: ClassRecord) => void;
 }
 
+/** The create/rename-class dialog - a floating Modal plate above the page
+ *  (the dashboard stays visible behind the scrim; sheet on phones). */
 const AddClassForm = ({
   onCancel,
   onClassCreated,
@@ -26,12 +32,19 @@ const AddClassForm = ({
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isEditing && initialData) {
       setName(initialData.name);
     }
   }, [isEditing, initialData]);
+
+  // The Modal moves focus to its plate on open; hand it on to the input so
+  // typing can start immediately (this effect runs after Modal's, parent-last).
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,89 +135,76 @@ const AddClassForm = ({
   };
 
   return (
-    <div className="flex h-[70dvh] w-full items-center justify-center max-md:px-3 max-md:py-6 max-[480px]:px-2.5 max-[480px]:py-4">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        exit={{ opacity: 0, y: 30 }}
-        className="flex w-full flex-col items-center justify-center gap-5 rounded-[10px] bg-white p-[30px] max-md:max-w-[560px] max-md:items-stretch max-md:gap-3.5 max-md:p-5 max-[480px]:max-w-[420px] max-[480px]:rounded-lg max-[480px]:p-4"
-        style={{ marginTop: isEditing ? "200px" : "0" }}
-      >
-        <p className="text-[x-large] font-semibold max-md:text-center max-md:text-[1.15rem] max-[480px]:text-[1.05rem]">
-          {isEditing ? "Edit Class" : "Create New Class"}
-        </p>
+    <Modal
+      open
+      onClose={() => {
+        // Match the Cancel button: no dismissing mid-submit.
+        if (!isSubmitting) onCancel();
+      }}
+      size="sm"
+      sheetOnMobile
+      hideClose
+      overline={isEditing ? "Rename entry" : "New expedition"}
+      title={isEditing ? "Rename class" : "Chart a new class"}
+    >
+      {error && (
+        <motion.div
+          className="mb-5 rounded-lg border border-solid border-vermilion/30 bg-vermilion-wash px-4 py-3 text-[14px] font-medium leading-[1.55] text-vermilion"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring.plate}
+        >
+          {error}
+        </motion.div>
+      )}
 
-        {error && (
-          <motion.div
-            className="rounded-[10px] border-[1.5px] border-solid border-[#EF4444] bg-[#FEE2E2] p-3 text-center font-medium text-[#B91C1C]"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <div className="w-full">
+          <label
+            className={`${UI.overlineMuted} mb-2 block`}
+            htmlFor="className"
           >
-            {error}
-          </motion.div>
-        )}
+            Class Name
+          </label>
+          <input
+            ref={inputRef}
+            className={`${UI.input} max-md:py-2.5`}
+            id="className"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter class name"
+            required
+            autoFocus
+          />
+        </div>
 
-        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          <div className="w-full max-w-[500px] max-md:max-w-full">
-            <label
-              className="mb-2 block font-semibold text-ink"
-              htmlFor="className"
-            >
-              Class Name
-            </label>
-            <input
-              className="block w-[600px] max-w-[500px] appearance-none rounded-[10px] border-[1.5px] border-solid border-ink bg-sage px-[15px] py-3 text-[16px] text-ink shadow-none [transition:all_0.2s_ease-in-out] placeholder:text-ink placeholder:opacity-60 focus:border-ink focus:outline-none max-md:w-full max-md:max-w-full max-md:px-3 max-md:py-2.5 max-md:text-[15px]"
-              id="className"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter class name"
-              required
-              autoFocus
-            />
-          </div>
+        <div className="flex justify-end gap-3 max-[480px]:gap-2.5">
+          <Button
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="max-[480px]:px-5"
+          >
+            Cancel
+          </Button>
 
-          <div className="flex justify-end gap-5 max-md:gap-3 max-[480px]:gap-2.5">
-            <motion.button
-              type="button"
-              className="rounded-full border-[1.5px] border-solid border-ink bg-white px-[30px] py-3 text-[medium] font-medium shadow-[0px_2px_0_#000] [transition:none] disabled:opacity-70 max-md:px-5 max-md:py-2.5 max-md:text-[small] max-[480px]:px-[15px] max-[480px]:py-2.5"
-              onClick={onCancel}
-              disabled={isSubmitting}
-              whileHover={{
-                scale: 1.03,
-                y: -3,
-                transition: { type: "spring", stiffness: 300, damping: 5 },
-              }}
-              whileTap={{ scale: 0.98 }}
-            >
-              Cancel
-            </motion.button>
-
-            <motion.button
-              type="submit"
-              className="min-w-[160px] rounded-full border-[1.5px] border-solid border-ink bg-sage px-[30px] py-3 text-[medium] font-medium shadow-[0px_2px_0_#000] [transition:none] disabled:opacity-70 max-md:px-5 max-md:py-2.5 max-md:text-[small] max-[480px]:min-w-0 max-[480px]:px-[15px] max-[480px]:py-2.5"
-              disabled={isSubmitting || !name.trim()}
-              whileHover={{
-                scale: 1.03,
-                y: -3,
-                transition: { type: "spring", stiffness: 300, damping: 5 },
-              }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {isSubmitting
-                ? isEditing
-                  ? "Saving..."
-                  : "Creating..."
-                : isEditing
+          <Button
+            type="submit"
+            disabled={isSubmitting || !name.trim()}
+            className="min-w-[160px] max-[480px]:min-w-0 max-[480px]:px-5"
+          >
+            {isSubmitting
+              ? isEditing
+                ? "Saving..."
+                : "Creating..."
+              : isEditing
                 ? "Save Changes"
                 : "Create Class"}
-            </motion.button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 

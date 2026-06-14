@@ -1,53 +1,37 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { UI } from "@shared/components/atlas";
+import { BackButton } from "@shared/components/controls";
 
 // Shared chrome for the public /privacy and /terms pages: the centered content
-// column, the framer back button, and the prose typography (reproduced from the
-// old LegalPage.css via descendant arbitrary-variants so every h1/h2/p/ul/li/a
-// is styled from one place instead of repeating classes on each element).
+// column, the kit back button, and the prose typography (styled from one
+// place via descendant arbitrary-variants so every h1/h2/p/ul/li/a matches the
+// Luminarium's editorial register).
 const PROSE = [
-  "[&_h1]:text-[2rem] [&_h1]:font-bold [&_h1]:mb-1.5 [&_h1]:cursor-default",
-  "[&_h2]:text-[1.2rem] [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-2.5 [&_h2]:cursor-default",
-  "[&_p]:leading-[1.7] [&_p]:mb-3.5 [&_p]:text-ink [&_p]:cursor-default",
-  "[&_ul]:mt-1.5 [&_ul]:mb-4 [&_ul]:ml-[22px] [&_ul]:leading-[1.7]",
+  "[&_h1]:font-display [&_h1]:text-[36px] [&_h1]:font-semibold [&_h1]:tracking-[-0.01em] [&_h1]:mb-2 [&_h1]:cursor-default",
+  "[&_h2]:font-display [&_h2]:text-[21px] [&_h2]:font-semibold [&_h2]:mt-9 [&_h2]:mb-2.5 [&_h2]:cursor-default",
+  "[&_p]:leading-[1.75] [&_p]:mb-3.5 [&_p]:text-ink/90 [&_p]:text-[15px] [&_p]:cursor-default",
+  "[&_ul]:mt-1.5 [&_ul]:mb-4 [&_ul]:ml-[22px] [&_ul]:leading-[1.75] [&_ul]:text-[15px]",
   "[&_li]:mb-2",
-  "[&_a]:text-ink [&_a]:no-underline [&_a]:cursor-pointer",
+  "[&_a]:text-gold-deep [&_a]:underline [&_a]:decoration-gold/40 [&_a]:underline-offset-2 [&_a]:cursor-pointer hover:[&_a]:decoration-gold-deep",
   "[&_strong]:font-semibold",
 ].join(" ");
 
 const LegalLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   return (
-    <div className="flex min-h-[100dvh] w-full justify-center px-5 pt-12 pb-24">
-      <div className={`w-full max-w-[800px] cursor-default ${PROSE}`}>
-        <motion.button
-          className="back-button mb-7"
+    <div className="flex min-h-[100dvh] w-full justify-center px-5 pb-24 pt-12">
+      <div className="w-full max-w-[760px] cursor-default">
+        <BackButton
+          className="mb-8"
           onClick={() => navigate("/")}
-          whileHover={{
-            x: -5,
-            transition: { type: "spring", stiffness: 300, damping: 5 },
-          }}
-          whileTap={{ scale: 0.98 }}
-          aria-label="Back to home"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-        </motion.button>
+          label="Back to home"
+        />
 
-        {children}
+        <p className={`${UI.overline} mb-3`}>Lumi AI · Records</p>
+        <div className={`${UI.rule} mb-8`} />
+
+        <div className={PROSE}>{children}</div>
       </div>
     </div>
   );

@@ -7,12 +7,25 @@ import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
+import { Constellation, UI, starPath } from "@shared/components/atlas";
+import { BackButton, IconButton, Spinner } from "@shared/components/controls";
+import {
+  DUR,
+  fadeRise,
+  fadeRiseSoft,
+  pressLift,
+  spring,
+  stagger,
+} from "@shared/motion";
+import { useEscapeToClose } from "@shared/hooks/overlay";
 
-// Study tools are heavy (pdf.js, AI) — load them only when opened.
+// Study tools are heavy (pdf.js, AI) - load them only when opened.
 const QuizComponent = lazy(() => import("@features/quiz/QuizComponent"));
-const FlashcardsComponent = lazy(() => import("@features/flashcards/FlashcardsComponent"));
+const FlashcardsComponent = lazy(
+  () => import("@features/flashcards/FlashcardsComponent")
+);
 
-// A class row from Supabase. Permissive — extra columns are allowed.
+// A class row from Supabase. Permissive - extra columns are allowed.
 interface ClassData {
   id: string | number;
   name: string;
@@ -132,6 +145,9 @@ const ClassDetails = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Escape closes the study-instruments menu (stacked - dialogs above win).
+  useEscapeToClose(showMenu, () => setShowMenu(false));
 
   const fetchFiles = async () => {
     if (!classData?.id) return;
@@ -301,11 +317,7 @@ const ClassDetails = ({
     }
   };
 
-  const processNextFile = async (
-    files: File[],
-    index: number,
-    user: User
-  ) => {
+  const processNextFile = async (files: File[], index: number, user: User) => {
     if (index >= files.length) {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -444,40 +456,42 @@ const ClassDetails = ({
     return `${Math.round(val * 10) / 10} ${units[i]}`;
   }
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
+  // Small in-file components for the study buttons so they include navigation.
+  // `popup` keeps the desktop-inline vs mobile-popup mechanism:
+  //   inline = hairline instrument pill (ink-fill on hover) - a btnClass-shaped
+  //            variant string (custom hover colors can't stack on the kit's),
+  //            with the lift/press feel from @shared/motion's pressLift,
+  //   popup  = item row inside the vellum plate menu (color hover only).
+  const studyButtonClass = (popup?: boolean) =>
+    popup
+      ? "hidden w-full max-md:flex cursor-pointer items-center justify-start gap-3 rounded-lg border-0 bg-transparent px-3.5 py-3 text-[14.5px] font-semibold text-ink transition-colors duration-150 hover:bg-cream/80 active:bg-cream"
+      : "inline-flex max-md:hidden cursor-pointer items-center justify-center gap-2 rounded-full border border-solid border-ink/25 bg-transparent px-5 py-2.5 text-[13.5px] font-semibold text-ink transition-[color,background-color,border-color] duration-200 hover:border-ink hover:bg-ink hover:text-cream";
 
-  // Small in-file components for the study buttons so they include navigation
   function MotionFlashcardsButton({ popup }: { popup?: boolean }) {
     return (
       <motion.button
-        className={`${
-          popup ? "hidden w-full max-md:flex" : "inline-flex max-md:hidden"
-        } items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-transparent px-[30px] py-3 text-[medium] font-medium text-ink shadow-[0px_2px_0_#000] [transition:all_0.2s_ease-in-out] hover:bg-[#3B82F6] hover:[&_svg]:text-white max-md:p-2.5`}
-        whileTap={{ scale: 0.98 }}
+        className={studyButtonClass(popup)}
+        {...(popup ? { whileTap: { scale: 0.98 } } : pressLift)}
         onClick={handleFlashcards}
       >
+        {/* Card-deck emblem with a gold ✦ pressed into the top card. */}
         <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
+          width="17"
+          height="17"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-          <line x1="8" y1="21" x2="16" y2="21"></line>
-          <line x1="12" y1="17" x2="12" y2="21"></line>
+          <g
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="2.5" y="6.5" width="15.5" height="11.5" rx="1.6" />
+            <path d="M7 3.5h12.1A1.9 1.9 0 0 1 21 5.4V14" />
+          </g>
+          <path d={starPath(10.2, 12.2, 3.1)} fill="var(--color-gold)" />
         </svg>
         Flashcards
       </motion.button>
@@ -487,102 +501,48 @@ const ClassDetails = ({
   function MotionQuizButton({ popup }: { popup?: boolean }) {
     return (
       <motion.button
-        className={`${
-          popup ? "hidden w-full max-md:flex" : "inline-flex max-md:hidden"
-        } items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-transparent px-[30px] py-3 text-[medium] font-medium text-ink shadow-[0px_2px_0_#000] [transition:all_0.2s_ease-in-out] hover:bg-[#8B5CF6] hover:[&_svg]:text-white max-md:p-2.5`}
-        whileTap={{ scale: 0.98 }}
+        className={studyButtonClass(popup)}
+        {...(popup ? { whileTap: { scale: 0.98 } } : pressLift)}
         onClick={handleQuiz}
       >
+        {/* Astrolabe emblem - graduated ring, gold star needle. */}
         <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
+          width="17"
+          height="17"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          <g stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+            <circle cx="12" cy="12" r="8.2" />
+            <path d="M12 1.6v2.2M12 20.2v2.2M1.6 12h2.2M20.2 12h2.2" />
+          </g>
+          <path d={starPath(12, 12, 4.4)} fill="var(--color-gold)" />
+          <circle cx="12" cy="12" r="1" fill="currentColor" />
         </svg>
         Quiz
       </motion.button>
     );
   }
 
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-  };
-
-  const fileCardVariants: Variants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: ({ index }: { index: number }) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.15,
-        delay: index * 0.05,
-        when: "afterChildren",
-      },
-    }),
-    hover: {
-      y: -5,
-      scale: 1.01,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 8,
-      },
-    },
-    tap: { scale: 0.98 },
-  };
-
+  // Dropdown plate under the menu key - shared spring/duration, local geometry.
   const menuVariants: Variants = {
-    hidden: { opacity: 0, y: -20, scale: 0.8 },
+    hidden: { opacity: 0, y: -10, scale: 0.96 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 20,
-      },
+      transition: spring.plate,
     },
     exit: {
       opacity: 0,
-      y: -20,
-      scale: 0.8,
-      transition: { duration: 0.2 },
+      y: -10,
+      scale: 0.96,
+      transition: { duration: DUR.fast },
     },
   };
 
   if (!classData) return null;
-
-  if (isEditing) {
-    return (
-      <div className="mx-auto w-full max-w-[600px]">
-        <AddClassForm
-          isEditing={true}
-          initialData={classData as any}
-          onCancel={onCancelEdit}
-          onClassUpdated={onUpdate}
-        />
-      </div>
-    );
-  }
 
   return (
     <motion.div
@@ -590,96 +550,102 @@ const ClassDetails = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ type: "spring", stiffness: 100, damping: 15 }}
+      transition={spring.gentle}
     >
+      {/* Rename floats above the record as a Modal plate (AddClassForm renders
+          the kit Modal) instead of replacing the whole view. */}
+      {isEditing && (
+        <AddClassForm
+          isEditing={true}
+          initialData={classData as any}
+          onCancel={onCancelEdit}
+          onClassUpdated={onUpdate}
+        />
+      )}
       {/* Hide all ClassDetails content when quiz or flashcards is open */}
       {!showQuiz && !showFlashcards && (
         <>
           <motion.div
-            className="flex items-center gap-5 border-0 border-b border-solid border-ink px-2.5 pb-5"
-            variants={containerVariants}
+            className="flex items-center gap-4 border-0 border-b border-solid border-line px-2.5 pb-5 max-md:gap-3"
+            variants={stagger()}
             initial="hidden"
             animate="visible"
           >
-            <motion.button
-              className="back-button"
+            <BackButton
               onClick={onBack}
-              variants={itemVariants}
-              whileHover={{
-                x: -3,
-                transition: { type: "spring", stiffness: 300, damping: 5 },
-              }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-              </svg>
-            </motion.button>
+              label="Back to classes"
+              variants={fadeRise}
+            />
 
-            <motion.div className="m-0 flex-1" variants={itemVariants}>
-              <p className="mb-[5px] text-[xx-large] font-semibold leading-[1.12] text-ink">
+            {/* The class's own star-sign, drawn from its name. */}
+            <motion.div
+              className="shrink-0 text-verdi max-[480px]:hidden"
+              variants={fadeRise}
+              aria-hidden="true"
+            >
+              <Constellation
+                name={classData.name}
+                size={44}
+                className="max-md:h-9 max-md:w-9"
+              />
+            </motion.div>
+
+            <motion.div className="m-0 min-w-0 flex-1" variants={fadeRise}>
+              <p className={`${UI.overline} mb-1`}>Class record</p>
+              <p className="mb-1 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
                 {classData.name}
               </p>
-              <p className="mt-0 text-[small] leading-[1.1] text-muted">
+              <p className={UI.overlineMuted}>
                 Created on {new Date(classData.created_at).toLocaleDateString()}
               </p>
             </motion.div>
 
             <motion.div
-              className="m-0 flex justify-end gap-[15px] max-[480px]:flex-wrap max-[480px]:gap-2.5"
-              variants={itemVariants}
+              className="m-0 flex items-center justify-end gap-3 max-[480px]:flex-wrap max-[480px]:gap-2.5"
+              variants={fadeRise}
             >
               {/* Study tool buttons: navigate to full-screen study pages */}
               <MotionFlashcardsButton />
               <MotionQuizButton />
-              <div className="relative" ref={menuRef}>
-                <motion.button
-                  className="hidden h-[50px] w-[50px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage text-ink shadow-[0px_2px_0_#000] max-md:flex"
+              {/* Mobile-only menu key (desktop shows the inline pills above). */}
+              <div className="relative hidden max-md:block" ref={menuRef}>
+                <IconButton
+                  label="Study instruments"
+                  variant="key"
                   onClick={toggleMenu}
-                  whileHover={{
-                    scale: 1.05,
-                    transition: { type: "spring", stiffness: 300, damping: 5 },
-                  }}
-                  whileTap={{ scale: 0.98 }}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
+                    width="19"
+                    height="19"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.75"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
                     <line x1="3" y1="6" x2="21" y2="6" />
                     <line x1="3" y1="12" x2="21" y2="12" />
                     <line x1="3" y1="18" x2="21" y2="18" />
                   </svg>
-                </motion.button>
+                </IconButton>
 
                 <AnimatePresence>
                   {showMenu && (
                     <motion.div
-                      className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[300px] flex-col gap-2.5 rounded-xl border-[1.5px] border-solid border-ink bg-cream p-5 shadow-[0px_5px_15px_rgba(0,0,0,0.1)]"
+                      className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[260px] flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2 shadow-float"
                       variants={menuVariants}
                       initial="hidden"
                       animate="visible"
                       exit="exit"
                     >
-                      {/* Intentionally empty: no menu items on ClassDetails */}
+                      {/* Mobile study-instrument menu - vellum plate rows. */}
+                      <p className={`${UI.overlineMuted} px-3.5 pb-1.5 pt-2`}>
+                        Study instruments
+                      </p>
+                      <div className="mx-2 mb-1 h-px border-0 bg-line" />
                       <MotionFlashcardsButton popup />
                       <MotionQuizButton popup />
                     </motion.div>
@@ -690,8 +656,8 @@ const ClassDetails = ({
           </motion.div>
 
           <motion.div
-            className="flex flex-col items-center justify-center gap-5 px-5 py-[30px]"
-            variants={containerVariants}
+            className="flex flex-col items-center justify-center gap-5 px-2.5 py-[30px] max-md:px-1"
+            variants={stagger()}
             initial="hidden"
             animate="visible"
           >
@@ -707,9 +673,11 @@ const ClassDetails = ({
               style={{ width: "100%" }}
             >
               <motion.div
-                className={`mx-auto my-5 flex min-h-[200px] w-[60%] cursor-pointer flex-col items-center justify-center gap-[100px] rounded-[10px] border-[1.5px] border-dashed border-ink p-[30px] [transition:all_0.2s_ease-in-out] max-[1024px]:w-[80%] max-[1024px]:gap-[70px] max-[1024px]:p-[25px] max-md:w-full max-md:gap-[50px] max-md:p-5 ${
-                  dragActive ? "scale-[1.02]" : ""
-                } ${uploading ? "cursor-default" : ""}`}
+                className={`group/drop mx-auto my-5 flex min-h-[190px] w-[60%] flex-col items-center justify-center gap-4 rounded-xl border border-dashed p-[30px] transition-[border-color,background-color] duration-300 max-[1024px]:w-[80%] max-[1024px]:p-[25px] max-md:w-full max-md:min-h-[160px] max-md:p-5 ${
+                  dragActive
+                    ? "border-gold-deep bg-gold/10"
+                    : "border-ink/30 bg-vellum/50 hover:border-ink/60 hover:bg-vellum/80"
+                } ${uploading ? "cursor-default" : "cursor-pointer"}`}
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
@@ -726,33 +694,56 @@ const ClassDetails = ({
                 />
 
                 {uploading ? (
-                  <div className="flex flex-col items-center gap-2.5">
-                    <div className="spinner mb-0!"></div>
-                    <p className="font-semibold">Uploading files...</p>
+                  <div className="flex w-full max-w-[280px] flex-col items-center gap-3.5">
+                    <Spinner />
+                    <p className="text-[15px] font-semibold text-ink">
+                      Uploading files...
+                    </p>
+                    {/* Thin gold thread sweeping along a hairline track. */}
+                    <div
+                      className="h-[2px] w-full overflow-hidden rounded-full bg-line"
+                      aria-hidden="true"
+                    >
+                      <div className="h-full w-full animate-shimmer bg-linear-to-r from-transparent via-gold to-transparent bg-[length:200%_100%]" />
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-2.5">
-                    <div className="mb-2.5 flex h-[60px] w-[60px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-white shadow-[0_2px_0_#000]">
+                  <div className="flex flex-col items-center gap-2.5 text-center">
+                    {dragActive ? (
+                      <svg
+                        width="34"
+                        height="34"
+                        viewBox="0 0 24 24"
+                        className="mb-1.5 animate-breathe text-gold-deep"
+                        aria-hidden="true"
+                      >
+                        <path d={starPath(12, 12, 9)} fill="currentColor" />
+                      </svg>
+                    ) : (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="30"
-                        height="30"
+                        width="34"
+                        height="34"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="2"
+                        strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        className="mb-1.5 text-ink/60 transition-colors duration-300 group-hover/drop:text-gold-deep"
+                        aria-hidden="true"
                       >
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="17 8 12 3 7 8"></polyline>
                         <line x1="12" y1="3" x2="12" y2="15"></line>
                       </svg>
-                    </div>
-                    <p className="mb-[5px] text-[18px] font-semibold">
-                      Upload Files or Drag & Drop Here
+                    )}
+                    <p
+                      className={`${UI.overline} max-[480px]:tracking-[0.14em]`}
+                    >
+                      Add documents to this constellation
                     </p>
-                    <p className="text-[14px] text-muted">
+                    <p className={UI.overlineMuted}>
                       PDF, DOC, PPT, JPG, PNG, etc.
                     </p>
                   </div>
@@ -767,82 +758,66 @@ const ClassDetails = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <div className="spinner"></div>
-                <span>Loading files...</span>
+                <Spinner label="Loading files…" />
               </motion.div>
             ) : files.length === 0 ? (
               <motion.div
-                className="flex flex-col items-center justify-center gap-[15px] p-[30px] text-center"
-                variants={itemVariants}
+                className="flex flex-col items-center justify-center gap-3 p-[30px] text-center"
+                variants={fadeRise}
               >
-                <div className="mt-[50px] flex h-20 w-20 items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage shadow-[0px_2px_0_#000]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="40"
-                    height="40"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="12" y1="18" x2="12" y2="12"></line>
-                    <line x1="9" y1="15" x2="15" y2="15"></line>
-                  </svg>
+                {/* The class's constellation, waiting to be charted. */}
+                <div className="mt-6 text-ink/35" aria-hidden="true">
+                  <Constellation
+                    name={classData.name}
+                    size={150}
+                    className="max-md:h-[118px] max-md:w-[118px]"
+                  />
                 </div>
-                <h4 className="text-[24px] font-semibold">No Files Yet</h4>
-                <p className="text-muted">Upload files to get started</p>
+                <p className={UI.overlineMuted}>Empty plate</p>
+                <p className="m-0 max-w-[360px] font-display text-[21px] font-medium leading-[1.45] text-ink/85 max-md:text-[19px]">
+                  Nothing charted yet - add your{" "}
+                  <em className="text-gold-deep">first document</em>.
+                </p>
               </motion.div>
             ) : (
               <motion.div
-                className="grid w-full grid-cols-[repeat(auto-fill,minmax(350px,1fr))] gap-5 max-md:grid-cols-1 max-md:gap-3.5 max-md:py-2.5"
-                variants={containerVariants}
+                className="flex w-full flex-col max-md:py-2.5"
+                variants={stagger(0.04, 0.05)}
                 initial="hidden"
                 animate={loading ? "hidden" : "visible"}
                 key="files-grid"
               >
+                {/* Catalogue header - the ledger's column rule. */}
+                <div className="flex items-center justify-between gap-3 px-2 pb-2.5 max-md:px-1">
+                  <span className={UI.overlineMuted}>
+                    Catalogue · {files.length}{" "}
+                    {files.length === 1 ? "document" : "documents"}
+                  </span>
+                  <span className="text-[11px] text-gold" aria-hidden="true">
+                    ✦
+                  </span>
+                </div>
+                <div className={UI.rule} />
                 <AnimatePresence mode="wait">
-                  {files.map((file, i) => (
+                  {files.map((file) => (
                     <motion.div
                       key={file.id}
-                      className="relative flex flex-col overflow-hidden rounded-[10px] bg-white p-5 max-md:w-full max-md:flex-row max-md:items-center max-md:gap-3 max-md:rounded-lg max-md:p-3.5"
-                      custom={{ index: i, loaded: !loading }}
-                      variants={fileCardVariants}
-                      initial="hidden"
-                      animate="visible"
-                      whileHover="hover"
-                      whileTap="tap"
+                      className="group relative flex w-full flex-row items-center gap-4 border-0 border-b border-solid border-line px-2 py-3.5 transition-colors duration-200 hover:bg-vellum/70 max-md:gap-3 max-md:px-1 max-md:py-3"
+                      variants={fadeRiseSoft}
                     >
-                      <div
-                        className={`mb-[15px] flex h-[50px] w-[50px] items-center justify-center rounded-lg border-[1.5px] border-solid [transition:all_0.2s_ease] max-md:mb-0 max-md:h-12 max-md:w-12 max-md:flex-[0_0_48px] ${
-                          file.type?.includes("image")
-                            ? "border-[#10B981] bg-[rgba(16,185,129,0.1)] shadow-[0px_2px_0_#10B981] [&_svg]:text-[#10B981]"
-                            : file.type?.includes("pdf")
-                            ? "border-[#EF4444] bg-[rgba(239,68,68,0.1)] shadow-[0px_2px_0_#EF4444] [&_svg]:text-[#EF4444]"
-                            : file.type?.includes("word") ||
-                              file.type?.includes("doc")
-                            ? "border-[#3B82F6] bg-[rgba(59,130,246,0.1)] shadow-[0px_2px_0_#3B82F6] [&_svg]:text-[#3B82F6]"
-                            : file.type?.includes("spreadsheet") ||
-                              file.type?.includes("excel") ||
-                              file.type?.includes("csv")
-                            ? "border-[#D97706] bg-[#FEF3C7] shadow-[0px_2px_0_#D97706] [&_svg]:text-[#D97706]"
-                            : "border-[#8B5CF6] bg-[rgba(139,92,246,0.1)] shadow-[0px_2px_0_#8B5CF6] [&_svg]:text-[#8B5CF6]"
-                        }`}
-                      >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-solid border-line bg-cream/70 max-md:h-9 max-md:w-9">
                         {file.type?.includes("image") ? (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            className="text-verdi"
                           >
                             <rect
                               x="3"
@@ -858,14 +833,15 @@ const ClassDetails = ({
                         ) : file.type?.includes("pdf") ? (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            className="text-vermilion/90"
                           >
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -876,32 +852,34 @@ const ClassDetails = ({
                         ) : (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            className="text-ink/65"
                           >
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                           </svg>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h4 className="mb-2 break-words text-[18px] font-semibold max-md:mb-1 max-md:text-[16px]">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="m-0 truncate text-[15.5px] font-semibold text-ink max-md:text-[14.5px]">
                           {file.name}
                         </h4>
-                        <p className="text-[12px] text-muted">
+                        <p className={`${UI.overlineMuted} mb-0 mt-1`}>
                           {formatBytes(file.size)} •{" "}
                           {new Date(file.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="mt-5 flex justify-end gap-2.5 max-md:ml-2 max-md:mt-0 max-md:gap-2">
+                      {/* Instrument keys - revealed on hover (always shown on mobile). */}
+                      <div className="flex shrink-0 items-center justify-end gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 max-md:ml-1 max-md:gap-2 max-md:opacity-100">
                         <motion.button
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-solid border-ink bg-sage shadow-[0px_1px_0_#000] [transition:none] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:stroke-ink max-md:h-9 max-md:w-9"
+                          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-ink/20 bg-transparent text-ink/70 transition-colors duration-150 hover:border-ink hover:bg-ink hover:text-cream max-md:h-8 max-md:w-8 [&_svg]:h-4 [&_svg]:w-4"
                           onClick={() => handleFileView(file)}
                           title="View file"
                           whileHover={{
@@ -918,7 +896,7 @@ const ClassDetails = ({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
@@ -927,7 +905,7 @@ const ClassDetails = ({
                           </svg>
                         </motion.button>
                         <motion.button
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-solid border-ink bg-[#EF4444] shadow-[0px_1px_0_#000] [transition:none] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:stroke-white max-md:h-9 max-md:w-9"
+                          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-ink/20 bg-transparent text-ink/70 transition-colors duration-150 hover:border-vermilion hover:bg-vermilion hover:text-white max-md:h-8 max-md:w-8 [&_svg]:h-4 [&_svg]:w-4"
                           onClick={() =>
                             handleFileDelete(file.id, file.path, file.name)
                           }
@@ -946,7 +924,7 @@ const ClassDetails = ({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >

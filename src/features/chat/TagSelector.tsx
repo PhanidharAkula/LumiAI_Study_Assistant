@@ -6,6 +6,11 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
+import { motion } from "framer-motion";
+import { Constellation, UI } from "@shared/components/atlas";
+import { Button, CloseButton, IconButton } from "@shared/components/controls";
+import Modal from "@shared/components/Modal";
+import { spring } from "@shared/motion";
 
 interface ClassFile {
   id: string;
@@ -32,10 +37,17 @@ interface TagSelectorProps {
   initialSelectedFiles?: string[];
 }
 
-const FOOTER_BTN =
-  "rounded-full px-4 py-2 text-[small] font-medium [transition:all_0.2s] hover:-translate-y-1";
+// Archive-drawer rows: hairline file entries; selected = verdigris wash.
 const FILE_ITEM =
-  "my-[5px] flex items-center rounded-md border border-solid p-2.5 [transition:all_0.2s_ease]";
+  "my-1 flex items-center rounded-md border border-solid p-2.5 transition-colors duration-150";
+
+// Square hairline checkbox (appearance-none input) - checked = ink fill with a
+// gold ✦ tick rendered by the sibling span (peer-checked). The input element
+// itself is kept so refs/indeterminate keep working.
+const CHECKBOX =
+  "peer m-0 h-full w-full cursor-pointer appearance-none rounded-[4px] border border-solid border-ink/30 bg-white/70 transition-colors duration-150 hover:border-ink checked:border-ink checked:bg-ink indeterminate:border-ink";
+const CHECKBOX_TICK =
+  "pointer-events-none absolute hidden text-[10px] leading-none text-gold peer-checked:block";
 
 const TagSelector = ({
   isOpen,
@@ -56,8 +68,10 @@ const TagSelector = ({
   const classCheckboxRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Auto-expand classes for initial load
+  // Auto-expand classes when the picker opens (re-seeds each open now that the
+  // Modal keeps this mounted across open/close).
   useEffect(() => {
+    if (!isOpen) return;
     const expanded: Record<string, boolean> = {};
 
     // Auto-expand classes that have selected files
@@ -76,12 +90,13 @@ const TagSelector = ({
 
     setExpandedClasses(expanded);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isOpen]);
 
-  // Reconcile initial selections: ensure selectedFiles includes files from any
-  // initially selected classes, then mark a class as selected only when all
-  // its files are selected. This prevents divergence between class and file state.
+  // Reconcile initial selections on open: ensure selectedFiles includes files
+  // from any initially selected classes, then mark a class as selected only
+  // when all its files are selected. Prevents class/file state divergence.
   useEffect(() => {
+    if (!isOpen) return;
     // start from provided arrays
     const initialFilesSet = new Set<string>(initialSelectedFiles || []);
 
@@ -106,8 +121,10 @@ const TagSelector = ({
 
     setSelectedFiles(Array.from(initialFilesSet));
     setSelectedClasses(Array.from(fullySelectedClasses));
+    // Also reset the search filter each time the picker opens.
+    setSearchTerm("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isOpen]);
 
   // Handle class selection toggle: selecting a class means "select all files in it".
   // Deselecting a class removes its files from selection.
@@ -115,6 +132,11 @@ const TagSelector = ({
     const classObj = classes.find((c) => c.id === classId);
     const fileIds =
       (classObj && classObj.files && classObj.files.map((f) => f.id)) || [];
+
+    // Block empty classes from being tagged: with no files they contribute no
+    // real context, yet would still be sent to the AI while showing nothing on
+    // the user message. They're also rendered non-selectable in the list below.
+    if (fileIds.length === 0) return;
 
     // if class is currently fully selected, deselect it
     if (selectedClasses.includes(classId)) {
@@ -211,185 +233,253 @@ const TagSelector = ({
     });
   }, [selectedFiles, classes, selectedClasses]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-5">
-      <div className="flex max-h-[80dvh] w-[90%] max-w-[500px] flex-col rounded-2xl border-[1.5px] border-solid border-ink bg-white shadow-[0px_4px_10px_rgba(0,0,0,0.1)]">
-        <div className="flex items-center justify-between border-0 border-b-[1.5px] border-solid border-ink p-5">
-          <h2 className="m-0 text-[20px] font-semibold">
-            Select Study Material
-          </h2>
-          <button
-            className="flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage shadow-[0px_1.5px_0_#000] [transition:all_0.2s_ease] hover:-translate-y-1"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      sheetOnMobile
+      hideClose
+      ticks={false}
+      className="px-0! py-0!"
+    >
+      {/* Full-bleed archive drawer: header band, search rail, scrolling ledger,
+          action band. The Modal renders NO header or corner ticks here (they'd
+          collide with these flush, edge-to-edge sections) - just the scrim,
+          plate, Escape and scroll-lock. We own the sectioned contents. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-start justify-between gap-4 border-0 border-b border-solid border-line px-6 py-4 max-[480px]:px-5">
+          <div className="min-w-0">
+            <p className={UI.overline}>Select sources</p>
+            <h2 className="mt-1.5 font-display text-[22px] font-semibold leading-[1.25] tracking-[-0.01em] text-ink max-[480px]:text-[20px]">
+              Select Study Material
+            </h2>
+          </div>
+          <CloseButton
             onClick={onClose}
-            aria-label="Close tag selector"
-            title="Close"
-          >
+            label="Close source picker"
+            className="-mr-1 shrink-0"
+          />
+        </div>
+        <div className="border-0 border-b border-solid border-line px-6 py-4 max-[480px]:px-5">
+          <div className="relative">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
+              aria-hidden="true"
             >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-          </button>
+            <input
+              type="text"
+              className="w-full rounded-lg border border-solid border-ink/20 bg-white/60 py-2.5 pl-10 pr-4 text-[15px] text-ink transition-colors placeholder:text-muted/60 focus:border-gold-deep focus:outline-none"
+              placeholder="Search classes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 border-0 border-b-[1.5px] border-solid border-ink px-5 py-[15px]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            type="text"
-            className="flex-1 border-none bg-transparent text-[16px] outline-none"
-            placeholder="Search classes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="max-h-[50dvh] overflow-y-auto p-2.5">
+        <div className="max-h-[50dvh] overflow-y-auto px-4 py-3 max-[480px]:px-3">
           {filteredClasses.length === 0 ? (
-            <div className="p-[30px] text-center text-muted">
-              <p>No classes found matching your search</p>
+            <div className="flex flex-col items-center gap-2.5 p-[30px] text-center">
+              <Constellation
+                name="uncharted"
+                size={64}
+                className="text-ink/30"
+              />
+              <p className="m-0 font-display text-[16px] leading-[1.5] text-ink/75">
+                No classes found matching your search
+              </p>
             </div>
           ) : (
-            filteredClasses.map((classItem) => (
-              <div
-                key={classItem.id}
-                className="mb-2.5 overflow-hidden rounded-xl border-[1.5px] border-solid border-ink"
-              >
-                <div className="flex cursor-pointer select-none items-center justify-between bg-sage px-[15px] py-3">
-                  <div className="flex flex-1 cursor-pointer items-center gap-2.5 py-1">
-                    <input
-                      ref={(el) =>
-                        (classCheckboxRefs.current[classItem.id] = el)
-                      }
-                      type="checkbox"
-                      className="h-[18px] w-[18px] cursor-pointer accent-ink"
-                      checked={selectedClasses.includes(classItem.id)}
-                      onChange={() => handleClassToggle(classItem.id)}
-                      aria-label={`Select class ${classItem.name}`}
-                    />
-                    <label
-                      className="cursor-pointer font-medium"
-                      onClick={() => handleClassToggle(classItem.id)}
+            filteredClasses.map((classItem) => {
+              // A class with no files can't be tagged: it would be sent to the
+              // AI (as a name with "0 files") while showing nothing on the sent
+              // message. Render it visibly disabled with a "no files yet" hint.
+              const isEmpty = !classItem.files || classItem.files.length === 0;
+              return (
+                <div
+                  key={classItem.id}
+                  className="mb-2 overflow-hidden rounded-lg border border-solid border-line bg-white/50"
+                >
+                  <div
+                    className={`flex select-none items-center justify-between gap-2 px-3.5 py-2.5 ${
+                      isEmpty
+                        ? "cursor-not-allowed opacity-55"
+                        : "cursor-pointer"
+                    }`}
+                  >
+                    <div
+                      className={`flex flex-1 items-center gap-2.5 py-1 ${
+                        isEmpty ? "cursor-not-allowed" : "cursor-pointer"
+                      }`}
                     >
-                      {classItem.name}
-                    </label>
-                  </div>
-
-                  {classItem.files && classItem.files.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="text-[12px] text-muted">
-                        {classItem.files.length} files
-                      </div>
-                      <button
-                        type="button"
-                        className="flex cursor-pointer items-center gap-[5px] rounded-[50px] border-[1.5px] border-solid border-ink bg-[#f0f0f0] p-1 text-[12px] font-medium text-ink shadow-[0px_1px_0_#000] [transition:all_0.2s_ease] hover:-translate-y-[3px]"
-                        onClick={(e) => toggleExpand(classItem.id, e)}
-                        aria-label={
-                          expandedClasses[classItem.id]
-                            ? "Collapse files"
-                            : "Expand files"
-                        }
-                        title={
-                          expandedClasses[classItem.id]
-                            ? "Collapse files"
-                            : "Expand files"
+                      <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+                        <input
+                          ref={(el) =>
+                            (classCheckboxRefs.current[classItem.id] = el)
+                          }
+                          type="checkbox"
+                          className={`${CHECKBOX} ${
+                            isEmpty ? "disabled:cursor-not-allowed" : ""
+                          }`}
+                          checked={selectedClasses.includes(classItem.id)}
+                          onChange={() => handleClassToggle(classItem.id)}
+                          disabled={isEmpty}
+                          aria-label={
+                            isEmpty
+                              ? `${classItem.name} has no files yet and can't be selected`
+                              : `Select class ${classItem.name}`
+                          }
+                        />
+                        <span className={CHECKBOX_TICK} aria-hidden="true">
+                          ✦
+                        </span>
+                        <span
+                          className="pointer-events-none absolute hidden h-[2px] w-[9px] rounded-full bg-ink peer-indeterminate:block"
+                          aria-hidden="true"
+                        ></span>
+                      </span>
+                      <label
+                        className={`flex items-center gap-2 text-[14.5px] font-medium text-ink ${
+                          isEmpty ? "cursor-not-allowed" : "cursor-pointer"
+                        }`}
+                        onClick={
+                          isEmpty
+                            ? undefined
+                            : () => handleClassToggle(classItem.id)
                         }
                       >
+                        <Constellation
+                          name={classItem.name}
+                          size={22}
+                          className="shrink-0 text-verdi/70"
+                        />
+                        {classItem.name}
+                      </label>
+                    </div>
+
+                    {isEmpty ? (
+                      <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-muted/70">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
+                          width="13"
+                          height="13"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          style={{
-                            transform: expandedClasses[classItem.id]
-                              ? "rotate(180deg)"
-                              : "rotate(0deg)",
-                            transition: "transform 0.3s",
-                          }}
+                          aria-hidden="true"
                         >
-                          <polyline points="6 9 12 15 18 9"></polyline>
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line
+                            x1="4.93"
+                            y1="4.93"
+                            x2="19.07"
+                            y2="19.07"
+                          ></line>
                         </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        no files yet
+                      </span>
+                    ) : (
+                      classItem.files &&
+                      classItem.files.length > 0 && (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <div className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                            {classItem.files.length} files
+                          </div>
+                          <IconButton
+                            size="sm"
+                            className="h-7! w-7! border-ink/20 text-ink/70 hover:border-gold-deep hover:text-gold-deep"
+                            onClick={(e) => toggleExpand(classItem.id, e)}
+                            label={
+                              expandedClasses[classItem.id]
+                                ? "Collapse files"
+                                : "Expand files"
+                            }
+                          >
+                            <motion.svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="15"
+                              height="15"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                              animate={{
+                                rotate: expandedClasses[classItem.id] ? 180 : 0,
+                              }}
+                              transition={spring.gentle}
+                            >
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </motion.svg>
+                          </IconButton>
+                        </div>
+                      )
+                    )}
+                  </div>
 
-                {expandedClasses[classItem.id] &&
-                  classItem.files &&
-                  classItem.files.length > 0 && (
-                    <div className="mt-[5px] border-0 border-t border-solid border-black/10 bg-[#f9f9f9] px-[15px] py-2.5">
-                      {classItem.files.map((file) => (
-                        <FileItem
-                          key={file.id}
-                          file={file}
-                          classId={classItem.id}
-                          isSelected={selectedFiles.includes(file.id)}
-                          onSelect={directFileSelect}
-                        />
-                      ))}
-                    </div>
-                  )}
-              </div>
-            ))
+                  {expandedClasses[classItem.id] &&
+                    classItem.files &&
+                    classItem.files.length > 0 && (
+                      <div className="border-0 border-t border-solid border-line bg-cream/60 px-3 py-2">
+                        {classItem.files.map((file) => (
+                          <FileItem
+                            key={file.id}
+                            file={file}
+                            classId={classItem.id}
+                            isSelected={selectedFiles.includes(file.id)}
+                            onSelect={directFileSelect}
+                          />
+                        ))}
+                      </div>
+                    )}
+                </div>
+              );
+            })
           )}
         </div>
 
-        <div className="mt-auto flex items-center justify-between border-0 border-t-[1.5px] border-solid border-ink px-5 py-[15px]">
-          <div className="flex gap-5 text-[14px] text-muted">
+        <div className="mt-auto flex items-center justify-between gap-3 border-0 border-t border-solid border-line px-6 py-4 max-[480px]:px-5">
+          <div className="flex gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-muted max-[480px]:flex-col max-[480px]:gap-1">
             <span>{selectedClasses.length} classes selected</span>
             <span>{selectedFiles.length} files selected</span>
           </div>
-          <div className="flex gap-2.5">
-            <button
-              type="button"
-              className={`${FOOTER_BTN} border-[1.5px] border-solid border-ink bg-transparent text-ink`}
+          <div className="flex shrink-0 gap-2.5">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
               aria-label="Cancel tag selection"
-              title="Cancel"
             >
               Cancel
-            </button>
-            <button
-              type="button"
-              className={`${FOOTER_BTN} border-[1.5px] border-solid border-ink bg-sage text-ink shadow-[0px_2px_0_#000]`}
+            </Button>
+            <Button
+              size="sm"
               onClick={handleSave}
               aria-label="Apply tag selection"
-              title="Apply"
             >
               Apply
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
@@ -423,8 +513,8 @@ function FileItem({ file, classId, isSelected, onSelect }: FileItemProps) {
     <div
       className={`${FILE_ITEM} ${
         isSelected
-          ? "border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.1)] active:bg-[rgba(139,92,246,0.15)]"
-          : "border-black/10 bg-white hover:border-black/20 hover:bg-[#f5f5f5] active:bg-[rgba(139,92,246,0.15)]"
+          ? "border-verdi/60 bg-sage/40 active:bg-sage/50"
+          : "border-line bg-white/50 hover:border-ink/25 hover:bg-vellum active:bg-sage/30"
       }`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -434,16 +524,21 @@ function FileItem({ file, classId, isSelected, onSelect }: FileItemProps) {
       data-fileid={file.id}
       data-classid={classId}
     >
-      <div className="mr-2 flex items-center justify-center">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={handleCheckboxChange}
-          className="h-[18px] w-[18px] cursor-pointer accent-ink"
-        />
+      <div className="mr-2.5 flex items-center justify-center">
+        <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={handleCheckboxChange}
+            className={CHECKBOX}
+          />
+          <span className={CHECKBOX_TICK} aria-hidden="true">
+            ✦
+          </span>
+        </span>
       </div>
       <div className="pointer-events-none flex flex-1 cursor-pointer items-center gap-2">
-        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[14px]">
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[14px] text-ink">
           {file.name}
         </span>
       </div>

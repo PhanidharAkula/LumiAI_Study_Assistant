@@ -1,13 +1,15 @@
 import { useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { MotionConfig } from "framer-motion";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@shared/lib/supabaseClient";
 import { isInAppBrowser } from "@shared/lib/inAppBrowser";
 import ProtectedRoute from "@shared/components/ProtectedRoute";
+import MaintenanceScreen from "@features/marketing/MaintenanceScreen";
 import "./App.css";
 
 // Route components are code-split so the initial (pre-login) bundle stays small.
-// Each screen — and the heavy libraries it pulls in (pdf.js, markdown, Lottie) —
+// Each screen - and the heavy libraries it pulls in (pdf.js, markdown, Lottie) -
 // loads on demand instead of up front.
 const WelcomePage = lazy(() => import("@features/marketing/WelcomePage"));
 const Login = lazy(() => import("@features/auth/Login"));
@@ -22,38 +24,21 @@ const Progress = lazy(() => import("@features/learning/Progress"));
 const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
 
 const PageLoader = () => (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      height: "100vh",
-      flexDirection: "column",
-      gap: "10px",
-    }}
-  >
-    <div
-      className="spinner"
-      style={{
-        width: "40px",
-        height: "40px",
-        border: "3px solid rgba(0, 0, 0, 0.1)",
-        borderRadius: "50%",
-        borderTopColor: "#000",
-        animation: "spin 1s ease-in-out infinite",
-      }}
-    ></div>
-    <p>Loading...</p>
+  <div className="flex h-screen flex-col items-center justify-center gap-1">
+    <div className="spinner" />
+    <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-muted">
+      Charting&hellip;
+    </p>
   </div>
 );
 
 // Reset scroll to the top on every route change (keyed on pathname, so
-// in-page query-param navigation — e.g. the dashboard's ?chat / ?classId — is
+// in-page query-param navigation - e.g. the dashboard's ?chat / ?classId - is
 // left alone). Without this, SPA navigation keeps the previous page's scroll.
 function ScrollToTop(): null {
   const { pathname } = useLocation();
   // useLayoutEffect runs before paint, and behavior:"instant" bypasses the
-  // global `scroll-behavior: smooth` — so the new route paints at the top
+  // global `scroll-behavior: smooth` - so the new route paints at the top
   // immediately instead of rendering then animating up.
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -64,6 +49,11 @@ function ScrollToTop(): null {
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // Admin "maintenance mode" gate (non-admins see a maintenance screen; admins
+  // bypass). Both are best-effort and fail-open so a query error never locks
+  // anyone out.
+  const [maintenance, setMaintenance] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
     // Set up the auth listener synchronously so the effect cleanup actually
@@ -91,6 +81,25 @@ function App() {
             setSession(null);
           } else {
             setSession(activeSession);
+            // Best-effort maintenance gate + admin bypass (fail-open).
+            try {
+              const [settingsRes, profileRes] = await Promise.all([
+                supabase
+                  .from("app_settings")
+                  .select("value")
+                  .eq("key", "maintenance_mode")
+                  .maybeSingle(),
+                supabase
+                  .from("profiles")
+                  .select("is_admin")
+                  .eq("id", user.id)
+                  .maybeSingle(),
+              ]);
+              setMaintenance(settingsRes.data?.value === true);
+              setIsAdminUser(profileRes.data?.is_admin === true);
+            } catch {
+              /* leave the app live on any error */
+            }
           }
         } else {
           setSession(null);
@@ -112,6 +121,13 @@ function App() {
     return <PageLoader />;
   }
 
+  // Maintenance mode: a signed-in non-admin sees the maintenance screen on every
+  // route. Admins bypass it (so they can reach /admin and turn it back off);
+  // signed-out visitors aren't gated (they can't read the setting anyway).
+  if (session && maintenance && !isAdminUser) {
+    return <MaintenanceScreen />;
+  }
+
   // Google OAuth is blocked inside embedded in-app browsers (LinkedIn,
   // Instagram, etc.). When detected, the sign-in entry points show a screen
   // guiding the user to open Lumi AI in their real browser instead of letting
@@ -120,83 +136,88 @@ function App() {
   const inAppBrowser = isInAppBrowser();
 
   return (
-    <Suspense fallback={<PageLoader />}>
-      <ScrollToTop />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            session ? (
-              <Navigate to="/dashboard" />
-            ) : inAppBrowser ? (
-              <OpenInBrowser />
-            ) : (
-              <WelcomePage />
-            )
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            session ? (
-              <Navigate to="/dashboard" />
-            ) : inAppBrowser ? (
-              <OpenInBrowser />
-            ) : (
-              <Login />
-            )
-          }
-        />
-        <Route path="/auth/callback" element={<AuthRedirect />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute session={session}>
-              <Dashboard session={session} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute session={session}>
-              <Admin />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/support"
-          element={
-            <ProtectedRoute session={session}>
-              <Support session={session} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/review"
-          element={
-            <ProtectedRoute session={session}>
-              <Review />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/progress"
-          element={
-            <ProtectedRoute session={session}>
-              <Progress />
-            </ProtectedRoute>
-          }
-        />
-        {/* Public legal pages (must be reachable logged-out for Google OAuth review). */}
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route
-          path="/chat/:classId?"
-          element={<Navigate to="/dashboard?chat=true" />}
-        />
-      </Routes>
-    </Suspense>
+    // reducedMotion="user": framer transform/layout animations collapse to
+    // simple fades for prefers-reduced-motion users (the CSS ambient loops
+    // are disabled in index.css under the same media query).
+    <MotionConfig reducedMotion="user">
+      <Suspense fallback={<PageLoader />}>
+        <ScrollToTop />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              session ? (
+                <Navigate to="/dashboard" />
+              ) : inAppBrowser ? (
+                <OpenInBrowser />
+              ) : (
+                <WelcomePage />
+              )
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              session ? (
+                <Navigate to="/dashboard" />
+              ) : inAppBrowser ? (
+                <OpenInBrowser />
+              ) : (
+                <Login />
+              )
+            }
+          />
+          <Route path="/auth/callback" element={<AuthRedirect />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute session={session}>
+                <Dashboard session={session} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute session={session}>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/support"
+            element={
+              <ProtectedRoute session={session}>
+                <Support session={session} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/review"
+            element={
+              <ProtectedRoute session={session}>
+                <Review />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/progress"
+            element={
+              <ProtectedRoute session={session}>
+                <Progress />
+              </ProtectedRoute>
+            }
+          />
+          {/* Public legal pages (must be reachable logged-out for Google OAuth review). */}
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route
+            path="/chat/:classId?"
+            element={<Navigate to="/dashboard?chat=true" />}
+          />
+        </Routes>
+      </Suspense>
+    </MotionConfig>
   );
 }
 

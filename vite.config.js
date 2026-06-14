@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 // Dev-only plugin: serve the /api/chat serverless function through Vite's dev
-// server so AI works locally without `vercel dev`. The Anthropic API key stays
+// server so AI works locally without `vercel dev`. The API key stays
 // server-side (it lives in process.env, never in the client bundle).
 function devApiPlugin() {
   return {
@@ -24,7 +24,9 @@ function devApiPlugin() {
             res.statusCode = 500;
             res.setHeader("Content-Type", "application/json");
             res.end(
-              JSON.stringify({ error: "Dev API error: " + (err?.message || err) })
+              JSON.stringify({
+                error: "Dev API error: " + (err?.message || err),
+              })
             );
           }
         }
@@ -35,13 +37,14 @@ function devApiPlugin() {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load non-VITE_ env (e.g. ANTHROPIC_API_KEY) so the dev API can read it.
+  // Load non-VITE_ env (e.g. LUMI_API_KEY) so the dev API can read it.
   const env = loadEnv(mode, process.cwd(), "");
-  if (env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
-  if (env.ANTHROPIC_MODEL) process.env.ANTHROPIC_MODEL = env.ANTHROPIC_MODEL;
+  if (env.LUMI_API_KEY) process.env.LUMI_API_KEY = env.LUMI_API_KEY;
+  if (env.LUMI_MODEL) process.env.LUMI_MODEL = env.LUMI_MODEL;
   // Expose Supabase URL + anon key to the dev /api/chat so it can verify the
   // caller's session (in production Vercel provides these to the function).
-  if (env.VITE_SUPABASE_URL) process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL;
+  if (env.VITE_SUPABASE_URL)
+    process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL;
   if (env.VITE_SUPABASE_ANON_KEY)
     process.env.VITE_SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY;
 
@@ -62,6 +65,12 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       assetsDir: "assets",
+      // No inline module-preload polyfill → the built index.html has ZERO
+      // inline <script>, so we can ship a strict `script-src 'self'` CSP (see
+      // vercel.json) without nonces/hashes. Modern browsers support
+      // <link rel="modulepreload"> natively; older ones just skip the hint and
+      // still load the app through the module scripts.
+      modulePreload: { polyfill: false },
       // pdfjs-dist (~680 KB) is an irreducible vendor chunk, lazy-loaded only
       // when a user uploads a PDF, so it legitimately exceeds Vite's default
       // 500 KB chunk-size warning. Raise the limit just above it to keep the

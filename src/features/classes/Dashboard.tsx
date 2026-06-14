@@ -9,21 +9,37 @@ import ClassDetails from "./ClassDetails";
 import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { getDueCount } from "@shared/services/reviewService";
-// Heavy AI overlays — loaded on demand (they pull in pdf.js, markdown, etc.).
+import { Constellation, LumiStar, UI } from "@shared/components/atlas";
+import {
+  Button,
+  CloseButton,
+  IconButton,
+  Spinner,
+} from "@shared/components/controls";
+import {
+  DUR,
+  fadeRise,
+  keyPress,
+  plateLift,
+  spring,
+  stagger,
+} from "@shared/motion";
+import { useEscapeToClose } from "@shared/hooks/overlay";
+// Heavy AI overlays - loaded on demand (they pull in pdf.js, markdown, etc.).
 const ChatComponent = lazy(() => import("@features/chat/ChatComponent"));
 const TalkComponent = lazy(() => import("@features/talk/TalkComponent"));
 
-// Shared "sticker" styles: profile-menu rows, the bottom AI buttons, and the
-// class-card icon action buttons.
+// Shared instrument styles: profile-menu rows and the bottom AI dock actions
+// (CSS supplies color hovers only - transform motion comes from framer).
 const MENU_BTN =
-  "flex w-full items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-transparent p-3 text-ink shadow-[0px_2px_0_#000] [transition:all_0.2s_ease-in-out]";
-const MENU_BTN_TEXT = "text-[medium] font-medium";
+  "flex w-full cursor-pointer items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left text-ink transition-colors duration-150 hover:bg-cream/80";
+const MENU_BTN_DANGER =
+  "flex w-full cursor-pointer items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left text-vermilion transition-colors duration-150 hover:bg-vermilion-wash";
+const MENU_BTN_TEXT = "text-[14px] font-medium";
 const AI_BTN =
-  "flex items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-sage px-[50px] py-2.5 text-[medium] font-semibold text-ink shadow-[0px_2px_0_#000] max-md:px-5 max-md:py-3 max-md:text-[small] max-[480px]:px-[15px] max-[480px]:[&_svg]:h-[18px] max-[480px]:[&_svg]:w-[18px]";
-const CARD_ACTION_BTN =
-  "flex h-10 w-10 items-center justify-center rounded-full border border-solid border-ink shadow-[0px_1px_0_#000] [&_svg]:h-[18px] [&_svg]:w-[18px]";
+  "flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-0 bg-transparent px-6 py-2.5 text-[14.5px] font-semibold text-ink transition-colors duration-200 hover:bg-cream/90 max-md:px-4 max-md:py-2 max-md:text-[13.5px] max-[480px]:px-3 max-[480px]:[&_svg]:h-[17px] max-[480px]:[&_svg]:w-[17px]";
 
-// A class row from Supabase (with its related files). Permissive — extra
+// A class row from Supabase (with its related files). Permissive - extra
 // columns from the DB are allowed via the index signature.
 interface ClassItem {
   id: string | number;
@@ -53,13 +69,45 @@ const Dashboard = ({ session }: Props) => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // Rename-in-place from a dashboard card (a Modal over the grid, like create);
+  // separate from `isEditing`, which renames from inside ClassDetails.
+  const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [dueCount, setDueCount] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(false);
   const hasInitialFetch = useRef(false);
+
+  // Admin-set announcement banner. Dismissal is keyed by the exact text so a new
+  // announcement re-appears even after the previous one was dismissed.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "announcement")
+          .maybeSingle();
+        const text = typeof data?.value === "string" ? data.value.trim() : "";
+        if (
+          text &&
+          localStorage.getItem("lumi_announcement_dismissed") !== text
+        ) {
+          setAnnouncement(text);
+        }
+      } catch {
+        /* ignore - banner just won't show */
+      }
+    })();
+  }, []);
+
+  const dismissAnnouncement = () => {
+    localStorage.setItem("lumi_announcement_dismissed", announcement);
+    setAnnouncement("");
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -83,9 +131,9 @@ const Dashboard = ({ session }: Props) => {
     });
   const [chatOpen, setChatOpen] = useState(false);
   const [chatClassId, setChatClassId] = useState<string | number | null>(null);
-  const [chatConversationId, setChatConversationId] = useState<
-    string | null
-  >(null);
+  const [chatConversationId, setChatConversationId] = useState<string | null>(
+    null
+  );
   const [talkOpen, setTalkOpen] = useState(() => {
     // Restore Talk state from sessionStorage on page load
     return sessionStorage.getItem("lumiTalkOpen") === "true";
@@ -123,6 +171,9 @@ const Dashboard = ({ session }: Props) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Escape closes the profile menu (stacked - overlays above it win first).
+  useEscapeToClose(showMenu, () => setShowMenu(false));
 
   useEffect(() => {
     isMounted.current = true;
@@ -229,12 +280,10 @@ const Dashboard = ({ session }: Props) => {
         // set_my_region() is a no-op when region is already set, so this is
         // safe to fire on every load (and harmless if the RPC isn't deployed).
         if (!profile?.region || profile.region === "Unknown") {
-          supabase
-            .rpc("set_my_region", { p_region: detectRegion() })
-            .then(
-              () => {},
-              () => {}
-            );
+          supabase.rpc("set_my_region", { p_region: detectRegion() }).then(
+            () => {},
+            () => {}
+          );
         }
       } catch {
         setIsAdmin(false);
@@ -283,7 +332,10 @@ const Dashboard = ({ session }: Props) => {
     setShowAddForm(false);
   };
 
-  const handleUpdateClass = async (updatedClass: ClassItem) => {
+  // Shared persist step for both rename entry points (DB write + list refresh).
+  const persistClassUpdate = async (
+    updatedClass: ClassItem
+  ): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from("classes")
@@ -300,12 +352,23 @@ const Dashboard = ({ session }: Props) => {
           c.id === updatedClass.id ? { ...c, ...updatedClass } : c
         )
       );
-
-      setSelectedClass(updatedClass);
-      setIsEditing(false);
+      return true;
     } catch (err) {
       console.error("Error updating class:", err);
+      return false;
     }
+  };
+
+  // Rename from inside ClassDetails: stay in the class with the new name.
+  const handleUpdateClass = async (updatedClass: ClassItem) => {
+    if (!(await persistClassUpdate(updatedClass))) return;
+    setSelectedClass(updatedClass);
+    setIsEditing(false);
+  };
+
+  // Rename from a dashboard card: stay on the dashboard, just close the modal.
+  const handleUpdateClassInline = async (updatedClass: ClassItem) => {
+    if (await persistClassUpdate(updatedClass)) setEditingClass(null);
   };
 
   const handleDeleteClass = async (id: string | number) => {
@@ -528,55 +591,20 @@ const Dashboard = ({ session }: Props) => {
     navigate(`?${searchParams.toString()}`, { replace: true });
   };
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const cardVariants: Variants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: ({ index }: { index: number }) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.15,
-        delay: index * 0.05,
-      },
-    }),
-    hover: {
-      y: -5,
-      scale: 1.01,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 8,
-      },
-    },
-    tap: { scale: 0.98 },
-  };
-
+  // Dropdown plate under the menu key - shared spring/duration, local geometry.
   const menuVariants: Variants = {
-    hidden: { opacity: 0, y: -50, scale: 0.5 },
+    hidden: { opacity: 0, y: -10, scale: 0.97 },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 18,
-      },
+      transition: spring.plate,
     },
     exit: {
       opacity: 0,
-      y: -50,
-      scale: 0.5,
-      transition: { duration: 0.2 },
+      y: -8,
+      scale: 0.98,
+      transition: { duration: DUR.fast },
     },
   };
 
@@ -584,13 +612,12 @@ const Dashboard = ({ session }: Props) => {
     if (loading) {
       return (
         <motion.div
-          className="flex w-full flex-col items-center justify-center px-5 py-[60px]"
+          className="flex w-full flex-col items-center justify-center px-5 py-[80px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div className="spinner"></div>
-          <span>Loading classes...</span>
+          <Spinner label="Loading classes..." />
         </motion.div>
       );
     }
@@ -599,112 +626,115 @@ const Dashboard = ({ session }: Props) => {
       return (
         <motion.div
           key="empty-state"
-          className="flex h-[70dvh] w-full cursor-pointer flex-col items-center justify-center gap-5 px-5 py-[60px] text-center"
+          className="flex h-[70dvh] w-full flex-col items-center justify-center gap-4 px-5 py-[60px] text-center"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 30 }}
-          transition={{ type: "spring", stiffness: 100, damping: 15 }}
+          transition={spring.gentle}
         >
-          <div className="text-muted">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1-2-2h2"></path>
-              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-            </svg>
+          <div className="text-ink/30">
+            <Constellation
+              name="an uncharted sky"
+              size={180}
+              className="max-[480px]:h-[140px] max-[480px]:w-[140px]"
+            />
           </div>
-          <h2 className="text-[xx-large] font-medium max-[480px]:text-[x-large]">
-            No Classes Yet
+          <p className={UI.overline}>Fig. 1 - An uncharted sky</p>
+          <h2 className="max-w-[560px] font-display text-[30px] font-semibold leading-[1.25] tracking-[-0.01em] text-ink max-[480px]:text-[24px]">
+            Your sky is empty - chart your{" "}
+            <em className="text-gold-deep [font-variation-settings:'SOFT'_60,'WONK'_1]">
+              first class
+            </em>
+            .
           </h2>
-          <p className="text-muted">
-            Create your first class to start studying with Lumi AI
-          </p>
-          <motion.button
-            className="mt-2.5 rounded-full border-[1.5px] border-solid border-ink bg-sage px-[50px] py-[15px] text-[medium] font-semibold text-ink shadow-[0px_2px_0_#000] max-[480px]:px-[30px] max-[480px]:py-3 max-[480px]:text-[small]"
+          <Button
+            variant="gold"
+            className="mt-2.5 max-[480px]:px-6 max-[480px]:py-2.5 max-[480px]:text-[14px]"
             onClick={() => setShowAddForm(true)}
-            whileHover={{
-              scale: 1.03,
-              y: -5,
-            }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
             Create Your First Class
-          </motion.button>
+            <span aria-hidden="true" className="text-[13px]">
+              ✦
+            </span>
+          </Button>
         </motion.div>
       );
     }
 
     return (
       <motion.div
-        className="grid min-h-[300px] grid-cols-[repeat(auto-fill,minmax(350px,1fr))] content-start items-start gap-[30px] p-5 max-[1024px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] max-[1024px]:gap-5 max-[480px]:grid-cols-1 max-[480px]:gap-[15px] max-[480px]:p-2.5"
-        variants={containerVariants}
+        className="grid min-h-[300px] grid-cols-[repeat(auto-fill,minmax(350px,1fr))] content-start items-start gap-6 p-5 max-[1024px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] max-[1024px]:gap-5 max-[480px]:grid-cols-1 max-[480px]:gap-4 max-[480px]:p-2.5"
+        variants={stagger()}
         initial="hidden"
         animate="visible"
       >
+        {/* Atlas plate header - names this leaf of the chart. */}
+        <motion.div className="col-span-full min-w-0" variants={fadeRise}>
+          <p className={`${UI.overline} mb-2`}>Atlas · Your classes</p>
+          <h1 className="font-display text-[34px] font-semibold leading-[1.12] tracking-[-0.015em] text-ink max-md:text-[27px]">
+            Your sky{" "}
+            <em className="text-gold-deep [font-variation-settings:'SOFT'_60,'WONK'_1]">
+              so far
+            </em>
+            .
+          </h1>
+          <div className={`${UI.rule} mt-5`} />
+        </motion.div>
+
         {classes.map((classItem, i) => (
           <motion.div
             key={classItem.id}
-            className="relative flex cursor-pointer flex-col items-start justify-center gap-[15px] self-start rounded-[10px] bg-white p-[30px] max-md:p-5"
+            className={`${UI.plate} ${UI.plateHover} group flex cursor-pointer flex-col items-start gap-3 self-start p-6 max-md:p-5`}
             onClick={() => handleSelectClass(classItem)}
-            custom={{ index: i, loaded: hasLoaded }}
-            initial="hidden"
-            animate="visible"
-            variants={cardVariants}
-            whileHover="hover"
-            whileTap="tap"
+            variants={i < 12 ? fadeRise : undefined}
+            {...plateLift}
           >
-            <div className="flex h-[50px] w-[50px] items-center justify-center rounded-[10px] border-[1.5px] border-solid border-ink bg-sage text-[x-large] font-semibold shadow-[0px_2px_0_#000]">
-              {classItem.name.charAt(0).toUpperCase()}
+            <div className="-ml-2 -mt-1 text-verdi/80">
+              <Constellation name={classItem.name} size={64} />
             </div>
 
-            {/* Card-level icon action buttons (Edit / Delete) */}
+            {/* Card-level icon action keys (Edit / Delete) - revealed on
+                hover on desktop, always visible on touch layouts. */}
             <div
-              className="absolute right-[15px] top-[15px] z-[5] flex gap-2"
+              className="absolute right-[15px] top-[15px] z-[5] flex gap-2 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-100"
               onClick={(e) => {
                 // Prevent clicking the action buttons from selecting the class
                 e.stopPropagation();
               }}
             >
-              <motion.button
-                className={`${CARD_ACTION_BTN} bg-sage [&_svg]:stroke-ink`}
+              <IconButton
+                label="Edit class"
                 title="Edit class"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedClass(classItem);
-                  setIsEditing(true);
+                  // Rename in place over the dashboard, same as create, not a
+                  // detour through ClassDetails.
+                  setEditingClass(classItem);
                 }}
-                whileHover={{
-                  scale: 1.1,
-                  transition: { type: "spring", stiffness: 400, damping: 10 },
-                }}
-                whileTap={{ scale: 0.98 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="1.75"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <path d="M12 20h9"></path>
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
-              </motion.button>
+              </IconButton>
 
-              <motion.button
-                className={`${CARD_ACTION_BTN} bg-[#EF4444] [&_svg]:stroke-white`}
+              <IconButton
+                label="Delete class"
                 title="Delete class"
+                size="sm"
+                variant="danger"
                 onClick={async (e) => {
                   e.stopPropagation();
                   try {
@@ -731,38 +761,85 @@ const Dashboard = ({ session }: Props) => {
                     });
                   }
                 }}
-                whileHover={{
-                  scale: 1.1,
-                  transition: { type: "spring", stiffness: 400, damping: 10 },
-                }}
-                whileTap={{ scale: 0.98 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="1.75"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <polyline points="3 6 5 6 21 6"></polyline>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1-2 2v2"></path>
                 </svg>
-              </motion.button>
+              </IconButton>
             </div>
 
             <div className="flex-1">
-              <h3 className="text-[x-large] font-medium">{classItem.name}</h3>
-              {classItem.description && <p>{classItem.description}</p>}
-              <div>
-                <span className="text-[small] text-muted">
+              <h3 className="font-display text-[21px] font-semibold leading-snug tracking-[-0.01em] text-ink">
+                {classItem.name}
+              </h3>
+              {classItem.description && (
+                <p className="mt-1 text-[13.5px] leading-[1.6] text-muted">
+                  {classItem.description}
+                </p>
+              )}
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className={UI.overlineMuted}>
+                  {`${classItem.files?.length ?? 0} ${
+                    (classItem.files?.length ?? 0) === 1
+                      ? "document"
+                      : "documents"
+                  }`}
+                </span>
+                <span className="text-[9px] text-gold" aria-hidden="true">
+                  ✦
+                </span>
+                <span className={UI.overlineMuted}>
                   Created {new Date(classItem.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
           </motion.div>
         ))}
+
+        {/* Chart a new class - dashed entry plate (same action as the header
+            key; purely an additional affordance in the atlas grid). */}
+        <motion.button
+          type="button"
+          className="group/add relative flex min-h-[172px] cursor-pointer flex-col items-center justify-center gap-3 self-stretch rounded-xl border border-dashed border-ink/25 bg-transparent p-6 text-muted transition-[border-color,color,background-color] duration-300 hover:border-gold-deep hover:bg-vellum/50 hover:text-gold-deep max-md:min-h-[150px] max-md:p-5"
+          onClick={() => setShowAddForm(true)}
+          variants={fadeRise}
+          {...plateLift}
+        >
+          <span
+            className="absolute right-4 top-3.5 text-[13px] text-gold opacity-0 transition-opacity duration-300 group-hover/add:opacity-100"
+            aria-hidden="true"
+          >
+            ✦
+          </span>
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="4" x2="12" y2="20"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+          </svg>
+          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em]">
+            Chart a new class
+          </span>
+        </motion.button>
       </motion.div>
     );
   };
@@ -772,20 +849,19 @@ const Dashboard = ({ session }: Props) => {
       <div className="min-h-[100dvh] w-full overflow-hidden px-[50px] pt-0 pb-[100px] max-[1024px]:px-[30px] max-[1024px]:pb-[30px] max-md:px-5 max-md:pb-5 max-[480px]:px-[15px] max-[480px]:pb-20">
         {initialLoading ? (
           <motion.div
-            className="fixed left-0 top-0 flex h-[100dvh] w-full flex-col items-center justify-center bg-cream"
+            className="fixed left-0 top-0 flex h-[100dvh] w-full flex-col items-center justify-center bg-cream/95 backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="spinner"></div>
-            <span>Loading...</span>
+            <Spinner label="Loading..." />
           </motion.div>
         ) : (
           <motion.div
             className="w-full overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: DUR.slow }}
           >
             <AnimatePresence mode="wait">
               {selectedClass ? (
@@ -794,7 +870,7 @@ const Dashboard = ({ session }: Props) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ type: "spring", stiffness: 100, damping: 15 }}
+                  transition={spring.gentle}
                 >
                   <ClassDetails
                     classData={selectedClass}
@@ -814,119 +890,123 @@ const Dashboard = ({ session }: Props) => {
                 </motion.div>
               ) : (
                 <motion.div
-                  className="min-h-[calc(100dvh-220px)]"
+                  className="mx-auto w-full max-w-[1240px] min-h-[calc(100dvh-220px)]"
                   key="classes-container"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ type: "spring", stiffness: 100, damping: 15 }}
+                  transition={spring.gentle}
                 >
+                  {announcement && (
+                    <div className="mx-5 mt-[30px] flex items-start gap-3.5 rounded-xl border border-solid border-line bg-cream/80 px-5 py-4 shadow-plate max-md:mx-2.5">
+                      <span
+                        className="mt-px text-[13px] text-gold"
+                        aria-hidden="true"
+                      >
+                        ✦
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={`${UI.overline} mb-1`}>Bulletin</p>
+                        <p className="m-0 text-[14px] font-medium leading-[1.6] text-ink whitespace-pre-wrap [word-break:break-word]">
+                          {announcement}
+                        </p>
+                      </div>
+                      <CloseButton
+                        label="Dismiss announcement"
+                        size="sm"
+                        iconSize={14}
+                        onClick={dismissAnnouncement}
+                        className="-mr-1 -mt-0.5"
+                      />
+                    </div>
+                  )}
                   <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: 0.1,
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 15,
-                    }}
-                    className="flex items-center justify-between px-5 pt-[50px] pb-2.5 max-md:mb-5 max-md:flex-col max-md:items-start max-md:gap-5 max-md:px-2.5 max-md:pt-[30px] max-md:pb-2.5"
+                    transition={{ ...spring.gentle, delay: 0.1 }}
+                    className="flex items-center justify-between gap-4 px-5 pt-9 pb-2.5 max-md:px-2.5 max-md:pt-6 max-md:pb-2.5"
                   >
-                    <div>
-                      <h1 className="m-0 cursor-pointer text-[32px] font-extrabold text-ink max-[480px]:text-[24px]">
-                        My Classes
-                      </h1>
+                    <div className="flex items-center gap-2.5">
+                      <LumiStar size={28} />
+                      <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-ink max-[380px]:hidden">
+                        Lumi AI
+                      </span>
                     </div>
-                    <div className="flex items-center gap-5 max-md:w-full max-md:justify-between">
-                      <motion.button
-                        className={`flex cursor-pointer items-center justify-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-sage px-[30px] py-3 text-[small] font-semibold text-ink shadow-[0px_2px_0_#000] max-md:px-5 max-md:py-2.5 max-md:text-[14px] ${
+                    <div className="flex items-center gap-3 max-[480px]:gap-2">
+                      <Button
+                        size="sm"
+                        className={`max-md:px-4 max-md:py-2 max-md:text-[13px] ${
                           classes.length > 0
-                            ? "min-[769px]:flex"
+                            ? "min-[769px]:inline-flex"
                             : "min-[769px]:hidden"
                         }`}
                         onClick={() => setShowAddForm(true)}
-                        whileHover={{
-                          scale: 1.03,
-                          y: -3,
-                          transition: {
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 5,
-                          },
-                        }}
-                        whileTap={{ scale: 0.98 }}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          width="20"
-                          height="20"
+                          width="15"
+                          height="15"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
+                          aria-hidden="true"
                         >
                           <line x1="12" y1="5" x2="12" y2="19"></line>
                           <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
                         Create Class
-                      </motion.button>
+                      </Button>
 
                       <div className="relative" ref={menuRef}>
-                        <motion.button
-                          className="flex h-[50px] w-[50px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage text-ink shadow-[0px_2px_0_#000]"
+                        <IconButton
+                          label="Open menu"
+                          variant="key"
                           onClick={toggleMenu}
-                          whileHover={{
-                            scale: 1.05,
-                            transition: {
-                              type: "spring",
-                              stiffness: 300,
-                              damping: 5,
-                            },
-                          }}
-                          whileTap={{ scale: 0.98 }}
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
+                            width="18"
+                            height="18"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            aria-hidden="true"
                           >
                             <line x1="3" y1="6" x2="21" y2="6" />
                             <line x1="3" y1="12" x2="21" y2="12" />
                             <line x1="3" y1="18" x2="21" y2="18" />
                           </svg>
-                        </motion.button>
+                        </IconButton>
 
                         <AnimatePresence>
                           {showMenu && (
                             <motion.div
-                              className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[300px] flex-col gap-2.5 rounded-xl border-[1.5px] border-solid border-ink bg-cream p-5 shadow-[0px_5px_15px_rgba(0,0,0,0.1)] max-md:w-[280px]"
+                              className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[300px] flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2.5 shadow-float max-md:w-[280px]"
                               variants={menuVariants}
                               initial="hidden"
                               animate="visible"
                               exit="exit"
                             >
                               {user && (
-                                <div className="flex cursor-pointer items-center gap-2.5 rounded-[10px] p-2.5">
-                                  <div className="flex h-[45px] w-[45px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage text-[large] font-semibold shadow-[0px_2px_0_#000]">
+                                <div className="mb-1.5 flex items-center gap-3 border-0 border-b border-solid border-line px-3 pb-3 pt-1.5">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-solid border-verdi/30 bg-sage/40 font-display text-[16px] font-semibold text-verdi">
                                     {user.email
                                       ? user.email.charAt(0).toUpperCase()
                                       : "?"}
                                   </div>
-                                  <div className="flex-1">
-                                    <div className="mb-0.5 text-[medium] font-semibold text-ink">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="mb-0.5 text-[14px] font-semibold text-ink">
                                       {user.user_metadata?.full_name ||
                                         user.email?.split("@")[0] ||
                                         "User"}
                                     </div>
-                                    <div className="max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap text-[x-small] text-ink">
+                                    <div className="max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-muted">
                                       {user.email}
                                     </div>
                                   </div>
@@ -934,7 +1014,7 @@ const Dashboard = ({ session }: Props) => {
                               )}
 
                               <motion.button
-                                className={`${MENU_BTN} relative hover:bg-sage`}
+                                className={`${MENU_BTN} relative`}
                                 onClick={() => {
                                   setShowMenu(false);
                                   navigate("/review");
@@ -949,7 +1029,7 @@ const Dashboard = ({ session }: Props) => {
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
-                                  strokeWidth="2.5"
+                                  strokeWidth="1.75"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 >
@@ -959,14 +1039,20 @@ const Dashboard = ({ session }: Props) => {
                                 </svg>
                                 <p className={MENU_BTN_TEXT}>Review</p>
                                 {dueCount > 0 && (
-                                  <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[#ef4444] px-1.5 text-[0.75rem] font-bold text-white">
+                                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-full border border-solid border-gold-deep/40 bg-gold px-1.5 font-mono text-[10.5px] font-bold text-ink">
+                                    <span
+                                      className="text-[8px]"
+                                      aria-hidden="true"
+                                    >
+                                      ✦
+                                    </span>
                                     {dueCount}
                                   </span>
                                 )}
                               </motion.button>
 
                               <motion.button
-                                className={`${MENU_BTN} hover:bg-sage`}
+                                className={MENU_BTN}
                                 onClick={() => {
                                   setShowMenu(false);
                                   navigate("/progress");
@@ -981,7 +1067,7 @@ const Dashboard = ({ session }: Props) => {
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
-                                  strokeWidth="2.5"
+                                  strokeWidth="1.75"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 >
@@ -994,7 +1080,7 @@ const Dashboard = ({ session }: Props) => {
 
                               {isAdmin && (
                                 <motion.button
-                                  className={`${MENU_BTN} hover:bg-[rgba(59,130,246,0.95)] hover:text-white`}
+                                  className={MENU_BTN}
                                   onClick={() => {
                                     setShowMenu(false);
                                     navigate("/admin");
@@ -1009,7 +1095,7 @@ const Dashboard = ({ session }: Props) => {
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="2.5"
+                                    strokeWidth="1.75"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                   >
@@ -1027,7 +1113,7 @@ const Dashboard = ({ session }: Props) => {
                               )}
 
                               <motion.button
-                                className={`${MENU_BTN} hover:bg-sage`}
+                                className={MENU_BTN}
                                 onClick={() => {
                                   setShowMenu(false);
                                   navigate("/support");
@@ -1042,19 +1128,26 @@ const Dashboard = ({ session }: Props) => {
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
-                                  strokeWidth="2.5"
+                                  strokeWidth="1.75"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 >
                                   <circle cx="12" cy="12" r="10"></circle>
                                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                  <line
+                                    x1="12"
+                                    y1="17"
+                                    x2="12.01"
+                                    y2="17"
+                                  ></line>
                                 </svg>
                                 <p className={MENU_BTN_TEXT}>Support</p>
                               </motion.button>
 
+                              <div className={`my-1 ${UI.rule}`} />
+
                               <motion.button
-                                className={`${MENU_BTN} mt-[5px] hover:bg-[#F97316] hover:text-white`}
+                                className={MENU_BTN}
                                 onClick={confirmSignOut}
                                 whileTap={{ scale: 0.98 }}
                               >
@@ -1065,7 +1158,7 @@ const Dashboard = ({ session }: Props) => {
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
-                                  strokeWidth="2.5"
+                                  strokeWidth="1.75"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 >
@@ -1077,7 +1170,7 @@ const Dashboard = ({ session }: Props) => {
                               </motion.button>
 
                               <motion.button
-                                className={`${MENU_BTN} mt-[5px] hover:bg-[#EF4444] hover:text-white`}
+                                className={MENU_BTN_DANGER}
                                 onClick={confirmDeleteAccount}
                                 whileTap={{ scale: 0.98 }}
                               >
@@ -1088,7 +1181,7 @@ const Dashboard = ({ session }: Props) => {
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
-                                  strokeWidth="2.5"
+                                  strokeWidth="1.75"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 >
@@ -1098,9 +1191,7 @@ const Dashboard = ({ session }: Props) => {
                                   <line x1="10" y1="11" x2="10" y2="17"></line>
                                   <line x1="14" y1="11" x2="14" y2="17"></line>
                                 </svg>
-                                <p className={MENU_BTN_TEXT}>
-                                  Delete Account
-                                </p>
+                                <p className={MENU_BTN_TEXT}>Delete Account</p>
                               </motion.button>
                             </motion.div>
                           )}
@@ -1109,36 +1200,24 @@ const Dashboard = ({ session }: Props) => {
                     </div>
                   </motion.div>
 
-                  <AnimatePresence mode="wait">
-                    {showAddForm ? (
-                      <motion.div
-                        className="mx-auto max-w-[600px]"
-                        key="add-form"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 100,
-                          damping: 15,
-                        }}
-                      >
-                        <AddClassForm
-                          onClassCreated={handleAddClass as any}
-                          onCancel={() => setShowAddForm(false)}
-                        />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="classes-grid"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                      >
-                        {renderClassesGrid()}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {/* The dashboard stays rendered; "create class" floats above
+                      it as a Modal plate (AddClassForm renders the kit Modal -
+                      scrim, Escape, and scroll-lock included). */}
+                  {renderClassesGrid()}
+                  {showAddForm && (
+                    <AddClassForm
+                      onClassCreated={handleAddClass as any}
+                      onCancel={() => setShowAddForm(false)}
+                    />
+                  )}
+                  {editingClass && (
+                    <AddClassForm
+                      isEditing
+                      initialData={editingClass as any}
+                      onClassUpdated={handleUpdateClassInline as any}
+                      onCancel={() => setEditingClass(null)}
+                    />
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1175,65 +1254,60 @@ const Dashboard = ({ session }: Props) => {
 
       {!selectedClass && hasLoaded && (
         <motion.div
-          className="fixed bottom-0 left-0 z-[100] w-full max-md:p-[15px] max-[480px]:p-3"
+          className="pointer-events-none fixed bottom-0 left-0 z-[100] flex w-full justify-center px-4 pb-7 max-md:p-[15px] max-[480px]:p-3"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 200,
-            damping: 20,
-            delay: 0.5,
-          }}
+          transition={{ ...spring.gentle, delay: 0.5 }}
         >
-          <div className="flex items-center justify-center gap-5 p-[30px] max-md:px-2.5 max-md:py-0 max-[480px]:gap-2.5">
+          {/* The instrument dock - one floating vellum pill holding both AI keys.
+              Hover lift is framer's (doctrine: CSS never animates transform). */}
+          <motion.div
+            className="pointer-events-auto flex items-center gap-1 rounded-full border border-solid border-line bg-vellum/95 p-1.5 shadow-float backdrop-blur-[2px] max-[480px]:gap-0.5 max-[480px]:p-1"
+            whileHover={{ y: -2, transition: spring.lift }}
+          >
             <motion.button
               className={AI_BTN}
               onClick={() => handleChatWithAI((selectedClass as any)?.id)}
-              whileHover={{
-                scale: 1.03,
-                y: -5,
-                transition: { type: "spring", stiffness: 300, damping: 8 },
-              }}
-              whileTap={{ scale: 0.98 }}
+              {...keyPress}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="22"
-                height="22"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="1.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
               </svg>
               Chat with AI
             </motion.button>
 
+            {/* Hairline divider between the two instruments. */}
+            <span className="h-5 w-px shrink-0 bg-line" aria-hidden="true" />
+
             <motion.button
               className={AI_BTN}
               onClick={() => {
                 handleTalkWithAI();
               }}
-              whileHover={{
-                scale: 1.03,
-                y: -5,
-                transition: { type: "spring", stiffness: 300, damping: 8 },
-              }}
-              whileTap={{ scale: 0.98 }}
+              {...keyPress}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="22"
-                height="22"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="1.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -1242,7 +1316,7 @@ const Dashboard = ({ session }: Props) => {
               </svg>
               Talk with AI
             </motion.button>
-          </div>
+          </motion.div>
         </motion.div>
       )}
 
@@ -1354,7 +1428,7 @@ const Dashboard = ({ session }: Props) => {
         hideBackground={true}
       />
 
-      {/* Account delete failure dialog — friendly, never shows the raw error */}
+      {/* Account delete failure dialog - friendly, never shows the raw error */}
       <ConfirmDialog
         isOpen={accountDeleteError}
         onClose={() => setAccountDeleteError(false)}

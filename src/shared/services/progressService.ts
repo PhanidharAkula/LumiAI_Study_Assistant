@@ -20,7 +20,7 @@ export interface Progress {
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-// A card counts as "mastered" once its review interval reaches a week — at that
+// A card counts as "mastered" once its review interval reaches a week - at that
 // point spaced repetition considers it well-retained.
 const MASTERED_INTERVAL_DAYS = 7;
 

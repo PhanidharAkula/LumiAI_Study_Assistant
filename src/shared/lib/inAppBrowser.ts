@@ -1,4 +1,4 @@
-// Detects embedded in-app browsers (webviews) — e.g. the ones inside LinkedIn,
+// Detects embedded in-app browsers (webviews) - e.g. the ones inside LinkedIn,
 // Instagram, Facebook/Messenger, X/Twitter. Google blocks OAuth sign-in inside
 // these webviews ("Error 403: disallowed_useragent" / "Use secure browsers"),
 // so we can't let users reach the Google button there. Instead we detect the
@@ -39,7 +39,7 @@ export function isInAppBrowser(): boolean {
   if (signatures.some((token) => ua.includes(token))) return true;
 
   // Generic Android WebView marker. Real Chrome for Android does NOT include
-  // "; wv)" in its user-agent — only embedded WebViews do.
+  // "; wv)" in its user-agent - only embedded WebViews do.
   if (/\bwv\b/.test(ua) && /Android/i.test(ua)) return true;
 
   // Generic iOS webview: Safari's UA contains "Safari"; the WKWebViews used by

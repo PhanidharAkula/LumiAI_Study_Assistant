@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { getPlatform, getInAppBrowserName } from "@shared/lib/inAppBrowser";
+import { CornerTicks, LumiStar, UI } from "@shared/components/atlas";
+import { Button } from "@shared/components/controls";
+import { fadeRise, stagger } from "@shared/motion";
 
 // Shown instead of the sign-in screens when the app is opened inside an
 // embedded in-app browser (LinkedIn, Instagram, etc.), where Google OAuth is
@@ -40,93 +43,61 @@ const OpenInBrowser = () => {
         ? "Tap the ⋮ menu, then choose Open in Chrome."
         : "Open this link in your browser to continue.";
 
-  const itemVariants: Variants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100, damping: 12 },
-    },
-  };
-
-  // Shared button styling (the Android "Open in Chrome" variant only swaps the
-  // background). Built as a base + per-variant bg so two conflicting Tailwind
-  // background utilities never land on the same element.
-  const btnBase =
-    "mt-1 px-11 py-[14px] rounded-full border-2 border-solid border-ink text-ink text-[15px] font-bold tracking-[0.5px] shadow-[0px_2px_0_#000]";
-
   return (
     <motion.div
       className="flex min-h-[100dvh] w-full items-center justify-center px-6 py-10"
       initial="hidden"
       animate="visible"
-      transition={{ staggerChildren: 0.12, delayChildren: 0.1 }}
+      variants={stagger(0.1, 0.1)}
     >
       <motion.div
-        className="flex w-full max-w-[440px] flex-col items-center gap-4 rounded-3xl border-[1.5px] border-solid border-black/[0.08] bg-white px-8 py-10 text-center max-[480px]:px-[22px] max-[480px]:py-8"
-        variants={itemVariants}
+        className={`${UI.plate} flex w-full max-w-[440px] flex-col items-center gap-4 px-9 py-10 text-center max-[480px]:px-6 max-[480px]:py-8`}
+        variants={fadeRise}
       >
-        <motion.p
-          className="text-[28px] font-extrabold tracking-[-1px] text-ink"
-          variants={itemVariants}
-        >
+        <CornerTicks />
+
+        <motion.div variants={fadeRise} className="text-ink/40">
+          <LumiStar size={52} orbit />
+        </motion.div>
+
+        <motion.p className={UI.overline} variants={fadeRise}>
           Lumi AI
         </motion.p>
 
         <motion.h1
-          className="text-[24px] font-bold text-ink max-[480px]:text-[21px]"
-          variants={itemVariants}
+          className="font-display text-[26px] font-semibold leading-tight text-ink max-[480px]:text-[22px]"
+          variants={fadeRise}
         >
           Open in your browser
         </motion.h1>
 
         <motion.p
-          className="text-[15px] leading-[1.6] text-muted max-[480px]:text-[14px]"
-          variants={itemVariants}
+          className="text-[14.5px] leading-[1.65] text-muted"
+          variants={fadeRise}
         >
           {appName
             ? `It looks like you opened Lumi AI inside ${appName}. `
             : "It looks like you opened Lumi AI inside an in-app browser. "}
-          Google sign-in doesn't work here for security reasons — please open
-          Lumi AI in your browser to continue.
+          Google sign-in doesn&rsquo;t work here for security reasons - please
+          open Lumi AI in your browser to continue.
         </motion.p>
 
         <motion.div
-          className="w-full rounded-[14px] bg-cream px-[18px] py-[14px] text-[14px] font-semibold leading-[1.5] text-ink"
-          variants={itemVariants}
+          className="w-full rounded-lg border border-solid border-line bg-cream/80 px-[18px] py-[14px] text-[14px] font-medium leading-[1.55] text-ink"
+          variants={fadeRise}
         >
           {instruction}
         </motion.div>
 
         {platform === "android" && (
-          <motion.div
-            variants={itemVariants}
-            whileHover={{
-              scale: 1.03,
-              y: -6,
-              transition: { type: "spring", stiffness: 300, damping: 5 },
-            }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <button className={`${btnBase} bg-sage`} onClick={handleOpenChrome}>
-              Open in Chrome
-            </button>
-          </motion.div>
+          <Button variants={fadeRise} onClick={handleOpenChrome}>
+            Open in Chrome
+          </Button>
         )}
 
-        <motion.div
-          variants={itemVariants}
-          whileHover={{
-            scale: 1.03,
-            y: -6,
-            transition: { type: "spring", stiffness: 300, damping: 5 },
-          }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <button className={`${btnBase} bg-white`} onClick={handleCopy}>
-            {copied ? "Link copied!" : "Copy link"}
-          </button>
-        </motion.div>
+        <Button variant="ghost" variants={fadeRise} onClick={handleCopy}>
+          {copied ? "Link copied ✦" : "Copy link"}
+        </Button>
       </motion.div>
     </motion.div>
   );

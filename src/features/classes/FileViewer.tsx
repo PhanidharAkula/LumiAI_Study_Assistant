@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Constellation, UI, btnClass } from "@shared/components/atlas";
+import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
+import { pressLift } from "@shared/motion";
+import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 
 interface FileMeta {
   name: string;
@@ -14,11 +18,13 @@ interface FileViewerProps {
   onClose: () => void;
 }
 
-const CLOSE_BTN =
-  "flex h-10 w-10 items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-white shadow-[0px_2px_0_#000] max-md:h-9 max-md:w-9";
-
 const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
   const [loading, setLoading] = useState(true);
+
+  // Fullscreen takeover: lock background scroll and close on Escape (shared,
+  // reference-counted/stacked so a dialog above it pops first).
+  useScrollLock(true);
+  useEscapeToClose(true, onClose);
 
   const isGenericFile = file
     ? !(
@@ -83,8 +89,12 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
 
     if (file.type?.includes("text") || file.name.endsWith(".txt")) {
       return (
+        // sandbox="" fully isolates the framed file: an uploaded .txt/.html is
+        // displayed but can never execute scripts (files are served from the
+        // storage origin), neutralizing stored-XSS via a malicious upload.
         <iframe
           src={url}
+          sandbox=""
           className="h-full w-full border-none"
           onLoad={() => setLoading(false)}
           title={file.name}
@@ -95,42 +105,29 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
     if (isGenericFile) {
       if (loading) return null;
       return (
-        <div className="flex flex-col items-center justify-center px-5 py-10 text-center">
-          <div className="mb-5 flex h-[100px] w-[100px] items-center justify-center rounded-xl border-[1.5px] border-solid border-ink bg-sage shadow-[0px_2px_0_#000] max-md:h-20 max-md:w-20">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="60"
-              height="60"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-          </div>
-          <p className="my-2.5 text-[20px] font-semibold">{file.name}</p>
-          <p className="mb-5 text-muted">
+        <div className="flex flex-col items-center justify-center px-6 py-12 text-center max-md:px-5 max-md:py-10">
+          <Constellation
+            name={file.name}
+            size={120}
+            className="text-ink/30 max-md:h-24 max-md:w-24"
+          />
+          <p className={`mt-4 ${UI.overlineMuted}`}>No preview available</p>
+          <p className="mt-2 max-w-[420px] break-words font-display text-[19px] font-semibold leading-[1.3] text-ink max-md:max-w-[280px] max-md:text-[17px]">
+            {file.name}
+          </p>
+          <p className="mt-1.5 text-[13px] text-muted">
             {(file.size / 1024).toFixed(1)} KB • {file.type || "Unknown type"}
           </p>
           <motion.a
             href={url}
             download={file.name}
-            className="flex items-center gap-2.5 rounded-full border-[1.5px] border-solid border-ink bg-sage px-[25px] py-3 text-[16px] font-semibold text-ink no-underline shadow-[0px_2px_0_#000]"
+            className={`${btnClass("primary")} mt-7 no-underline`}
             target="_blank"
             rel="noreferrer"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            whileHover={{
-              scale: 1.05,
-              y: -3,
-              transition: { type: "spring", stiffness: 300, damping: 5 },
-            }}
-            whileTap={{ scale: 0.98 }}
+            {...pressLift}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -139,9 +136,10 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.75"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -156,88 +154,66 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 backdrop-blur-[5px]"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-night/70 backdrop-blur-[3px]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
     >
       <motion.div
-        className="flex h-[85dvh] w-[90%] max-w-[1000px] flex-col overflow-hidden rounded-[15px] border-[1.5px] border-solid border-ink bg-white shadow-[0_5px_20px_rgba(0,0,0,0.2)] max-md:h-[90dvh] max-md:w-[95%]"
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative flex h-[85dvh] w-[90%] max-w-[1000px] flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:h-[90dvh] max-md:w-[95%]"
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-0 border-b border-solid border-ink bg-sage px-5 py-[15px]">
-          <h3 className="m-0 max-w-[80%] overflow-hidden text-ellipsis whitespace-nowrap text-[18px] font-semibold max-md:max-w-[70%] max-md:text-[16px]">
-            {file?.name}
-          </h3>
-          <div className="flex gap-2.5">
+        <div className="flex items-center justify-between gap-4 border-0 border-b border-solid border-line bg-cream/60 px-5 py-3 max-md:gap-3 max-md:px-4">
+          <div className="min-w-0 flex-1">
+            <p className={UI.overlineMuted}>Viewing</p>
+            <h3 className="m-0 mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap font-display text-[17px] font-semibold leading-snug text-ink max-md:text-[15px]">
+              {file?.name}
+            </h3>
+          </div>
+          <div className="flex shrink-0 gap-2.5">
             {!isGenericFile && (
-              <motion.button
-                className={CLOSE_BTN}
+              <IconButton
+                variant="ghost"
+                label="Download file"
                 onClick={handleSmallButtonDownload}
-                whileHover={{
-                  scale: 1.1,
-                  transition: { type: "spring", stiffness: 400, damping: 10 },
-                }}
-                whileTap={{ scale: 0.95 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="1.75"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-              </motion.button>
+              </IconButton>
             )}
 
-            <motion.button
-              className={CLOSE_BTN}
-              onClick={onClose}
-              whileHover={{
-                scale: 1.1,
-                transition: { type: "spring", stiffness: 400, damping: 10 },
-              }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </motion.button>
+            <CloseButton label="Close viewer" onClick={onClose} />
           </div>
         </div>
 
-        <div className="relative flex flex-1 items-center justify-center overflow-auto p-5">
-          {loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80">
-              <div className="spinner"></div>
-              <span>Loading file...</span>
-            </div>
-          )}
-          {renderFileContent()}
+        <div className="relative flex flex-1 items-center justify-center overflow-auto p-4 max-md:p-3">
+          <div
+            className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-solid border-line ${
+              isGenericFile ? "" : "bg-white"
+            }`}
+          >
+            {loading && <Spinner overlay label="Loading file" />}
+            {renderFileContent()}
+          </div>
         </div>
       </motion.div>
     </motion.div>

@@ -2,7 +2,12 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+import { LumiStar } from "@shared/components/atlas";
+import { keyPress } from "@shared/motion";
 import type { UploadedFile } from "@shared/services/aiService";
 
 interface ContextFile {
@@ -13,51 +18,82 @@ interface ContextFile {
 interface ChatMessageProps {
   message?: string;
   type?: string;
-  errorType?: string;
   isStreaming?: boolean;
   files?: UploadedFile[];
   contextFiles?: ContextFile[];
+  statusLabel?: string;
+  isLast?: boolean;
+  onRetry?: () => void;
 }
 
 // Markdown + code-syntax-highlight styling, applied to the rendered markdown
 // HTML via descendant arbitrary-variants (the HTML is generated at runtime by
-// react-markdown, so it can't take per-element utility classes). Effective
-// values reproduce the original ChatMessage.css (incl. its specificity-resolved
-// heading borders/colors and the rehype-highlight token palette).
+// react-markdown, so it can't take per-element utility classes). Luminarium
+// editorial prose: Fraunces headings over hairline rules, gold-leaf
+// blockquotes, hairline tables, and night-plate code blocks whose
+// rehype-highlight tokens use a midnight palette (AA on `night` #171326):
+// keywords/tags gold #c79a33, strings/regexp sage #9ac2b9, comments
+// starlight/55 (55% keeps AA - 45% drops below 4.5:1), functions/types
+// #e3b34f, numbers/literals #d98e73, attrs #c9b8e8, deletions #e8a08c.
 const PROSE = [
-  "relative p-0 text-[16px] leading-[1.5] text-black",
-  "[&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:font-semibold [&_h1]:leading-[1.25] [&_h1]:text-[#0f172a] [&_h1]:text-[1.5em] [&_h1]:border-0 [&_h1]:border-b [&_h1]:border-solid [&_h1]:border-black/10 [&_h1]:pb-[0.35em]",
-  "[&_h2]:mt-6 [&_h2]:mb-4 [&_h2]:font-semibold [&_h2]:leading-[1.25] [&_h2]:text-[#0f172a] [&_h2]:text-[1.25em] [&_h2]:border-0 [&_h2]:border-b [&_h2]:border-solid [&_h2]:border-black/10 [&_h2]:pb-[0.35em]",
-  "[&_h3]:mt-5 [&_h3]:mb-4 [&_h3]:font-semibold [&_h3]:leading-[1.25] [&_h3]:text-black [&_h3]:text-[1.1em]",
-  "[&_h4]:mt-5 [&_h4]:mb-4 [&_h4]:font-semibold [&_h4]:leading-[1.25] [&_h4]:text-black",
-  "[&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:font-semibold [&_h5]:leading-[1.25] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:font-semibold [&_h6]:leading-[1.25]",
-  "[&_p]:mt-0 [&_p]:mb-4 [&_p]:text-[#111827]",
-  "[&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-black/[0.08] [&_hr]:my-[18px]",
+  // `min-w-0` lets this prose column shrink inside the flex message row, and
+  // `break-words` wraps long unbroken tokens (URLs, hashes) so they can't push
+  // horizontal overflow at 390px; code blocks scroll inside their own bubble.
+  "relative min-w-0 max-w-full p-0 text-[15.5px] leading-[1.7] text-ink [overflow-wrap:anywhere]",
+  // The last block's trailing margin is dropped so the AI "Copy" row sits the
+  // same mt-2.5 below the text as the user-side copy button sits below its
+  // bubble (otherwise the trailing p mb-4 made the Lumi gap larger).
+  "[&>*:last-child]:mb-0",
+  "[&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:font-semibold [&_h1]:leading-[1.3] [&_h1]:tracking-[-0.01em] [&_h1]:text-ink [&_h1]:text-[1.5em] [&_h1]:border-0 [&_h1]:border-b [&_h1]:border-solid [&_h1]:border-line [&_h1]:pb-[0.35em]",
+  "[&_h2]:mt-6 [&_h2]:mb-4 [&_h2]:font-semibold [&_h2]:leading-[1.3] [&_h2]:tracking-[-0.01em] [&_h2]:text-ink [&_h2]:text-[1.25em] [&_h2]:border-0 [&_h2]:border-b [&_h2]:border-solid [&_h2]:border-line [&_h2]:pb-[0.35em]",
+  "[&_h3]:mt-5 [&_h3]:mb-4 [&_h3]:font-semibold [&_h3]:leading-[1.3] [&_h3]:text-ink [&_h3]:text-[1.1em]",
+  "[&_h4]:mt-5 [&_h4]:mb-4 [&_h4]:font-semibold [&_h4]:leading-[1.25] [&_h4]:text-ink [&_h4]:text-[1.05em]",
+  // Preflight is off and the global reset sets no font-size, so without an
+  // explicit size h5/h6 fall to the UA defaults (0.83em/0.67em) - i.e. SMALLER
+  // than body. Pin them at/above body so the hierarchy never inverts.
+  "[&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:font-semibold [&_h5]:leading-[1.25] [&_h5]:text-ink [&_h5]:text-[1em] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:font-semibold [&_h6]:leading-[1.25] [&_h6]:text-ink [&_h6]:text-[0.95em]",
+  "[&_p]:mt-0 [&_p]:mb-4 [&_p]:text-ink",
+  "[&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-line [&_hr]:my-[18px]",
   "[&_ul]:pl-[2em] [&_ul]:mt-0 [&_ul]:mb-4 [&_ol]:pl-[2em] [&_ol]:mt-0 [&_ol]:mb-4 [&_li]:mt-[0.25em]",
-  "[&_code]:bg-black/[0.03] [&_code]:rounded-[3px] [&_code]:font-mono [&_code]:text-[medium] [&_pre_code]:bg-transparent [&_pre_code]:p-0",
-  "[&_blockquote]:my-[15px] [&_blockquote]:pl-[15px] [&_blockquote]:text-black [&_blockquote]:italic [&_blockquote]:border-0 [&_blockquote]:border-l-[3px] [&_blockquote]:border-solid [&_blockquote]:border-black/20",
-  "[&_table]:w-full [&_table]:my-[15px] [&_table]:border-collapse",
-  "[&_th]:px-3 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-ink [&_th]:font-bold [&_th]:bg-[rgba(147,193,193,0.14)] [&_th]:border [&_th]:border-solid [&_th]:border-[rgba(147,193,193,0.22)]",
-  "[&_td]:px-3 [&_td]:py-2.5 [&_td]:border [&_td]:border-solid [&_td]:border-[rgba(227,235,235,0.7)] [&_td]:bg-[rgba(255,255,255,0.98)]",
-  "[&_tr:nth-child(even)]:bg-[rgba(147,193,193,0.06)]",
-  "[&_strong]:font-semibold [&_strong]:text-black [&_em]:text-black",
-  "[&_.hashtag]:font-medium [&_.hashtag]:text-black [&_.mention]:font-medium [&_.mention]:text-black",
-  "[&_.hljs-comment]:text-[#6b7280] [&_.hljs-quote]:text-[#708090] [&_.hljs-keyword]:text-[#7c3aed] [&_.hljs-keyword]:font-semibold [&_.hljs-string]:text-[#059669] [&_.hljs-title]:text-[#1e293b] [&_.hljs-function]:text-[#0ea5e9] [&_.hljs-number]:text-[#d946ef] [&_.hljs-attr]:text-[#b45309]",
+  // GFM task lists (`- [ ]` / `- [x]`): remark-gfm emits an <li class="task-list-item">
+  // with a disabled checkbox. Drop the bullet, hang the row off the list edge so
+  // the box aligns with the text column, and tint the checkbox brand-verdi.
+  "[&_li.task-list-item]:list-none [&_li.task-list-item]:-ml-[1.45em] [&_li.task-list-item]:flex [&_li.task-list-item]:items-baseline [&_li.task-list-item]:gap-2 [&_.task-list-item_input[type=checkbox]]:relative [&_.task-list-item_input[type=checkbox]]:top-[0.15em] [&_.task-list-item_input[type=checkbox]]:m-0 [&_.task-list-item_input[type=checkbox]]:h-[0.95em] [&_.task-list-item_input[type=checkbox]]:w-[0.95em] [&_.task-list-item_input[type=checkbox]]:shrink-0 [&_.task-list-item_input[type=checkbox]]:cursor-default [&_.task-list-item_input[type=checkbox]]:accent-verdi",
+  "[&_code]:bg-night/[0.06] [&_code]:rounded [&_code]:px-1.5 [&_code]:py-[2px] [&_code]:font-mono [&_code]:text-[13px] [&_:not(pre)>code]:[overflow-wrap:anywhere]",
+  "[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-solid [&_pre]:border-line-night [&_pre]:bg-night [&_pre]:p-3.5 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-[1.65] [&_pre]:text-starlight",
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[13px]",
+  "[&_blockquote]:my-4 [&_blockquote]:rounded-r-md [&_blockquote]:border-0 [&_blockquote]:border-l-2 [&_blockquote]:border-solid [&_blockquote]:border-gold/60 [&_blockquote]:bg-cream/60 [&_blockquote]:py-2.5 [&_blockquote]:pl-4 [&_blockquote]:pr-3.5 [&_blockquote]:italic [&_blockquote]:text-ink [&_blockquote_p:last-of-type]:mb-0",
+  "[&_table]:w-full [&_table]:border-collapse",
+  "[&_th]:px-3 [&_th]:py-2.5 [&_th]:min-w-[120px] [&_th]:text-left [&_th]:text-ink [&_th]:font-semibold [&_th]:bg-sage/20 [&_th]:border-0 [&_th]:border-b [&_th]:border-r [&_th]:border-solid [&_th]:border-line [&_th:last-child]:border-r-0",
+  "[&_td]:px-3 [&_td]:py-2.5 [&_td]:min-w-[120px] [&_td]:border-0 [&_td]:border-b [&_td]:border-r [&_td]:border-solid [&_td]:border-line [&_td]:bg-white/40 [&_td:last-child]:border-r-0 [&_tr:last-child_td]:border-b-0",
+  "[&_tr:nth-child(even)_td]:bg-vellum/60",
+  // KaTeX math (rehype-katex). Display math is centered with vertical breathing
+  // room and scrolls horizontally so a wide equation can't blow out the 390px
+  // column; inline math inherits the ink color and sits at ~1.05em so it reads
+  // alongside the 15.5px prose without towering over it.
+  "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1 [&_.katex-display]:text-center [&_.katex]:text-[1.05em] [&_.katex]:text-ink [&_.katex]:leading-normal",
+  "[&_strong]:font-semibold [&_strong]:text-ink [&_em]:text-ink",
+  "[&_.hashtag]:font-medium [&_.hashtag]:text-verdi [&_.mention]:font-medium [&_.mention]:text-verdi",
+  "[&_.hljs-comment]:text-starlight/55 [&_.hljs-comment]:italic [&_.hljs-quote]:text-starlight/55 [&_.hljs-quote]:italic [&_.hljs-keyword]:text-gold [&_.hljs-keyword]:font-semibold [&_.hljs-string]:text-sage [&_.hljs-title]:text-[#e3b34f] [&_.hljs-function]:text-[#e3b34f] [&_.hljs-number]:text-[#d98e73] [&_.hljs-attr]:text-[#c9b8e8]",
+  "[&_.hljs-built_in]:text-[#e3b34f] [&_.hljs-type]:text-[#e3b34f] [&_.hljs-class]:text-[#e3b34f] [&_.hljs-literal]:text-[#d98e73] [&_.hljs-symbol]:text-[#d98e73] [&_.hljs-bullet]:text-[#d98e73] [&_.hljs-name]:text-gold [&_.hljs-selector-tag]:text-gold [&_.hljs-section]:text-gold [&_.hljs-attribute]:text-[#c9b8e8] [&_.hljs-variable]:text-starlight [&_.hljs-template-variable]:text-starlight [&_.hljs-params]:text-starlight [&_.hljs-regexp]:text-sage [&_.hljs-meta]:text-starlight/70 [&_.hljs-doctag]:text-starlight/70 [&_.hljs-addition]:text-sage [&_.hljs-addition]:bg-sage/10 [&_.hljs-deletion]:text-[#e8a08c] [&_.hljs-deletion]:bg-vermilion/15",
 ].join(" ");
 
+// Small ghost key - copy actions on parchment. The lift comes from framer
+// (`keyPress`); CSS animates color/border only (motion doctrine §7).
 const COPY_BTN =
-  "inline-flex items-center gap-1.5 rounded-md border border-solid border-black/[0.06] bg-transparent px-2 py-1.5 text-[12px] [transition:all_0.12s_ease] hover:-translate-y-1 hover:bg-cream";
+  "inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-solid border-line bg-transparent px-2 py-1.5 text-[12px] text-muted transition-[color,background-color,border-color] duration-150 hover:border-ink/30 hover:bg-vellum hover:text-ink";
 
 const ChatMessage = ({
   message,
   type,
-  errorType,
   isStreaming = false,
   files = [],
   contextFiles = [],
+  statusLabel,
+  isLast = false,
+  onRetry,
 }: ChatMessageProps) => {
   const isUser = type === "user";
-  const isTyping = type === "typing";
   const isError = type === "error";
   const isAI = type === "assistant";
   const [copySuccessFull, setCopySuccessFull] = useState(false);
@@ -88,8 +124,70 @@ const ChatMessage = ({
     return "";
   };
 
+  // Convert Lumi's Markdown answer to clean plain text for copying: strip
+  // heading/emphasis/link/list/table syntax, keep code blocks verbatim and math
+  // readable. Students want the prose, not the raw Markdown source.
+  const markdownToPlainText = (md: string): string => {
+    if (!md || typeof md !== "string") return "";
+    const stash: string[] = [];
+    let t = md;
+    // Protect code (fenced + inline) so their contents aren't stripped.
+    t = t.replace(/```[^\n]*\n?([\s\S]*?)```/g, (_m, code) => {
+      stash.push(String(code).replace(/\n$/, ""));
+      return `@@C${stash.length - 1}@@`;
+    });
+    t = t.replace(/`([^`\n]+)`/g, (_m, code) => {
+      stash.push(String(code));
+      return `@@C${stash.length - 1}@@`;
+    });
+    t = t
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1") // images -> alt text
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // links -> link text
+      .replace(/^\s{0,3}#{1,6}\s+/gm, "") // headings
+      .replace(/^\s{0,3}>\s?/gm, "") // blockquotes
+      // Emphasis, flanking-aware: a spaced "*" (multiplication / glob like
+      // *.js) and an intra-word "_" (identifiers like my_var_name) are left
+      // intact - the old single regex deleted both. Flanking is enforced with a
+      // lookahead + a trailing \S inside the capture (NOT lookbehind, which
+      // throws a SyntaxError on Safari <16.4 and would break the whole module).
+      .replace(/~~(?=\S)(.*?\S)~~/g, "$1") // strikethrough
+      .replace(/(\*\*\*|\*\*|\*)(?=\S)(.*?\S)\1/g, "$2") // bold/italic
+      .replace(
+        /(^|[^A-Za-z0-9])(___|__|_)(?=\S)(.*?\S)\2(?![A-Za-z0-9])/g,
+        "$1$3"
+      ) // underscore emphasis (word-bounded; $1 keeps the preceding char)
+      .replace(/^(\s*)[-*+]\s+/gm, "$1• ") // bullet markers
+      .replace(/^\s*([-*_])(?:\s*\1){2,}\s*$/gm, "") // horizontal rules
+      // Table separator row: remove the whole line incl. its newline, so the
+      // following data row can't be merged onto the header on copy.
+      .replace(/^[ \t]*\|?[ \t:|-]{3,}\|?[ \t]*(?:\r?\n|$)/gm, "")
+      // Table data rows -> spaced cells. Trim only horizontal space ([ \t]) so
+      // the row's own newline is never consumed (the bug that glued rows).
+      .replace(/^[ \t]*\|(.+?)\|?[ \t]*$/gm, (_m, row) =>
+        String(row)
+          .split("|")
+          .map((c) => c.trim())
+          .filter(Boolean)
+          .join("  ")
+      ) // table rows -> spaced cells
+      .replace(/\$\$([\s\S]*?)\$\$/g, "$1") // display-math delimiters
+      // Inline math: unwrap real math (incl. digit-led like $3x$ or $2\pi r$)
+      // but leave currency ($5, "$5 and $10") and lone amounts alone.
+      .replace(/\$([^$\n]+?)\$/g, (m, inner) => {
+        const s = String(inner);
+        if (/^\s|\s$/.test(s)) return m; // padded -> currency-ish, keep
+        if (/[\^_\\{}]/.test(s)) return s; // has math symbols
+        if (/^[^\d]/.test(s)) return s; // starts non-digit
+        if (/^\d[A-Za-z]/.test(s)) return s; // digit then letter, e.g. 3x
+        return m; // pure number ($5) -> currency, keep
+      });
+    // Restore protected code verbatim.
+    t = t.replace(/@@C(\d+)@@/g, (_m, i) => stash[Number(i)] ?? "");
+    return t.replace(/\n{3,}/g, "\n\n").trim();
+  };
+
   const copyFull = (text: any) => {
-    const plain = getPlainText(text);
+    const plain = markdownToPlainText(getPlainText(text));
     copyToClipboard(plain).then(() => {
       setCopySuccessFull(true);
       setTimeout(() => setCopySuccessFull(false), 2000);
@@ -109,82 +207,77 @@ const ChatMessage = ({
   };
 
   const renderContent = () => {
-    if (isTyping) {
+    if (isError) {
       return (
-        <div className="flex items-center justify-center gap-1">
-          <span className="inline-block h-2 w-2 animate-typing-bounce rounded-full bg-muted"></span>
-          <span className="inline-block h-2 w-2 animate-typing-bounce rounded-full bg-muted [animation-delay:0.2s]"></span>
-          <span className="inline-block h-2 w-2 animate-typing-bounce rounded-full bg-muted [animation-delay:0.4s]"></span>
-        </div>
-      );
-    } else if (isError) {
-      const icon =
-        errorType === "quota" ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 2v2"></path>
-            <path d="M12 8v2"></path>
-            <path d="M12 14v2"></path>
-            <path d="M12 20v2"></path>
-            <path d="M18.4 4.6a2 2 0 0 0-2.8 2.8"></path>
-            <path d="M5.6 7.4a2 2 0 0 0 2.8-2.8"></path>
-            <path d="M18.4 19.4a2 2 0 0 1-2.8-2.8"></path>
-            <path d="M5.6 16.6a2 2 0 0 1-2.8 2.8"></path>
-          </svg>
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-        );
-
-      return (
-        <div
-          className={`flex items-center gap-2 text-[#B91C1C] [&_p]:m-0 [&_svg]:shrink-0 ${
-            errorType === "quota"
-              ? "flex-col p-[5px] text-center [&_svg]:mb-2.5 [&_svg]:h-[30px] [&_svg]:w-[30px]"
-              : ""
-          }`}
-        >
-          {icon}
-          <p>{message}</p>
+        <div className="flex flex-col items-start gap-2">
+          <div className="flex items-center gap-2 text-left text-vermilion">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <p className="m-0 text-[14px] leading-[1.55]">{message}</p>
+          </div>
+          {/* Retry only on the LAST message and only when it's an error: drop it
+              and re-run the failed turn. Never shown for a mid-chat error. */}
+          {isLast && onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className={COPY_BTN}
+              aria-label="Retry message"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              <span>Retry</span>
+            </button>
+          ) : null}
         </div>
       );
     } else if (isUser) {
       // Display user message exactly as entered, preserving line breaks
       return (
-        <div className="group/uw relative">
-          <div className="block max-w-full whitespace-pre-wrap rounded-[20px] bg-white p-5 text-[16px] text-ink [&::-webkit-scrollbar]:hidden max-md:box-border max-md:w-full">
+        <div className="group/uw flex w-full flex-col items-end">
+          <div className="box-border block max-w-full whitespace-pre-wrap [overflow-wrap:anywhere] rounded-xl bg-ink px-5 py-3.5 text-[15px] leading-[1.65] text-cream shadow-plate [&::-webkit-scrollbar]:hidden">
             {message}
           </div>
-          <div className="pointer-events-none absolute -bottom-[25px] right-0 m-0 -translate-y-1 opacity-0 [transition:opacity_0.12s_ease,transform_0.12s_ease] group-hover/uw:pointer-events-auto group-hover/uw:translate-y-0 group-hover/uw:opacity-100 max-md:pointer-events-auto max-md:translate-y-0 max-md:opacity-100">
-            <button
+          {/* Copy sits in its own normal-flow row under the bubble (mirrors the
+              AI "Copy full response" row) so it reserves its own height and can
+              never overlap the bubble or the next message. Hidden until hover on
+              pointer devices, always visible on mobile (max-md). */}
+          <div className="pointer-events-none mt-2.5 flex -translate-y-1 justify-end opacity-0 [transition:opacity_0.12s_ease,transform_0.12s_ease] group-hover/uw:pointer-events-auto group-hover/uw:translate-y-0 group-hover/uw:opacity-100 max-md:pointer-events-auto max-md:translate-y-0 max-md:opacity-100">
+            <motion.button
+              type="button"
               className={COPY_BTN}
               onClick={(e) => {
                 e.stopPropagation();
                 copyUser(message);
               }}
-              title="Copy user message"
+              aria-label="Copy user message"
+              {...keyPress}
             >
               {copySuccessUser ? (
                 <span className="flex items-center gap-[5px]">
@@ -206,8 +299,8 @@ const ChatMessage = ({
                 <>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -215,12 +308,19 @@ const ChatMessage = ({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    ></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                   </svg>
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
         </div>
       );
@@ -229,8 +329,8 @@ const ChatMessage = ({
         <div className={PROSE}>
           {/* Show "Thinking..." animation when streaming with no content yet */}
           {isStreaming && (!message || message.trim() === "") ? (
-            <div className="flex items-center gap-0.5 text-[16px] text-ink opacity-70">
-              <span>Thinking</span>
+            <div className="flex items-center gap-0.5 text-[15px] italic text-muted">
+              <span>{statusLabel || "Thinking"}</span>
               <span className="ml-0.5 flex gap-0.5">
                 <span className="animate-thinking-fade opacity-0">.</span>
                 <span className="animate-thinking-fade opacity-0 [animation-delay:0.2s]">
@@ -244,10 +344,44 @@ const ChatMessage = ({
           ) : (
             <>
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeHighlight, rehypeKatex]}
                 components={{
-                  code({ inline, className, children, ...props }: any) {
+                  // `node` is destructured out (not a valid DOM attr) so it is
+                  // never spread onto the native elements below - that spread
+                  // was the source of React "invalid prop `node`" dev warnings.
+                  pre({ node, children, ...props }: any) {
+                    const child = Array.isArray(children)
+                      ? children[0]
+                      : children;
+                    const childClass = child?.props?.className || "";
+                    // A fenced block WITH a language is already fully styled
+                    // (container + header + copy button) by the `code` component
+                    // below. Render it as-is; wrapping it in another <pre> would
+                    // stack a second background. Language-less blocks keep the
+                    // styled <pre>.
+                    if (
+                      typeof childClass === "string" &&
+                      /language-/.test(childClass)
+                    ) {
+                      return <>{children}</>;
+                    }
+                    return <pre {...props}>{children}</pre>;
+                  },
+                  table({ node, children, ...props }: any) {
+                    // Wrap the table so its rounded corners + outer border match
+                    // the code blocks. The wrapper owns the border/radius; the
+                    // cells (below) draw only the inner grid lines, so the edge
+                    // never doubles. Inner div scrolls wide tables.
+                    return (
+                      <div className="my-4 overflow-hidden rounded-lg border border-solid border-line">
+                        <div className="overflow-x-auto">
+                          <table {...props}>{children}</table>
+                        </div>
+                      </div>
+                    );
+                  },
+                  code({ inline, node, className, children, ...props }: any) {
                     const match = /language-(\w+)/.exec(className || "");
                     const codeString = getPlainText(children).replace(
                       /\n$/,
@@ -256,13 +390,13 @@ const ChatMessage = ({
 
                     if (!inline && match) {
                       return (
-                        <div className="relative my-4 overflow-hidden rounded-md border border-solid border-black/[0.08] bg-black/[0.06] [&_code]:bg-transparent [&_pre]:m-0 [&_pre]:overflow-x-auto [&_pre]:rounded-b-md [&_pre]:bg-transparent [&_pre]:p-3">
-                          <div className="flex items-center justify-between border-0 border-b border-solid border-black/[0.06] bg-transparent px-3 py-2">
-                            <span className="text-[12px] font-semibold uppercase text-muted">
+                        <div className="relative my-4 overflow-hidden rounded-lg border border-solid border-line-night bg-night [&_pre]:my-0! [&_pre]:rounded-none! [&_pre]:border-0!">
+                          <div className="flex items-center justify-between border-0 border-b border-solid border-line-night bg-white/[0.04] px-3.5 py-2">
+                            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-starlight/60">
                               {match[1]}
                             </span>
                             <button
-                              className="flex items-center justify-center rounded border-none bg-none p-[5px] [transition:all_0.2s_ease] hover:bg-white/20"
+                              className="flex cursor-pointer items-center justify-center rounded-md border border-solid border-transparent bg-transparent p-[5px] text-starlight/60 transition-colors duration-150 hover:border-line-night hover:bg-white/[0.06] hover:text-starlight"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setCopyingCode(match[1]);
@@ -324,54 +458,58 @@ const ChatMessage = ({
                       </code>
                     );
                   },
-                  a: ({ ...props }: any) => {
+                  a: ({ node, ...props }: any) => {
                     return (
                       <a
                         {...props}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="group/lnk inline-flex items-center gap-1 pb-px text-[#2563eb] no-underline [transition:all_0.2s_ease] hover:bg-[rgba(37,99,235,0.05)]"
+                        className="text-verdi no-underline transition-colors duration-200 hover:text-gold-deep"
                       >
                         {props.children}
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="opacity-70 [transition:opacity_0.2s_ease] group-hover/lnk:opacity-100"
-                        >
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                          <polyline points="15 3 21 3 21 9"></polyline>
-                          <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
                       </a>
                     );
                   },
-                  p: ({ ...props }: any) => {
-                    if (typeof props.children === "string") {
-                      const content = props.children;
-                      const processedContent = content
-                        .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
-                        .replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-
-                      return (
-                        <p
-                          dangerouslySetInnerHTML={{ __html: processedContent }}
-                        />
-                      );
-                    }
-                    return <p {...props} />;
-                  },
+                  // Render #hashtags / @mentions as styled spans using React
+                  // nodes - never innerHTML, so any literal markup stays inert
+                  // (no dangerouslySetInnerHTML = no XSS sink). Walk EVERY string
+                  // child (not only a wholly-plain paragraph) so tags style even
+                  // alongside bold/links/code; skip hex colors and bare numbers
+                  // (#fff, #1) so they aren't mistaken for tags.
+                  p: ({ node, children, ...props }: any) => (
+                    <p {...props}>
+                      {React.Children.map(children, (child, ci) =>
+                        typeof child === "string"
+                          ? child
+                              .split(/(#\w+|@\w+)/g)
+                              .map((part: string, i: number) =>
+                                /^#\w+$/.test(part) &&
+                                !/^#(?:[0-9a-fA-F]{3,8}|\d+)$/.test(part) ? (
+                                  <span key={`${ci}-${i}`} className="hashtag">
+                                    {part}
+                                  </span>
+                                ) : /^@\w+$/.test(part) ? (
+                                  <span key={`${ci}-${i}`} className="mention">
+                                    {part}
+                                  </span>
+                                ) : (
+                                  part
+                                )
+                              )
+                          : child
+                      )}
+                    </p>
+                  ),
                 }}
               >
                 {message as string}
               </ReactMarkdown>
-              {isStreaming && <div className="hidden"></div>}
+              {isStreaming && (
+                <span
+                  className="ml-0.5 inline-block h-[15px] w-[2px] animate-blink rounded-full bg-gold align-middle"
+                  aria-hidden="true"
+                ></span>
+              )}
             </>
           )}
         </div>
@@ -381,12 +519,12 @@ const ChatMessage = ({
 
   return (
     <motion.div
-      className={`group/msg mb-5 max-w-full ${
+      className={`group/msg max-w-full ${
         isUser
-          ? "w-auto max-w-[70%] self-end max-md:max-w-full max-md:self-stretch"
+          ? "mb-5 w-auto max-w-[70%] self-end max-md:max-w-[85%]"
           : isError
-            ? "w-[80%] self-center rounded bg-[#ffebee] p-2.5 text-center text-[#d32f2f]"
-            : "self-start max-md:self-stretch"
+            ? "mb-2 self-start text-vermilion"
+            : "mb-2 self-start max-md:self-stretch"
       }`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -398,19 +536,21 @@ const ChatMessage = ({
     >
       <div
         className={
-          isUser ? "flex w-full flex-col items-end gap-0 max-md:justify-end" : "flex gap-3"
+          isUser
+            ? "flex w-full flex-col items-end gap-0 pt-3 max-md:justify-end"
+            : "flex gap-3"
         }
       >
-        {!isTyping && !isError && isUser ? (
+        {!isError && isUser ? (
           <>
             {/* Render context files ABOVE the message (tagged via context selector) */}
             {contextFiles && contextFiles.length > 0 && (
-              <div className="mb-2.5 ml-auto w-full rounded-xl border-[1.5px] border-solid border-[#FFD700] bg-[#FFF9E6] px-[14px] py-2.5">
-                <div className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold text-[#B8860B]">
+              <div className="mb-2.5 ml-auto rounded-xl border border-solid border-line bg-vellum/80 px-3.5 py-2.5">
+                <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -419,29 +559,32 @@ const ChatMessage = ({
                     <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
                     <path d="M7 7h.01"></path>
                   </svg>
-                  <span>Context:</span>
+                  <span>Context</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {contextFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-1 rounded-full border-[1.5px] border-solid border-ink bg-white px-2.5 py-1 text-[13px]"
+                      className="flex items-center gap-1.5 rounded-full border border-solid border-ink/25 bg-white/60 px-2.5 py-1 font-mono text-[11.5px] text-ink"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
+                        width="11"
+                        height="11"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
+                        className="shrink-0 opacity-70"
                       >
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                       </svg>
-                      <span className="font-medium text-ink">{file.name}</span>
-                      <span className="text-[12px] font-normal text-[#666]">
-                        ({file.className})
+                      <span className="max-w-[200px] truncate font-medium">
+                        {file.name}
+                      </span>
+                      <span className="text-[10px] text-muted">
+                        · {file.className}
                       </span>
                     </div>
                   ))}
@@ -451,12 +594,12 @@ const ChatMessage = ({
 
             {/* Render attached files ABOVE the message (locally uploaded) */}
             {files && files.length > 0 && (
-              <div className="mb-2.5 ml-auto w-full rounded-xl border-[1.5px] border-solid border-[#4A90E2] bg-[#E6F3FF] px-[14px] py-2.5">
-                <div className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold text-[#2E5C8A]">
+              <div className="mb-2.5 ml-auto rounded-xl border border-solid border-gold-deep/30 bg-gold/10 px-3.5 py-2.5">
+                <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-gold-deep">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -464,13 +607,13 @@ const ChatMessage = ({
                   >
                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
                   </svg>
-                  <span>Uploaded:</span>
+                  <span>Uploaded</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {files.map((file, index) => (
                     <div
                       key={index}
-                      className="inline-block max-w-[200px] overflow-hidden rounded-lg border-[1.5px] border-solid border-ink bg-white"
+                      className="inline-block max-w-[200px] overflow-hidden rounded-lg border border-solid border-gold-deep/40 bg-white/70"
                     >
                       {file.base64 &&
                       file.type &&
@@ -478,23 +621,24 @@ const ChatMessage = ({
                         <img
                           src={file.base64}
                           alt={file.name}
-                          className="block h-auto max-h-[200px] w-full object-cover"
+                          className="block h-auto max-h-[200px] w-full object-contain"
                         />
                       ) : (
-                        <div className="flex items-center gap-2 px-3 py-2 text-[14px]">
+                        <div className="flex items-center gap-2 px-3 py-1.5 font-mono text-[11.5px] text-gold-deep">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="13"
+                            height="13"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2"
+                            className="shrink-0"
                           >
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                           </svg>
-                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                          <span className="overflow-hidden text-ellipsis whitespace-nowrap font-medium">
                             {file.name}
                           </span>
                         </div>
@@ -505,19 +649,34 @@ const ChatMessage = ({
               </div>
             )}
 
-            <div className="relative mt-2.5 flex w-full max-w-full justify-end overflow-visible py-3">
+            {/* Top spacing now lives on the outer column (above), so any pinned
+                context/file cards share it. This wrapper carries only the bubble
+                + its copy row, which leaves the context card's mb-2.5 as the sole
+                gap to the bubble - exactly mirroring the copy row's mt-2.5. */}
+            <div className="relative flex w-full max-w-full justify-end pb-1">
               {renderContent()}
             </div>
           </>
-        ) : !isTyping && !isError ? (
-          <div className="relative mt-2.5 max-w-full py-3">
+        ) : !isError ? (
+          <div className="relative w-full max-w-full pt-1 pb-1">
+            {/* Editorial byline - Lumi writes on the page, no bubble. */}
+            {isAI && (
+              <div className="mb-2.5 flex items-center gap-2">
+                <LumiStar size={22} />
+                <span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-gold-deep">
+                  Lumi
+                </span>
+              </div>
+            )}
             {renderContent()}
             {isAI && message && !isStreaming && (
               <div className="pointer-events-none mt-2.5 flex -translate-y-1 justify-start opacity-0 [transition:opacity_0.12s_ease,transform_0.12s_ease] group-hover/msg:pointer-events-auto group-hover/msg:translate-y-0 group-hover/msg:opacity-100 max-md:pointer-events-auto max-md:translate-y-0 max-md:opacity-100">
-                <button
+                <motion.button
+                  type="button"
                   className={COPY_BTN}
                   onClick={handleCopyFullResponse}
-                  title="Copy full response"
+                  aria-label="Copy full response"
+                  {...keyPress}
                 >
                   {copySuccessFull ? (
                     <span className="flex items-center gap-[5px]">
@@ -548,17 +707,26 @@ const ChatMessage = ({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       >
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <rect
+                          x="9"
+                          y="9"
+                          width="13"
+                          height="13"
+                          rx="2"
+                          ry="2"
+                        ></rect>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                       </svg>
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
             )}
           </div>
         ) : (
-          <div className="relative mt-2.5 max-w-full py-3">{renderContent()}</div>
+          <div className="relative w-full max-w-full pt-1 pb-1">
+            {renderContent()}
+          </div>
         )}
       </div>
     </motion.div>

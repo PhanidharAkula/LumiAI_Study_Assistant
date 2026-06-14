@@ -1,13 +1,27 @@
-import { useState, useEffect, type MouseEvent } from "react";
+import { useState, useEffect, useMemo, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { fetchStreamingResponse } from "@shared/services/aiService";
-import { getFilePublicUrl } from "@shared/utils/storageUtils";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
-
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+import {
+  Constellation,
+  CornerTicks,
+  Starfield,
+  UI,
+  hashSeed,
+  mulberry32,
+  starPath,
+} from "@shared/components/atlas";
+import { BackButton, Button, IconButton } from "@shared/components/controls";
+import { DUR, fadeRise, pressLift, stagger } from "@shared/motion";
+import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
+import { extractFileContent } from "@features/study/extractFileContent";
+import GeneratingState from "@features/study/GeneratingState";
+import FileSelectionCard from "@features/study/FileSelectionCard";
+import HistoryDropdown from "@features/study/HistoryDropdown";
+import StudyErrorDialog, {
+  type StudyErrorState,
+} from "@features/study/StudyErrorDialog";
 
 // Permissive local shapes for the quiz data model. The AI-generated quiz JSON,
 // Supabase rows, and class/file records can't be fully pinned down, so unknown
@@ -63,18 +77,6 @@ interface QuizHistoryItem {
   [key: string]: any;
 }
 
-interface DebugLog {
-  message: string;
-  type: string;
-  timestamp: string;
-}
-
-interface ErrorDialogState {
-  isOpen: boolean;
-  title: string;
-  message: string;
-}
-
 interface DeleteConfirmDialogState {
   isOpen: boolean;
   quizId: any;
@@ -87,60 +89,219 @@ interface Props {
   _allClasses?: any[];
 }
 
-// Tailwind class groups — 1:1 port of QuizComponent.css, kept here so the long
-// utility strings aren't repeated across the config cards, buttons, badges, and
-// the taking/results panels.
-const CONFIG_CARD =
-  "bg-white border-[1.5px] border-solid border-ink rounded-[15px] p-5 shadow-[0px_2px_0_#000] h-full max-md:p-3 max-md:rounded-[10px]";
-const CONFIG_CARD_HEADER = "flex items-center gap-3 mb-[15px]";
-const CONFIG_ICON =
-  "w-10 h-10 rounded-[10px] flex items-center justify-center border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000]";
-const CONFIG_H3 = "m-0 text-[16px] font-semibold text-ink max-md:text-[14px]";
+// Tailwind class groups - The Luminarium "expedition" vocabulary. Setup is a
+// parchment planning desk, taking the quiz is a night chart, and results are
+// the user's own constellation. Tailwind v4 can't resolve conflicting
+// utilities by class order, so selected/correct states are variant strings.
 
-const DIFF_BTN_BASE =
-  "flex items-center gap-3 py-3 px-4 border-[1.5px] border-solid border-ink rounded-xl cursor-pointer shadow-[0px_2px_0_#000] disabled:opacity-50 disabled:cursor-not-allowed max-md:py-3 max-md:px-3.5 max-md:flex-row max-md:justify-start";
+/* ── Setup (parchment) ─────────────────────────────────────────────────── */
+const CONFIG_CARD = `${UI.plate} h-full p-5 max-md:rounded-[10px] max-md:p-4`;
+const CONFIG_CARD_HEADER = "mb-4 flex items-center gap-3";
+const CONFIG_H3 = `m-0 ${UI.overline}`;
+
+const CHOICE_PILL_BASE =
+  "flex items-center gap-3 rounded-full border border-solid px-4 py-3 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-3.5 max-md:flex-row max-md:justify-start";
 const difficultyBtn = (active: boolean) =>
-  `${DIFF_BTN_BASE} ${active ? "bg-sage" : "bg-white"}`;
+  `${CHOICE_PILL_BASE} ${
+    active
+      ? "border-ink bg-ink text-cream"
+      : "border-ink/25 bg-transparent text-ink hover:border-ink"
+  }`;
 const NUMBER_BTN_BASE =
-  "flex flex-col items-center justify-center py-[15px] px-2.5 border-[1.5px] border-solid border-ink rounded-xl cursor-pointer shadow-[0px_2px_0_#000] gap-1 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
+  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-[15px] px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
 const numberBtn = (active: boolean) =>
-  `${NUMBER_BTN_BASE} ${active ? "bg-sage" : "bg-white"}`;
+  `${NUMBER_BTN_BASE} ${
+    active
+      ? "border-ink bg-ink text-cream after:absolute after:right-2 after:top-1.5 after:text-[9px] after:leading-none after:text-gold after:content-['✦']"
+      : "border-ink/25 bg-transparent text-ink hover:border-ink"
+  }`;
 
-const META_BADGE_BASE =
-  "flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[12px] font-semibold border-[1.5px] border-solid";
-
-const QUESTION_NUMBER =
-  "text-[12px] font-semibold text-muted uppercase tracking-[0.5px] max-md:text-[11px] max-md:py-1 max-md:px-2.5";
-const QUESTION_POINTS =
-  "text-[14px] font-semibold text-ink bg-sage py-1 px-3 rounded-full max-md:text-[12px] max-md:py-[3px] max-md:px-2.5";
+/* ── Taking the quiz (night chart) ─────────────────────────────────────── */
 const QUESTION_CARD =
-  "bg-white border-[1.5px] border-solid border-ink rounded-2xl p-[25px] shadow-[0px_2px_0_#000] max-md:p-3.5 max-md:rounded-[10px]";
+  "relative rounded-xl border border-solid border-line-night bg-night-2 p-[25px] shadow-night max-md:p-4 max-md:rounded-[10px]";
+const QUIZ_OPTION_BASE =
+  "flex items-center gap-3 p-[15px] rounded-[10px] border border-solid cursor-pointer transition-colors duration-200 [&_input]:h-[18px] [&_input]:w-[18px] [&_input]:shrink-0 [&_input]:cursor-pointer [&_input]:accent-gold [&_span]:flex-1 [&_span]:text-[15px]";
+const quizOption = (checked: boolean) =>
+  `${QUIZ_OPTION_BASE} ${
+    checked
+      ? "border-gold bg-gold/10 [&_span]:text-starlight after:text-[12px] after:leading-none after:text-gold after:content-['✦']"
+      : "border-line-night bg-transparent hover:border-starlight/40 [&_span]:text-starlight/85"
+  }`;
+const QUIZ_TEXTAREA =
+  "w-full min-h-[100px] p-[15px] rounded-[10px] border border-solid border-line-night bg-night/40 text-[15px] font-[inherit] text-starlight resize-y transition-colors placeholder:text-starlight/40 focus:border-gold focus:outline-none max-md:p-2.5 max-md:text-[14px] max-md:min-h-20";
 
-const SUBMIT_QUIT_BASE =
-  "w-full flex justify-center items-center gap-2 cursor-pointer text-[14px] font-semibold py-3.5 px-5 rounded-[100px] border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] [transition:transform_0.1s_ease]";
-const DETAIL_ITEM =
-  "flex justify-between items-center py-2.5 px-3 bg-[#f9fafb] rounded-lg border-[1.5px] border-solid border-ink max-md:py-1.5 max-md:px-2.5";
-const DETAIL_LABEL =
-  "text-[12px] font-medium text-muted flex items-center gap-1.5 max-md:text-[10px]";
-const DETAIL_VALUE =
-  "text-[13px] font-semibold text-ink py-[3px] px-2.5 bg-white rounded-md border-[1.5px] border-solid border-ink max-md:text-[11px]";
-const STAT_ITEM =
-  "flex flex-col items-center gap-[5px] p-3 bg-sage rounded-[10px] border-[1.5px] border-solid border-ink max-md:p-2";
-const STAT_VALUE = "text-[20px] font-bold text-ink max-md:text-[18px]";
-const STAT_LABEL =
-  "text-[10px] font-semibold text-muted uppercase tracking-[0.5px] text-center";
-const RESULT_STAT_ITEM =
-  "flex flex-col items-center gap-1 p-3 bg-sage rounded-[10px] border-[1.5px] border-solid border-ink max-md:p-2";
-const RESULTS_ACTION_BASE =
-  "flex items-center justify-center gap-2 py-3 px-[18px] rounded-[100px] text-[13px] font-semibold cursor-pointer border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] max-md:flex-1";
-
-const QUIZ_OPTION =
-  "flex items-center gap-3 p-[15px] border-[1.5px] border-solid border-ink rounded-[10px] cursor-pointer [transition:all_0.2s_ease] bg-white hover:bg-sage hover:[transform:translateX(4px)] [&_input]:w-5 [&_input]:h-5 [&_input]:cursor-pointer [&_span]:flex-1 [&_span]:text-[15px] [&_span]:text-ink";
-// Sticky right-hand panel (taking + results); hidden on mobile in the original.
+// Sticky right-hand panel (taking + results). While taking, it stays hidden on
+// ≤768px (pre-existing quirk - the fixed bottom bar carries Submit/Quit there).
 const SIDEBAR =
-  "self-start sticky top-0 z-50 bg-white border-[1.5px] border-solid border-ink rounded-2xl shadow-[0px_3px_0_#000] flex flex-col h-auto max-h-[calc(100dvh-40px)] box-border overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+  "self-start sticky top-0 z-50 flex flex-col h-auto max-h-[calc(100dvh-40px)] box-border overflow-y-auto rounded-xl border border-solid border-line-night text-starlight shadow-night [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
-const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) => {
+const STAT_ITEM =
+  "flex flex-col items-center gap-1 rounded-lg border border-solid border-line-night bg-starlight/[0.04] p-3 max-md:p-2";
+const STAT_LABEL =
+  "text-center font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-starlight/50";
+const STAT_VALUE =
+  "font-display text-[22px] font-semibold leading-tight text-starlight max-md:text-[18px]";
+const RESULT_STAT_ITEM = STAT_ITEM;
+
+const DETAIL_ITEM =
+  "flex justify-between items-center py-2 px-3 rounded-lg border border-solid border-line-night bg-starlight/[0.03] max-md:py-1.5 max-md:px-2.5";
+const DETAIL_LABEL =
+  "flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-starlight/55";
+const DETAIL_VALUE =
+  "text-[13px] font-semibold text-starlight max-md:text-[11px]";
+
+// Results-panel info rows (night): mono label left, starlight value right.
+const INFO_ROW =
+  "flex justify-between items-center py-1.5 text-[12px] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&>span:first-child]:font-mono [&>span:first-child]:text-[10px] [&>span:first-child]:font-medium [&>span:first-child]:uppercase [&>span:first-child]:tracking-[0.14em] [&>span:first-child]:text-starlight/55 [&>span:last-child]:text-starlight [&>span:last-child]:font-semibold";
+const INFO_ROW_STACK =
+  "flex flex-col items-start gap-1.5 py-1.5 text-[12px] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&>span:first-child]:font-mono [&>span:first-child]:text-[10px] [&>span:first-child]:font-medium [&>span:first-child]:uppercase [&>span:first-child]:tracking-[0.14em] [&>span:first-child]:text-starlight/55";
+
+// Starlight ghost + the vermilion "abandon expedition" key (AA on night).
+const NIGHT_GHOST_BTN =
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-solid border-starlight/30 bg-transparent text-starlight transition-colors duration-200 hover:border-starlight/70 hover:bg-starlight/10";
+const NIGHT_QUIT_BTN =
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-solid border-[#e2674a]/60 bg-transparent text-[#ff9c82] transition-colors duration-200 hover:border-[#e2674a] hover:bg-[#b23a1d] hover:text-white";
+
+/* ── Reviewing (parchment ledger, red/green margin bars) ───────────────── */
+const QUESTION_NUMBER =
+  "font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted";
+const QUESTION_POINTS =
+  "font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-muted";
+const reviewCard = (correct: boolean) =>
+  `relative rounded-xl border border-solid border-line border-l-4 bg-vellum p-[25px] shadow-plate max-md:p-4 max-md:rounded-[10px] ${
+    correct ? "border-l-verdi" : "border-l-vermilion"
+  }`;
+const reviewBadge = (correct: boolean) =>
+  `rounded-full border border-solid px-3 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] ${
+    correct
+      ? "border-verdi/40 bg-sage/30 text-verdi"
+      : "border-vermilion/40 bg-vermilion-wash text-vermilion"
+  }`;
+const REVIEW_WASH = "rounded-lg bg-ink/[0.04] p-[15px]";
+
+/* ── History (ledger rows) ─────────────────────────────────────────────── */
+const HISTORY_ROW =
+  "group relative flex cursor-pointer items-center gap-3.5 rounded-lg border border-solid border-line bg-transparent px-3.5 py-3 transition-colors duration-200 hover:border-ink/40 hover:bg-cream/60";
+
+/**
+ * "Your constellation" - the results chart. One star per question, laid out
+ * deterministically from the quiz's own question texts (FNV-1a hash →
+ * mulberry32), so the same expedition always draws the same sky - never
+ * Math.random/Date.now. Correct answers become gold twinkling stars joined by
+ * a dotted route that draws itself in; misses stay dim, unconnected ring stars.
+ */
+const ResultsConstellation = ({
+  questions,
+  results,
+}: {
+  questions: QuizQuestion[];
+  results: Record<string, QuizResult>;
+}) => {
+  const stars = useMemo(() => {
+    const rand = mulberry32(
+      hashSeed(questions.map((q) => q.question).join("|") || "expedition")
+    );
+    const n = questions.length;
+    // Stars pack tighter as expeditions grow (10–100 questions).
+    const minDist = Math.max(4, 26 / Math.sqrt(Math.max(n, 1)));
+    const pts: { x: number; y: number; r: number }[] = [];
+    let guard = 0;
+    while (pts.length < n && guard++ < n * 80) {
+      const x = 7 + rand() * 86;
+      const y = 9 + rand() * 44;
+      if (pts.every((p) => Math.hypot(p.x - x, p.y - y) > minDist)) {
+        pts.push({ x, y, r: 1.6 + rand() * 1.2 });
+      }
+    }
+    while (pts.length < n) {
+      // Very dense skies: relax the spacing rule rather than drop a star.
+      pts.push({ x: 7 + rand() * 86, y: 9 + rand() * 44, r: 1.5 });
+    }
+    return pts;
+  }, [questions]);
+
+  const charted = questions.map((q, i) => ({
+    pt: stars[i],
+    correct: !!results[q.id]?.isCorrect,
+  }));
+  const route = charted.filter((s) => s.correct);
+  const routeD = route
+    .map(
+      (s, i) =>
+        `${i === 0 ? "M" : "L"} ${s.pt.x.toFixed(1)} ${s.pt.y.toFixed(1)}`
+    )
+    .join(" ");
+
+  return (
+    <svg viewBox="0 0 100 62" className="block w-full" aria-hidden="true">
+      {route.length >= 2 && (
+        <>
+          <defs>
+            {/* A dashed stroke can't pathLength-draw directly, so the dotted
+                route is revealed by a solid stroke drawing across this mask. */}
+            <mask id="quiz-route-reveal">
+              <motion.path
+                d={routeD}
+                fill="none"
+                stroke="#fff"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.8, ease: "easeInOut", delay: 0.5 }}
+              />
+            </mask>
+          </defs>
+          <path
+            d={routeD}
+            fill="none"
+            stroke="var(--color-gold)"
+            strokeWidth="0.7"
+            strokeDasharray="0.6 2.6"
+            strokeLinecap="round"
+            opacity="0.75"
+            mask="url(#quiz-route-reveal)"
+          />
+        </>
+      )}
+      {charted.map((s, i) =>
+        s.correct ? (
+          <path
+            key={i}
+            d={starPath(s.pt.x, s.pt.y, s.pt.r * 1.6)}
+            fill="var(--color-gold)"
+            className="animate-twinkle"
+            style={{
+              animationDelay: `${((i * 5) % 8) * 0.4}s`,
+              animationDuration: `${2.8 + ((i * 3) % 6) * 0.5}s`,
+              transformBox: "fill-box",
+              transformOrigin: "center",
+            }}
+          />
+        ) : (
+          <circle
+            key={i}
+            cx={s.pt.x}
+            cy={s.pt.y}
+            r={s.pt.r * 0.85}
+            fill="none"
+            stroke="var(--color-starlight)"
+            strokeWidth="0.45"
+            opacity="0.4"
+          />
+        )
+      )}
+    </svg>
+  );
+};
+
+const QuizComponent = ({
+  isOpen,
+  onClose,
+  classData,
+  _allClasses = [],
+}: Props) => {
   // Quiz configuration
   const [difficulty, setDifficulty] = useState<string>("medium");
   const [numQuestions, setNumQuestions] = useState<number>(10);
@@ -151,20 +312,17 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
   const [userAnswers, setUserAnswers] = useState<Record<string, any>>({});
   const [quizScore, setQuizScore] = useState<QuizScore | null>(null);
-  const [, setLoading] = useState<boolean>(false);
   const [generatingQuiz, setGeneratingQuiz] = useState<boolean>(false);
 
   // History - dropdown menu
   const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
 
   // History dropdown toggle
-  const [showHistoryDropdown, setShowHistoryDropdown] = useState<boolean>(false);
-
-  // Debug logs
-  const [, setDebugLogs] = useState<DebugLog[]>([]);
+  const [showHistoryDropdown, setShowHistoryDropdown] =
+    useState<boolean>(false);
 
   // Error dialog state
-  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+  const [errorDialog, setErrorDialog] = useState<StudyErrorState>({
     isOpen: false,
     title: "",
     message: "",
@@ -177,11 +335,9 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
       quizId: null,
     });
 
-  // Helper function to add debug logs
-  const addDebugLog = (message: string, type = "info") => {
-    const timestamp = new Date().toLocaleTimeString();
-    setDebugLogs((prev) => [...prev, { message, type, timestamp }]);
-    console.log(`[${timestamp}] ${message}`);
+  // Lightweight console diagnostics during generation (no on-screen panel).
+  const addDebugLog = (message: string, _type = "info") => {
+    console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
   };
 
   useEffect(() => {
@@ -192,26 +348,9 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, classData]);
 
-  // Prevent background scroll when quiz is open
-  useEffect(() => {
-    if (isOpen) {
-      // Store original overflow style
-      const originalOverflow = document.body.style.overflow;
-      const originalPosition = document.body.style.position;
-
-      // Prevent scrolling
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.width = "100%";
-
-      // Cleanup function to restore scroll when component unmounts or closes
-      return () => {
-        document.body.style.overflow = originalOverflow;
-        document.body.style.position = originalPosition;
-        document.body.style.width = "";
-      };
-    }
-  }, [isOpen]);
+  // Lock background scroll while the expedition overlay is open (shared,
+  // reference-counted so nested dialogs above it don't release early).
+  useScrollLock(isOpen);
 
   // Scroll to top when quiz state changes to taking or reviewing
   useEffect(() => {
@@ -246,70 +385,8 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
     }
   };
 
-  const extractFileContent = async (file: any) => {
-    try {
-      const { url, error } = await getFilePublicUrl(
-        "files",
-        file.path || file.file_path
-      );
-      if (!url || error) {
-        console.error(`Could not get URL for ${file.name}:`, error);
-        return null;
-      }
-
-      // Handle PDF files
-      if (file.name.toLowerCase().endsWith(".pdf")) {
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          console.error(`PDF fetch failed: HTTP ${resp.status}`);
-          return null;
-        }
-
-        const arrayBuffer = await resp.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        const pdf = await loadingTask.promise;
-
-        let fullText = "";
-        const maxPages = Math.min(pdf.numPages, 30);
-
-        for (let p = 1; p <= maxPages; p++) {
-          try {
-            const page = await pdf.getPage(p);
-            const content = await page.getTextContent();
-            const strings = content.items
-              .map((it: any) => it.str)
-              .join(" ");
-            fullText += strings + "\n\n";
-
-            if (fullText.length > 50000) break;
-          } catch (pageErr) {
-            console.warn(`Error extracting page ${p}:`, pageErr);
-            break;
-          }
-        }
-
-        const extractedText = fullText.slice(0, 50000).trim();
-        return extractedText.length > 0 ? extractedText : null;
-      }
-
-      // Handle text files
-      if (file.name.toLowerCase().endsWith(".txt")) {
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          console.error(`Text file fetch failed: HTTP ${resp.status}`);
-          return null;
-        }
-        const text = await resp.text();
-        return text.slice(0, 50000).trim();
-      }
-
-      console.warn(`Unsupported file type: ${file.name}`);
-      return null;
-    } catch (error) {
-      console.error(`Error extracting file content:`, error);
-      return null;
-    }
-  };
+  // File text extraction lives in @features/study/extractFileContent (shared
+  // with Flashcards) - imported above.
 
   const handleBackButton = () => {
     if (quizState === "taking" || quizState === "reviewing") {
@@ -324,6 +401,10 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
     }
   };
 
+  // Escape steps back through phases / closes - same path as the back key,
+  // and stacked so a dialog above the quiz pops first.
+  useEscapeToClose(isOpen, handleBackButton);
+
   const handleGenerateQuiz = async () => {
     if (selectedFiles.length === 0) {
       setErrorDialog({
@@ -335,8 +416,6 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
     }
 
     setGeneratingQuiz(true);
-    setLoading(true);
-    setDebugLogs([]); // Clear previous logs
 
     try {
       addDebugLog(
@@ -392,7 +471,6 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
           message: errorMessage,
         });
         setGeneratingQuiz(false);
-        setLoading(false);
         return;
       }
 
@@ -410,9 +488,9 @@ const QuizComponent = ({ isOpen, onClose, classData, _allClasses = [] }: Props) 
         hard: { min: 3, max: 5 },
       };
 
-      const range = (pointRanges as Record<string, { min: number; max: number }>)[
-        difficulty
-      ];
+      const range = (
+        pointRanges as Record<string, { min: number; max: number }>
+      )[difficulty];
 
       const prompt = `You are an expert quiz generator. Create a comprehensive ${difficulty} difficulty quiz with exactly ${numQuestions} questions based on the following educational content.
 
@@ -574,15 +652,17 @@ CRITICAL JSON FORMATTING RULES:
       );
 
       // Ensure all questions have required fields
-      parsedQuiz.questions = parsedQuiz.questions.map((q: any, idx: number) => ({
-        id: q.id || idx + 1,
-        type: q.type || "multiple-choice",
-        question: q.question || "Question text missing",
-        options: q.options || [],
-        correctAnswer: q.correctAnswer ?? 0,
-        explanation: q.explanation || "No explanation provided",
-        points: q.points || range.min, // Default to minimum points for the difficulty level
-      }));
+      parsedQuiz.questions = parsedQuiz.questions.map(
+        (q: any, idx: number) => ({
+          id: q.id || idx + 1,
+          type: q.type || "multiple-choice",
+          question: q.question || "Question text missing",
+          options: q.options || [],
+          correctAnswer: q.correctAnswer ?? 0,
+          explanation: q.explanation || "No explanation provided",
+          points: q.points || range.min, // Default to minimum points for the difficulty level
+        })
+      );
 
       setCurrentQuiz({
         ...parsedQuiz,
@@ -612,13 +692,11 @@ CRITICAL JSON FORMATTING RULES:
       });
     } finally {
       setGeneratingQuiz(false);
-      setLoading(false);
     }
   };
 
   const handleCancelGeneration = () => {
     setGeneratingQuiz(false);
-    setLoading(false);
     setQuizState("setup");
     addDebugLog("🚫 Quiz generation cancelled by user");
   };
@@ -677,8 +755,7 @@ CRITICAL JSON FORMATTING RULES:
       totalPoints,
       earnedPoints,
       percentage: Math.round((earnedPoints / totalPoints) * 100),
-      correctCount: Object.values(results).filter((r) => r.isCorrect)
-        .length,
+      correctCount: Object.values(results).filter((r) => r.isCorrect).length,
       totalQuestions: currentQuiz.questions.length,
       results,
     };
@@ -831,36 +908,39 @@ CRITICAL JSON FORMATTING RULES:
 
   if (!isOpen) return null;
 
+  // Purely presentational: while a quiz is being taken the screen becomes the
+  // night chart (focus moment); setup/generating/reviewing stay on parchment.
+  const isNight = quizState === "taking" && !!currentQuiz && !generatingQuiz;
+
   return (
     <motion.div
-      className="fixed inset-0 bg-transparent z-[1000] flex flex-col overflow-hidden"
+      className={`fixed inset-0 z-[1000] flex flex-col overflow-hidden transition-colors duration-700 ${
+        isNight ? "bg-night" : "bg-cream/95 backdrop-blur-[2px]"
+      }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Modern Header */}
-      <div className="py-5 px-[30px] flex items-center gap-5 relative z-[100] max-md:py-2.5 max-md:px-3.5 max-md:sticky max-md:top-0 max-md:bg-white max-[480px]:py-2.5 max-[480px]:px-3">
-        <motion.button
-          className="h-[50px] w-[50px] rounded-full flex justify-center items-center bg-sage shadow-[0px_2px_0_#000] border-[1.5px] border-solid border-ink text-[xx-large] cursor-pointer p-2.5 max-md:w-9 max-md:h-9"
+      {/* The night's faint stars behind the expedition. */}
+      {isNight && <Starfield count={30} seed={9} />}
+      {/* Header - atlas plate masthead */}
+      <div
+        className={`py-5 px-[30px] flex items-center gap-5 relative z-[100] max-md:py-2.5 max-md:px-3.5 max-md:sticky max-md:top-0 max-[480px]:py-2.5 max-[480px]:px-3 ${
+          isNight
+            ? "max-md:bg-night/95"
+            : "max-md:bg-cream/95 max-md:backdrop-blur-[2px]"
+        }`}
+      >
+        <BackButton
+          night={isNight}
           onClick={handleBackButton}
-          whileHover={{
-            x: -3,
-            transition: { type: "spring", stiffness: 300, damping: 5 },
-          }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </motion.button>
+          label={
+            quizState === "taking" || quizState === "reviewing"
+              ? "Back to setup"
+              : "Close quiz"
+          }
+          className="shrink-0 max-md:h-9! max-md:w-9!"
+        />
         <div className="flex-1 flex items-center">
           {/* <div className="quiz-header-icon">
             <svg
@@ -880,322 +960,160 @@ CRITICAL JSON FORMATTING RULES:
             </svg>
           </div> */}
           <div>
-            <h1 className="m-0 text-[x-large] font-semibold text-ink max-md:text-[16px] max-[360px]:text-[14px]">
+            <h1
+              className={`m-0 font-display text-[24px] font-semibold tracking-[-0.01em] max-md:text-[16px] max-[360px]:text-[14px] ${
+                isNight ? "text-starlight" : "text-ink"
+              }`}
+            >
               {classData?.name}
             </h1>
-            <p className="mt-1 mx-0 mb-0 text-[small] text-muted max-md:text-[11px] max-[480px]:hidden">
+            <p
+              className={`mt-1 mx-0 mb-0 font-mono text-[10px] font-medium uppercase tracking-[0.2em] max-md:text-[9px] max-[480px]:hidden ${
+                isNight ? "text-starlight/50" : "text-muted"
+              }`}
+            >
               Interactive Quiz Session
             </p>
           </div>
         </div>
 
-        {/* History Dropdown Button */}
-        <div className="relative">
-          <motion.button
-            className="flex items-center gap-2 py-2.5 px-4 rounded-[100px] bg-sage border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] cursor-pointer text-ink font-medium text-[14px] relative max-md:w-9 max-md:h-9 max-md:p-0 max-md:justify-center"
-            onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="font-semibold max-md:hidden">History</span>
-          </motion.button>
-
-          {/* Dropdown Overlay - closes dropdown when clicking outside */}
-          {showHistoryDropdown && (
-            <div
-              className="fixed inset-0 bg-transparent z-[999]"
-              onClick={() => setShowHistoryDropdown(false)}
-            />
-          )}
-
-          {/* History Dropdown Menu */}
-          <AnimatePresence>
-            {showHistoryDropdown && (
-              <motion.div
-                className="absolute top-[calc(100%+10px)] right-0 w-[420px] max-h-[80dvh] bg-white border-[1.5px] border-solid border-ink rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.15)] z-[1000] overflow-hidden flex flex-col max-[1024px]:w-[380px] max-md:w-[90vw] max-md:max-w-[340px]"
-                onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to overlay
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              >
-                <div className="p-5 bg-[#dbeafe] border-0 border-b-[1.5px] border-solid border-ink flex items-center justify-between">
-                  <h3 className="m-0 text-[large] font-semibold text-ink">
-                    Quiz History
-                  </h3>
-                  <span className="py-1.5 px-3 bg-sage text-ink text-[14px] font-semibold rounded-lg border-[1.5px] border-solid border-ink">
-                    {quizHistory.length}{" "}
-                    {quizHistory.length === 1 ? "quiz" : "quizzes"}
-                  </span>
+        {/* History - shared dropdown; rows are feature-owned via renderItem. */}
+        <HistoryDropdown
+          open={showHistoryDropdown}
+          onToggle={() => setShowHistoryDropdown((v) => !v)}
+          onClose={() => setShowHistoryDropdown(false)}
+          night={isNight}
+          title="Quiz History"
+          items={quizHistory}
+          itemKey={(item) => item.id}
+          nounSingular="quiz"
+          nounPlural="quizzes"
+          itemClassName={HISTORY_ROW}
+          onItemClick={(item) => {
+            loadQuizFromHistory(item);
+            setShowHistoryDropdown(false);
+          }}
+          emptySeed="quiz history"
+          emptyTitle="No History Yet"
+          emptyHint="Your quiz attempts will appear here"
+          renderItem={(item) => {
+            // Handle both old and new quiz data structures.
+            const numQuestions =
+              item.quiz_data?.numQuestions ||
+              item.quiz_data?.questions?.length ||
+              0;
+            const difficulty = item.quiz_data?.difficulty || "medium";
+            const itemFiles = item.quiz_data?.selectedFiles || [];
+            return (
+              <>
+                {/* Score ring - drawn in by the global `progress` keyframes */}
+                <div className="relative w-12 h-12 shrink-0">
+                  <svg
+                    viewBox="0 0 36 36"
+                    className="block max-w-full max-h-full"
+                  >
+                    <path
+                      className="[fill:none] [stroke:rgb(29_27_22_/_0.12)] [stroke-width:3]"
+                      d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path
+                      className="[fill:none] [stroke:var(--color-gold)] [stroke-width:3] [stroke-linecap:round] [animation:progress_1s_ease-out_forwards]"
+                      strokeDasharray={`${item.score.percentage}, 100`}
+                      d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-[10px] font-medium text-ink">
+                    {item.score.percentage}%
+                  </div>
                 </div>
 
-                <div className="p-4 overflow-y-auto max-h-[calc(80dvh-100px)] flex flex-col gap-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                  {quizHistory.length > 0 ? (
-                    quizHistory.map((item, index) => {
-                      // Handle both old and new quiz data structures
-                      const numQuestions =
-                        item.quiz_data?.numQuestions ||
-                        item.quiz_data?.questions?.length ||
-                        0;
-                      const difficulty = item.quiz_data?.difficulty || "medium";
-                      const selectedFiles = item.quiz_data?.selectedFiles || [];
-
-                      // Debug logging
-                      console.log("History item:", {
-                        numQuestions,
-                        difficulty,
-                        selectedFiles,
-                        score: item.score,
-                      });
-
-                      // Get difficulty emoji
-                      const difficultyEmoji =
-                        difficulty === "easy"
-                          ? "😊"
-                          : difficulty === "hard"
-                          ? "🔥"
-                          : "🤔";
-
-                      return (
-                        <motion.div
-                          key={item.id}
-                          className="bg-white border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] rounded-[15px] p-[15px] cursor-pointer relative overflow-visible"
-                          onClick={() => {
-                            loadQuizFromHistory(item);
-                            setShowHistoryDropdown(false);
-                          }}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          whileHover={{
-                            scale: 1.02,
-                            y: -3,
-                            transition: {
-                              type: "spring",
-                              stiffness: 300,
-                              damping: 20,
-                            },
-                          }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <div className="flex justify-between items-center mb-[15px]">
-                            <div className="flex items-center gap-1.5 py-1.5 px-3 bg-[#f3f4f6] rounded-lg text-[12px] font-semibold text-muted">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <rect
-                                  x="3"
-                                  y="4"
-                                  width="18"
-                                  height="18"
-                                  rx="2"
-                                  ry="2"
-                                />
-                                <line x1="16" y1="2" x2="16" y2="6" />
-                                <line x1="8" y1="2" x2="8" y2="6" />
-                                <line x1="3" y1="10" x2="21" y2="10" />
-                              </svg>
-                              <span>
-                                {new Date(item.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <motion.button
-                              className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#fee2e2] border-[1.5px] border-solid border-[#ef4444] cursor-pointer"
-                              onClick={(e) => handleDeleteClick(e, item.id)}
-                              whileHover={{
-                                scale: 1.15,
-                                rotate: 10,
-                                transition: {
-                                  type: "spring",
-                                  stiffness: 300,
-                                  damping: 8,
-                                },
-                              }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                              </svg>
-                            </motion.button>
-                          </div>
-
-                          <div className="flex items-center gap-4 p-3 bg-[#dcfce7] rounded-xl mb-3">
-                            <div className="relative w-[55px] h-[55px] shrink-0">
-                              <svg
-                                viewBox="0 0 36 36"
-                                className="block max-w-full max-h-full"
-                              >
-                                <path
-                                  className="[fill:none] [stroke:#e5e7eb] [stroke-width:3]"
-                                  d="M18 2.0845
-                                    a 15.9155 15.9155 0 0 1 0 31.831
-                                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                                />
-                                <path
-                                  className="[fill:none] [stroke:#10b981] [stroke-width:3] [stroke-linecap:round] [animation:progress_1s_ease-out_forwards]"
-                                  strokeDasharray={`${item.score.percentage}, 100`}
-                                  d="M18 2.0845
-                                    a 15.9155 15.9155 0 0 1 0 31.831
-                                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                                />
-                              </svg>
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[12px] font-medium text-ink">
-                                {item.score.percentage}%
-                              </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col gap-0.5">
-                              <div className="text-[small] uppercase text-muted font-medium">
-                                Score
-                              </div>
-                              <div className="text-[medium] font-medium text-ink">
-                                {item.score.correctCount}/{numQuestions}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 mb-2.5 flex-wrap">
-                            <span
-                              className={`${META_BADGE_BASE} bg-[#fef3c7] border-[#f59e0b] text-[#d97706]`}
-                            >
-                              <span className="text-[14px]">
-                                {difficultyEmoji}
-                              </span>
-                              {difficulty}
-                            </span>
-                            <span
-                              className={`${META_BADGE_BASE} bg-[#dbeafe] border-[#3b82f6] text-[#1d4ed8]`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <line x1="8" y1="6" x2="21" y2="6" />
-                                <line x1="8" y1="12" x2="21" y2="12" />
-                                <line x1="8" y1="18" x2="21" y2="18" />
-                                <line x1="3" y1="6" x2="3.01" y2="6" />
-                                <line x1="3" y1="12" x2="3.01" y2="12" />
-                                <line x1="3" y1="18" x2="3.01" y2="18" />
-                              </svg>
-                              {numQuestions}
-                            </span>
-                          </div>
-
-                          {selectedFiles.length > 0 && (
-                            <div className="flex items-start gap-2 p-2.5 bg-[#f3f4f6] rounded-lg text-[11px] text-muted leading-[1.4] [&_svg]:shrink-0">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
-                                <polyline points="13 2 13 9 20 9" />
-                              </svg>
-                              <span>
-                                {selectedFiles
-                                  .map((fileId: any) => {
-                                    const file = classData?.files?.find(
-                                      (f: any) => f.id === fileId
-                                    );
-                                    return file?.name || "Unknown";
-                                  })
-                                  .slice(0, 2)
-                                  .join(", ")}
-                                {selectedFiles.length > 2 &&
-                                  ` +${selectedFiles.length - 2}`}
-                              </span>
-                            </div>
-                          )}
-                        </motion.div>
-                      );
-                    })
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-[60px] px-[30px] text-center gap-3">
-                      <div className="w-20 h-20 rounded-full bg-[linear-gradient(135deg,#f0f9ff_0%,#e0f2fe_100%)] flex items-center justify-center mb-2 text-[#3b82f6] opacity-60">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="48"
-                          height="48"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                        >
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                      </div>
-                      <p className="m-0 text-[16px] font-semibold text-ink">
-                        No History Yet
-                      </p>
-                      <span className="text-[13px] text-muted">
-                        Your quiz attempts will appear here
-                      </span>
-                    </div>
+                {/* Ledger entry - date over mono meta */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="font-display text-[15px] font-semibold leading-tight text-ink">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </span>
+                  <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.14em] text-muted">
+                    {item.score.correctCount}/{numQuestions} correct ·{" "}
+                    {difficulty}
+                  </span>
+                  {itemFiles.length > 0 && (
+                    <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-[1.4] text-muted/80">
+                      {itemFiles
+                        .map((fileId: any) => {
+                          const file = classData?.files?.find(
+                            (f: any) => f.id === fileId
+                          );
+                          return file?.name || "Unknown";
+                        })
+                        .slice(0, 2)
+                        .join(", ")}
+                      {itemFiles.length > 2 && ` +${itemFiles.length - 2}`}
+                    </span>
                   )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+
+                {/* Delete key - surfaces on hover (always shown on touch) */}
+                <IconButton
+                  size="sm"
+                  variant="danger"
+                  label="Delete quiz"
+                  className="h-8! w-8! opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                  onClick={(e) => handleDeleteClick(e, item.id)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                </IconButton>
+              </>
+            );
+          }}
+        />
       </div>
 
-      {/* quiz-content-area class kept as a querySelector hook (scroll-to-top) */}
-      <div className="quiz-content-area flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-5 bg-transparent flex flex-col max-md:p-0">
+      {/* quiz-content-area class kept as a querySelector hook (scroll-to-top);
+          `relative` keeps it painting above the night Starfield. */}
+      <div className="quiz-content-area relative flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-5 bg-transparent flex flex-col max-md:p-0">
         <AnimatePresence mode="wait">
           {/* Setup State */}
           {quizState === "setup" && !generatingQuiz && (
             <motion.div
               key="setup"
-              className="w-full max-w-[1400px] m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-[700px] max-[1024px]:p-[15px] max-md:max-w-full max-md:p-3 max-md:overflow-y-auto"
+              className="w-full max-w-[1400px] m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-[700px] max-[1024px]:p-[15px] max-md:max-w-full max-md:p-3"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 200, damping: 20 }}
             >
               {/* Configuration Cards Grid */}
-              <div className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-[15px] items-stretch mb-5 flex-1 max-[1024px]:gap-5 max-md:flex max-md:flex-col max-md:gap-3">
-                {/* Header Section */}
-                <div className="text-center py-[30px] px-5 bg-[#dbeafe] rounded-[20px] border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] relative overflow-hidden col-[1/3] row-[1] flex flex-col justify-center max-md:py-4 max-md:px-3 max-md:rounded-[10px] before:content-[''] before:absolute before:top-[-50%] before:right-[-50%] before:w-[200%] before:h-[200%] before:bg-[radial-gradient(circle,rgba(255,255,255,0.3)_0%,transparent_70%)] before:pointer-events-none">
+              <motion.div
+                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-[15px] items-stretch mb-5 flex-1 max-[1024px]:gap-5 max-md:flex max-md:flex-col max-md:gap-3"
+                variants={stagger()}
+                initial="hidden"
+                animate="visible"
+              >
+                {/* Header Section - the expedition's title plate */}
+                <div
+                  className={`${UI.plate} shrink-0 text-center py-[30px] px-5 overflow-hidden col-[1/3] row-[1] flex flex-col items-center justify-center max-md:py-5 max-md:px-4 max-md:rounded-[10px]`}
+                >
+                  <CornerTicks />
                   <motion.div
-                    className="w-[70px] h-[70px] mt-0 mx-auto mb-5 bg-white rounded-full flex items-center justify-center border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] text-ink max-md:w-10 max-md:h-10"
+                    className="mb-3 text-verdi max-md:mb-2"
                     initial={{ scale: 0 }}
-                    animate={{ scale: 1, rotate: 360 }}
+                    animate={{ scale: 1 }}
                     transition={{
                       type: "spring",
                       stiffness: 200,
@@ -1203,25 +1121,19 @@ CRITICAL JSON FORMATTING RULES:
                       delay: 0.2,
                     }}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="40"
-                      height="40"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      viewBox="0 0 24 24"
-                    >
-                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                      <path d="M8 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3" />
-                      <line x1="9" y1="12" x2="15" y2="12" />
-                      <line x1="9" y1="16" x2="13" y2="16" />
-                    </svg>
+                    <Constellation
+                      name={classData?.name || "quiz"}
+                      size={64}
+                      className="max-md:h-11 max-md:w-11"
+                    />
                   </motion.div>
-                  <h2 className="mt-0 mx-0 mb-2.5 text-[x-large] font-semibold text-ink max-md:text-[18px]">
+                  <p className={`mt-0 mx-0 mb-2 ${UI.overline}`}>
+                    Plan your expedition
+                  </p>
+                  <h2 className="mt-0 mx-0 mb-2 font-display text-[30px] font-semibold leading-[1.1] tracking-[-0.01em] text-ink max-md:text-[22px]">
                     Create Your Quiz
                   </h2>
-                  <p className="m-0 text-[medium] text-muted max-md:text-[12px]">
+                  <p className="m-0 text-[15px] text-muted max-md:text-[12px]">
                     Customize difficulty, length, and source materials
                   </p>
                 </div>
@@ -1229,60 +1141,36 @@ CRITICAL JSON FORMATTING RULES:
                 {/* Difficulty Card */}
                 <motion.div
                   className={`${CONFIG_CARD} col-[1] row-[2]`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                  variants={fadeRise}
                 >
                   <div className={CONFIG_CARD_HEADER}>
-                    <div className={`${CONFIG_ICON} bg-[#fde68a] text-[#d97706]`}>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    </div>
-                    <h3 className={CONFIG_H3}>Difficulty Level</h3>
+                    <h3 className={CONFIG_H3}>Difficulty</h3>
                   </div>
                   <div className="flex flex-col gap-2.5">
                     {[
-                      {
-                        level: "easy",
-                        label: "Easy",
-                        desc: "1-2 pts",
-                        icon: "😊",
-                      },
-                      {
-                        level: "medium",
-                        label: "Medium",
-                        desc: "2-4 pts",
-                        icon: "🤔",
-                      },
-                      {
-                        level: "hard",
-                        label: "Hard",
-                        desc: "3-5 pts",
-                        icon: "🔥",
-                      },
-                    ].map(({ level, label, desc, icon }) => (
+                      { level: "easy", label: "Easy", desc: "1-2 pts" },
+                      { level: "medium", label: "Medium", desc: "2-4 pts" },
+                      { level: "hard", label: "Hard", desc: "3-5 pts" },
+                    ].map(({ level, label, desc }) => (
                       <motion.button
                         key={level}
                         className={difficultyBtn(difficulty === level)}
                         onClick={() => setDifficulty(level)}
                         disabled={generatingQuiz}
-                        whileHover={{ scale: 1.04, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
+                        {...pressLift}
                       >
-                        <span className="text-[20px] shrink-0">{icon}</span>
-                        <span className="flex-1 text-[14px] font-medium text-ink text-left">
+                        <span
+                          aria-hidden="true"
+                          className={`shrink-0 text-[11px] leading-none ${
+                            difficulty === level ? "text-gold" : "opacity-0"
+                          }`}
+                        >
+                          ✦
+                        </span>
+                        <span className="flex-1 text-[14px] font-semibold text-left">
                           {label}
                         </span>
-                        <span className="text-[12px] text-muted bg-black/[0.08] py-[3px] px-2 rounded-full">
+                        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] opacity-60">
                           {desc}
                         </span>
                       </motion.button>
@@ -1293,30 +1181,10 @@ CRITICAL JSON FORMATTING RULES:
                 {/* Number of Questions Card */}
                 <motion.div
                   className={`${CONFIG_CARD} col-[2] row-[2]`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  variants={fadeRise}
                 >
                   <div className={CONFIG_CARD_HEADER}>
-                    <div className={`${CONFIG_ICON} bg-[#bfdbfe] text-[#1d4ed8]`}>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <circle cx="5" cy="6" r="1.5" />
-                        <circle cx="5" cy="12" r="1.5" />
-                        <circle cx="5" cy="18" r="1.5" />
-                        <line x1="9" y1="6" x2="21" y2="6" />
-                        <line x1="9" y1="12" x2="21" y2="12" />
-                        <line x1="9" y1="18" x2="21" y2="18" />
-                      </svg>
-                    </div>
-                    <h3 className={CONFIG_H3}>Number of Questions</h3>
+                    <h3 className={CONFIG_H3}>Questions</h3>
                   </div>
                   <div className="grid grid-cols-3 gap-2.5 max-md:gap-2 max-[480px]:grid-cols-2">
                     {[10, 20, 30, 40, 50, 100].map((num) => (
@@ -1325,13 +1193,12 @@ CRITICAL JSON FORMATTING RULES:
                         className={numberBtn(numQuestions === num)}
                         onClick={() => setNumQuestions(num)}
                         disabled={generatingQuiz}
-                        whileHover={{ scale: 1.05, y: -3 }}
-                        whileTap={{ scale: 0.95 }}
+                        {...pressLift}
                       >
-                        <span className="text-[20px] font-medium text-ink max-md:text-[18px]">
+                        <span className="font-display text-[20px] font-semibold leading-tight max-md:text-[18px]">
                           {num}
                         </span>
-                        <span className="text-[10px] text-muted uppercase">
+                        <span className="font-mono text-[8.5px] font-medium uppercase tracking-[0.14em] opacity-60">
                           questions
                         </span>
                       </motion.button>
@@ -1339,204 +1206,41 @@ CRITICAL JSON FORMATTING RULES:
                   </div>
                 </motion.div>
 
-                {/* Files Selection Card */}
-                <motion.div
-                  className="bg-white border-[1.5px] border-solid border-ink rounded-[15px] p-5 shadow-[0px_2px_0_#000] h-full flex flex-col col-[3] row-[1/3] max-md:p-3 max-md:rounded-[10px]"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <div className={CONFIG_CARD_HEADER}>
-                    <div className={`${CONFIG_ICON} bg-[#a7f3d0] text-[#059669]`}>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
-                        <polyline points="13 2 13 9 20 9" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 flex justify-between items-center">
-                      <h3 className={CONFIG_H3}>Select Source Files</h3>
-                      <span className="text-[13px] font-semibold text-ink bg-sage py-1 px-3 rounded-full border-[1.5px] border-solid border-ink">
-                        {selectedFiles.length} selected
-                      </span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5 auto-rows-min max-h-full overflow-y-auto p-[5px] flex-1 content-start [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-[1024px]:gap-3 max-md:grid-cols-1 max-md:gap-2">
-                    {classData?.files && classData.files.length > 0 ? (
-                      classData.files.map((file: any, index: number) => (
-                        <motion.label
-                          key={file.id}
-                          className="relative flex justify-center items-center gap-2.5 py-2.5 px-3 border-[1.5px] border-solid border-ink rounded-[10px] bg-white cursor-pointer shadow-[0px_2px_0_#000] h-auto"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + index * 0.05 }}
-                          // whileHover={{ y: -5, scale: 1.02 }}
-                          // whileTap={{ scale: 0.98 }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedFiles.includes(file.id)}
-                            disabled={generatingQuiz}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedFiles([...selectedFiles, file.id]);
-                              } else {
-                                setSelectedFiles(
-                                  selectedFiles.filter((id) => id !== file.id)
-                                );
-                              }
-                            }}
-                          />
-                          <div className="shrink-0 w-8 h-8 rounded-lg bg-sage flex items-center justify-center text-ink">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="20"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                              <polyline points="10 9 9 9 8 9" />
-                            </svg>
-                          </div>
-                          <div className="flex-1 min-w-0 flex flex-col">
-                            <span className="text-[13px] font-semibold text-ink overflow-hidden text-ellipsis whitespace-nowrap">
-                              {file.name}
-                            </span>
-                            <span className="text-[10px] text-muted uppercase font-semibold tracking-[0.5px]">
-                              {file.name.split(".").pop()?.toUpperCase()}
-                            </span>
-                          </div>
-                          <div
-                            className={`shrink-0 w-5 h-5 rounded-full border-[1.5px] border-solid border-ink flex items-center justify-center text-transparent ${
-                              selectedFiles.includes(file.id)
-                                ? "bg-sage"
-                                : "bg-white"
-                            }`}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                            >
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          </div>
-                        </motion.label>
-                      ))
-                    ) : (
-                      <div className="col-[1/-1] flex flex-col items-center justify-center py-[60px] px-5 text-center gap-3 text-muted [&_svg]:opacity-30">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="48"
-                          height="48"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                        >
-                          <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
-                          <polyline points="13 2 13 9 20 9" />
-                        </svg>
-                        <p className="m-0 text-[16px] font-semibold text-ink">
-                          No files available in this class
-                        </p>
-                        <span className="text-[14px] text-muted">
-                          Upload files to create quizzes
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
+                {/* Files Selection Card - shared with Flashcards. */}
+                <FileSelectionCard
+                  className="col-[3] row-[1/3]"
+                  files={(classData?.files || []) as any}
+                  selectedIds={selectedFiles}
+                  onSelectionChange={setSelectedFiles}
+                  disabled={generatingQuiz}
+                  emptyTitle="No files available in this class"
+                  emptyHint="Upload files to create quizzes"
+                />
+              </motion.div>
 
-              {/* Generate Button */}
-              <motion.button
-                className="w-fit mx-auto flex justify-center items-center gap-2.5 cursor-pointer text-[medium] font-semibold py-3 px-[30px] rounded-[100px] bg-sage border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] text-ink disabled:opacity-70 disabled:cursor-not-allowed [&_svg]:w-5 [&_svg]:h-5"
+              {/* Generate Button - the one gold CTA on this screen */}
+              <Button
+                variant="gold"
+                className="mx-auto w-fit px-9"
                 onClick={handleGenerateQuiz}
                 disabled={selectedFiles.length === 0 || generatingQuiz}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                whileHover={{
-                  scale: 1.03,
-                  y: -3,
-                  transition: {
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 5,
-                  },
-                }}
-                whileTap={{ scale: 0.98 }}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-                <span>Generate Quiz</span>
-              </motion.button>
+                <span aria-hidden="true" className="text-[13px]">
+                  ✦
+                </span>
+                <span>Begin expedition</span>
+              </Button>
             </motion.div>
           )}
 
-          {/* Generating State */}
+          {/* Generating State - shared with Flashcards. */}
           {generatingQuiz && (
-            <motion.div
+            <GeneratingState
               key="generating"
-              className="my-auto w-full max-w-[50%] flex flex-col gap-[30px] max-[1024px]:max-w-[700px] max-md:max-w-full"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="flex flex-col items-center justify-center gap-5 text-center w-full">
-                <div className="w-[60px] h-[60px] border-4 border-solid border-black/10 rounded-full border-t-ink [animation:spin_1s_ease-in-out_infinite]"></div>
-                <h2 className="m-0 text-[24px] text-ink">
-                  Generating Your Quiz...
-                </h2>
-                <p className="m-0 text-[14px] text-muted">
-                  Creating {numQuestions} {difficulty} questions from your
-                  selected files
-                </p>
-                <motion.button
-                  whileHover={{
-                    scale: 1.03,
-                    y: -5,
-                    transition: {
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 8,
-                    },
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  className="mt-5 py-3 px-[30px] rounded-[100px] text-[14px] font-semibold cursor-pointer bg-white border-[1.5px] border-solid border-ink shadow-[0px_2px_0_#000] text-ink min-w-[120px]"
-                  onClick={handleCancelGeneration}
-                >
-                  Cancel
-                </motion.button>
-              </div>
-            </motion.div>
+              label="Charting questions…"
+              description={`Creating ${numQuestions} ${difficulty} questions from your selected files`}
+              onCancel={handleCancelGeneration}
+            />
           )}
 
           {/* Taking Quiz State */}
@@ -1548,20 +1252,27 @@ CRITICAL JSON FORMATTING RULES:
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="grid grid-cols-[1fr_400px] gap-5 h-full w-full max-w-full m-0 py-5 px-[30px] items-start overflow-hidden box-border max-[1024px]:grid-cols-[1fr_320px] max-[1024px]:p-5 max-[1024px]:gap-[15px] max-md:flex max-md:flex-col max-md:h-auto max-md:p-0 max-md:gap-0 max-md:after:content-[''] max-md:after:fixed max-md:after:bottom-0 max-md:after:left-0 max-md:after:right-0 max-md:after:h-[70px] max-md:after:bg-white max-md:after:border-0 max-md:after:border-t-[1.5px] max-md:after:border-solid max-md:after:border-ink max-md:after:z-[90] max-md:after:pointer-events-none">
+              <div className="grid grid-cols-[1fr_400px] gap-5 h-full w-full max-w-full m-0 py-5 px-[30px] items-start overflow-hidden box-border max-[1024px]:grid-cols-[1fr_320px] max-[1024px]:p-5 max-[1024px]:gap-[15px] max-md:flex max-md:flex-col max-md:h-auto max-md:p-0 max-md:gap-0">
                 {/* Left Side - Scrollable Questions */}
                 <div className="flex flex-col gap-5 pb-10 overflow-y-auto h-[calc(100dvh-132px)] pr-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-md:w-full max-md:h-auto max-md:p-3 max-md:pb-20 max-md:overflow-y-visible max-md:gap-3">
                   {currentQuiz.questions.map((question, index) => (
                     <div key={question.id} className={QUESTION_CARD}>
-                      <div className="flex justify-between items-center mb-[15px] max-md:mb-3">
-                        <span className={QUESTION_NUMBER}>
-                          Question {index + 1}
+                      {/* Mono gold overline: QUESTION 04 · 2 PTS */}
+                      <div className="flex items-center gap-2 mb-[15px] max-md:mb-3">
+                        <span className={UI.overlineNight}>
+                          Question {String(index + 1).padStart(2, "0")}
                         </span>
-                        <span className={QUESTION_POINTS}>
-                          {question.points} points
+                        <span
+                          aria-hidden="true"
+                          className="text-[11px] leading-none text-starlight/30"
+                        >
+                          ·
+                        </span>
+                        <span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-starlight/45">
+                          {question.points} pts
                         </span>
                       </div>
-                      <h3 className="mt-0 mx-0 mb-5 text-[18px] leading-[1.6] text-ink max-md:text-[14px] max-md:mb-3">
+                      <h3 className="mt-0 mx-0 mb-5 text-[18px] font-medium leading-[1.6] text-starlight max-md:text-[14px] max-md:mb-3">
                         {question.question}
                       </h3>
 
@@ -1569,24 +1280,31 @@ CRITICAL JSON FORMATTING RULES:
                         <div className="flex flex-col gap-3 max-md:gap-2">
                           {(question.options as any[]).map(
                             (option: any, optIndex: number) => (
-                            <label key={optIndex} className={QUIZ_OPTION}>
-                              <input
-                                type="radio"
-                                name={`question-${question.id}`}
-                                value={optIndex}
-                                checked={
+                              <label
+                                key={optIndex}
+                                className={quizOption(
                                   userAnswers[question.id] === String(optIndex)
-                                }
-                                onChange={(e) =>
-                                  handleAnswerChange(
-                                    question.id,
-                                    e.target.value
-                                  )
-                                }
-                              />
-                              <span>{option}</span>
-                            </label>
-                          ))}
+                                )}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question-${question.id}`}
+                                  value={optIndex}
+                                  checked={
+                                    userAnswers[question.id] ===
+                                    String(optIndex)
+                                  }
+                                  onChange={(e) =>
+                                    handleAnswerChange(
+                                      question.id,
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                                <span>{option}</span>
+                              </label>
+                            )
+                          )}
                         </div>
                       )}
 
@@ -1594,7 +1312,12 @@ CRITICAL JSON FORMATTING RULES:
                         <div className="flex flex-col gap-3 max-md:gap-2">
                           {(question.options || ["True", "False"]).map(
                             (option, optIndex) => (
-                              <label key={optIndex} className={QUIZ_OPTION}>
+                              <label
+                                key={optIndex}
+                                className={quizOption(
+                                  userAnswers[question.id] === String(optIndex)
+                                )}
+                              >
                                 <input
                                   type="radio"
                                   name={`question-${question.id}`}
@@ -1619,7 +1342,7 @@ CRITICAL JSON FORMATTING RULES:
 
                       {question.type === "short-answer" && (
                         <textarea
-                          className="w-full min-h-[100px] p-[15px] border-[1.5px] border-solid border-ink rounded-[10px] text-[15px] font-[inherit] resize-y [transition:all_0.2s_ease] focus:outline-none focus:shadow-[0_0_0_3px_rgba(0,0,0,0.1)] max-md:p-2.5 max-md:text-[14px] max-md:min-h-20"
+                          className={QUIZ_TEXTAREA}
                           placeholder="Type your answer here..."
                           value={userAnswers[question.id] || ""}
                           onChange={(e) =>
@@ -1631,14 +1354,16 @@ CRITICAL JSON FORMATTING RULES:
                   ))}
                 </div>
 
-                {/* Right Side - Sticky Sidebar */}
-                <div className={`${SIDEBAR} p-5 gap-[18px] max-[1024px]:p-4 max-[1024px]:gap-3.5 max-md:hidden`}>
+                {/* Right Side - Sticky Sidebar (the expedition log) */}
+                <div
+                  className={`${SIDEBAR} bg-night-2 p-5 gap-[18px] max-[1024px]:p-4 max-[1024px]:gap-3.5 max-md:hidden`}
+                >
                   {/* Header */}
-                  <div className="text-center pb-[15px] border-0 border-b-[1.5px] border-solid border-ink">
-                    <h3 className="text-[16px] font-semibold text-ink mt-0 mx-0 mb-1.5">
+                  <div className="text-center pb-[15px] border-0 border-b border-solid border-line-night">
+                    <h3 className={`mt-0 mx-0 mb-1.5 ${UI.overlineNight}`}>
                       Quiz Overview
                     </h3>
-                    <p className="text-[12px] text-muted m-0">
+                    <p className="text-[12px] text-starlight/55 m-0">
                       Track your progress and submit when ready
                     </p>
                   </div>
@@ -1646,20 +1371,21 @@ CRITICAL JSON FORMATTING RULES:
                   {/* Progress Section */}
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col items-center gap-2">
-                      <span className="text-[12px] font-semibold text-muted uppercase tracking-[0.5px]">
+                      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-starlight/50">
                         Progress
                       </span>
-                      <span className="text-[36px] font-bold text-ink leading-none">
+                      <span className="font-display text-[40px] font-semibold text-starlight leading-none">
                         {Object.keys(userAnswers).length}/
                         {currentQuiz.questions.length}
                       </span>
-                      <span className="text-[13px] font-medium text-muted">
+                      <span className="text-[12px] text-starlight/55">
                         Questions Answered
                       </span>
                     </div>
-                    <div className="w-full h-3 bg-[#f3f4f6] border-[1.5px] border-solid border-ink rounded-full overflow-hidden">
+                    {/* Thin gold route with a star at its tip */}
+                    <div className="relative w-full h-1 rounded-full bg-starlight/15">
                       <div
-                        className="h-full bg-ink [transition:width_0.3s_ease] rounded-full"
+                        className="relative h-full bg-gold [transition:width_0.3s_ease] rounded-full after:absolute after:right-[-5px] after:top-1/2 after:-translate-y-1/2 after:text-[10px] after:leading-none after:text-gold after:content-['✦']"
                         style={{
                           width: `${
                             (Object.keys(userAnswers).length /
@@ -1669,7 +1395,7 @@ CRITICAL JSON FORMATTING RULES:
                         }}
                       />
                     </div>
-                    <div className="text-center text-[14px] font-semibold text-ink mt-1.5">
+                    <div className="text-center font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-gold mt-1.5">
                       {Math.round(
                         (Object.keys(userAnswers).length /
                           currentQuiz.questions.length) *
@@ -1679,20 +1405,20 @@ CRITICAL JSON FORMATTING RULES:
                     </div>
                   </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-2.5 py-[15px] border-0 border-y-[1.5px] border-solid border-ink">
+                  {/* Stats Grid - instrument readouts */}
+                  <div className="grid grid-cols-2 gap-2.5 py-[15px] border-0 border-y border-solid border-line-night">
                     <div className={STAT_ITEM}>
+                      <span className={STAT_LABEL}>Total Questions</span>
                       <span className={STAT_VALUE}>
                         {currentQuiz.questions.length}
                       </span>
-                      <span className={STAT_LABEL}>Total Questions</span>
                     </div>
                     <div className={STAT_ITEM}>
+                      <span className={STAT_LABEL}>Remaining</span>
                       <span className={STAT_VALUE}>
                         {currentQuiz.questions.length -
                           Object.keys(userAnswers).length}
                       </span>
-                      <span className={STAT_LABEL}>Remaining</span>
                     </div>
                   </div>
 
@@ -1785,7 +1511,7 @@ CRITICAL JSON FORMATTING RULES:
                             ? 0.98
                             : 1,
                       }}
-                      className={`${SUBMIT_QUIT_BASE} bg-sage text-ink disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`${UI.btnGold} w-full text-[14px]`}
                       onClick={handleSubmitQuiz}
                       disabled={
                         Object.keys(userAnswers).length !==
@@ -1808,7 +1534,7 @@ CRITICAL JSON FORMATTING RULES:
                     <motion.button
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`${SUBMIT_QUIT_BASE} bg-white text-ink`}
+                      className={`${NIGHT_QUIT_BTN} w-full px-5 py-3 text-[14px] font-semibold`}
                       onClick={handleQuit}
                     >
                       <svg
@@ -1826,6 +1552,29 @@ CRITICAL JSON FORMATTING RULES:
                       Quit Quiz
                     </motion.button>
                   </div>
+                </div>
+                {/* Mobile-only action bar: the desktop sidebar that holds
+                    Submit/Quit is display:none ≤768px, so surface them here in a
+                    fixed bottom bar (otherwise a quiz can't be submitted on a phone). */}
+                <div className="hidden max-md:flex fixed bottom-0 left-0 right-0 z-[100] gap-2 p-3 bg-night-2/95 backdrop-blur-[2px] border-0 border-t border-solid border-line-night">
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    className={`${NIGHT_QUIT_BTN} flex-1 py-3 px-4 text-[15px] font-semibold`}
+                    onClick={handleQuit}
+                  >
+                    Quit
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    className={`${UI.btnGold} flex-1 px-4 py-3 text-[15px]`}
+                    onClick={handleSubmitQuiz}
+                    disabled={
+                      Object.keys(userAnswers).length !==
+                      currentQuiz.questions.length
+                    }
+                  >
+                    Submit Quiz
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -1848,23 +1597,13 @@ CRITICAL JSON FORMATTING RULES:
                     return (
                       <div
                         key={question.id}
-                        className={`rounded-2xl p-[25px] ${
-                          result.isCorrect
-                            ? "border-[1.5px] border-solid border-[#10b981] shadow-[0px_2px_0_#10b981] bg-[#f0fdf4]"
-                            : "border-[1.5px] border-solid border-[#ef4444] shadow-[0px_2px_0_#ef4444] bg-[#fef2f2]"
-                        }`}
+                        className={reviewCard(result.isCorrect)}
                       >
                         <div className="flex justify-between items-center mb-[15px] flex-wrap gap-2.5">
                           <span className={QUESTION_NUMBER}>
                             Question {index + 1}
                           </span>
-                          <span
-                            className={`text-[14px] font-medium py-1 px-3 rounded-full ${
-                              result.isCorrect
-                                ? "bg-[#10b981] text-white"
-                                : "bg-[#ef4444] text-white"
-                            }`}
-                          >
+                          <span className={reviewBadge(result.isCorrect)}>
                             {result.isCorrect ? "✓ Correct" : "✗ Incorrect"}
                           </span>
                           <span className={QUESTION_POINTS}>
@@ -1872,14 +1611,16 @@ CRITICAL JSON FORMATTING RULES:
                             {question.points} points
                           </span>
                         </div>
-                        <h4 className="mt-0 mx-0 mb-[15px] text-[18px] leading-[1.6] text-ink">
+                        <h4 className="mt-0 mx-0 mb-[15px] text-[18px] font-medium leading-[1.6] text-ink">
                           {question.question}
                         </h4>
 
                         {(question.type === "multiple-choice" ||
                           question.type === "true-false") &&
                           question.options && (
-                            <div className="my-[15px] p-[15px] bg-black/[0.06] rounded-lg [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink">
+                            <div
+                              className={`my-[15px] ${REVIEW_WASH} [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink`}
+                            >
                               <p>
                                 <strong className="font-semibold text-ink">
                                   Your answer:
@@ -1890,7 +1631,7 @@ CRITICAL JSON FORMATTING RULES:
                               </p>
                               {!result.isCorrect && (
                                 <p>
-                                  <strong className="font-semibold text-[#10b981]">
+                                  <strong className="font-semibold text-verdi">
                                     Correct answer:
                                   </strong>{" "}
                                   {question.options[result.correctAnswer]}
@@ -1900,7 +1641,9 @@ CRITICAL JSON FORMATTING RULES:
                           )}
 
                         {question.type === "short-answer" && (
-                          <div className="my-[15px] p-[15px] bg-black/[0.06] rounded-lg [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink">
+                          <div
+                            className={`my-[15px] ${REVIEW_WASH} [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink`}
+                          >
                             <p>
                               <strong className="font-semibold text-ink">
                                 Your answer:
@@ -1909,7 +1652,7 @@ CRITICAL JSON FORMATTING RULES:
                             </p>
                             {!result.isCorrect && (
                               <p>
-                                <strong className="font-semibold text-[#10b981]">
+                                <strong className="font-semibold text-verdi">
                                   Correct answer:
                                 </strong>{" "}
                                 {result.correctAnswer}
@@ -1918,8 +1661,10 @@ CRITICAL JSON FORMATTING RULES:
                           </div>
                         )}
 
-                        <div className="mt-[15px] p-[15px] bg-black/[0.06] rounded-lg text-[14px] text-ink leading-[1.6]">
-                          <strong className="font-semibold text-ink">
+                        <div
+                          className={`mt-[15px] ${REVIEW_WASH} text-[14px] text-ink leading-[1.6]`}
+                        >
+                          <strong className="font-semibold text-gold-deep">
                             Explanation:
                           </strong>{" "}
                           {result.explanation}
@@ -1929,87 +1674,83 @@ CRITICAL JSON FORMATTING RULES:
                   })}
                 </div>
 
-                {/* Right Side - Sticky Results Panel */}
-                <div className={`${SIDEBAR} p-[18px] gap-[15px] max-[1024px]:p-4 max-[1024px]:gap-3 max-md:static max-md:w-full max-md:p-3.5 max-md:rounded-[10px] max-md:gap-2.5 max-[480px]:px-3 max-[480px]:py-2.5 max-[480px]:top-[55px]`}>
-                  {/* Results Header */}
-                  <div className="text-center p-3 bg-[#dcfce7] rounded-xl border-[1.5px] border-solid border-ink max-md:p-2.5 max-md:rounded-lg">
-                    <h3 className="m-0 text-[16px] font-bold text-ink max-md:text-[13px]">
-                      Quiz Complete!
-                    </h3>
-                    <p className="mt-1 mx-0 mb-0 text-[11px] text-muted max-md:text-[10px]">
-                      Review your performance
-                    </p>
-                  </div>
-
-                  {/* Score Display */}
-                  <div className="flex flex-col items-center gap-2.5 p-[15px] bg-white rounded-xl max-md:py-3 max-md:px-0">
-                    <div className="w-[120px] h-[120px] relative">
-                      <svg
-                        viewBox="0 0 100 100"
-                        className="w-full h-full max-[1024px]:w-[100px] max-[1024px]:h-[100px] max-md:w-20 max-md:h-20"
-                      >
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="#e5e7eb"
-                          strokeWidth="10"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth="10"
-                          strokeDasharray={`${
-                            (quizScore.percentage / 100) * 283
-                          } 283`}
-                          strokeLinecap="round"
-                          transform="rotate(-90 50 50)"
-                        />
-                      </svg>
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                        <span className="text-[28px] font-bold text-ink">
-                          {quizScore.percentage}%
+                {/* Right Side - Sticky Results Panel: "your constellation" */}
+                <div
+                  className={`${SIDEBAR} bg-night p-0 max-md:static max-md:w-full max-md:order-first max-md:rounded-[10px] max-[480px]:top-[55px]`}
+                >
+                  {/* Hero - the expedition charted as a sky of stars */}
+                  <div className="relative overflow-hidden px-5 pt-7 pb-5 text-center max-[1024px]:px-4 max-[1024px]:pt-6 max-md:px-4 max-md:pt-6 max-md:pb-4">
+                    <Starfield count={34} seed={5} />
+                    <CornerTicks className="text-starlight/25" />
+                    <div className="relative flex flex-col items-center gap-1.5">
+                      <p className={`m-0 ${UI.overlineNight}`}>
+                        Expedition complete
+                      </p>
+                      <div className="font-display text-[68px] font-semibold leading-none tracking-[-0.02em] text-starlight max-[1024px]:text-[54px] max-md:text-[48px]">
+                        {quizScore.percentage}
+                        <span className="ml-0.5 align-baseline text-[28px] font-medium text-starlight/60 max-md:text-[22px]">
+                          %
                         </span>
                       </div>
-                    </div>
-                    <div className="text-[13px] font-semibold text-muted">
-                      {quizScore.earnedPoints} / {quizScore.totalPoints} points
+                      <div className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-starlight/55">
+                        {quizScore.earnedPoints} / {quizScore.totalPoints}{" "}
+                        points
+                      </div>
+                      <div className="mt-2 w-full">
+                        <ResultsConstellation
+                          questions={currentQuiz.questions}
+                          results={quizScore.results}
+                        />
+                      </div>
+                      <div className="flex items-center justify-center gap-4 font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-starlight/55">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            aria-hidden="true"
+                            className="text-[11px] leading-none text-gold"
+                          >
+                            ✦
+                          </span>
+                          Correct
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            aria-hidden="true"
+                            className="inline-block h-2 w-2 rounded-full border border-solid border-starlight/50"
+                          ></span>
+                          Incorrect
+                        </span>
+                      </div>
+                      <p className="m-0 mt-1 text-[11px] text-starlight/50">
+                        Review your performance
+                      </p>
                     </div>
                   </div>
 
-                  {/* Results Stats */}
-                  <div className="grid grid-cols-2 gap-2 p-0 max-md:py-2.5 max-md:px-0">
+                  {/* Results Stats - instrument readouts */}
+                  <div className="grid grid-cols-2 gap-2 px-5 py-4 border-0 border-t border-solid border-line-night max-[1024px]:px-4 max-md:px-4 max-md:py-3">
                     <div className={RESULT_STAT_ITEM}>
-                      <span className="text-[22px] font-bold text-ink">
+                      <span className={STAT_LABEL}>Correct</span>
+                      <span className={STAT_VALUE}>
                         {quizScore.correctCount || 0}
-                      </span>
-                      <span className="text-[10px] font-semibold text-muted uppercase">
-                        Correct
                       </span>
                     </div>
                     <div className={RESULT_STAT_ITEM}>
-                      <span className="text-[22px] font-bold text-ink">
+                      <span className={STAT_LABEL}>Incorrect</span>
+                      <span className={STAT_VALUE}>
                         {currentQuiz.questions.length -
                           (quizScore.correctCount || 0)}
-                      </span>
-                      <span className="text-[10px] font-semibold text-muted uppercase">
-                        Incorrect
                       </span>
                     </div>
                   </div>
 
                   {/* Quiz Info */}
-                  <div className="flex flex-col gap-1.5 p-3 bg-[#f9fafb] rounded-[10px] border-[1.5px] border-solid border-ink">
-                    <div className="flex justify-between items-center py-[7px] px-2.5 bg-white rounded-lg text-[12px] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&>span:first-child]:text-muted [&>span:first-child]:font-semibold [&>span:last-child]:text-ink [&>span:last-child]:font-semibold">
+                  <div className="flex flex-col gap-1 px-5 py-4 border-0 border-t border-solid border-line-night max-[1024px]:px-4 max-md:px-4 max-md:py-3">
+                    <div className={INFO_ROW}>
                       <span>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
+                          width="14"
+                          height="14"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -2024,12 +1765,12 @@ CRITICAL JSON FORMATTING RULES:
                           difficulty.slice(1)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-[7px] px-2.5 bg-white rounded-lg text-[12px] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&>span:first-child]:text-muted [&>span:first-child]:font-semibold [&>span:last-child]:text-ink [&>span:last-child]:font-semibold">
+                    <div className={INFO_ROW}>
                       <span>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
+                          width="14"
+                          height="14"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -2044,12 +1785,12 @@ CRITICAL JSON FORMATTING RULES:
                       <span>{currentQuiz.questions.length}</span>
                     </div>
                     {selectedFiles && selectedFiles.length > 0 && (
-                      <div className="flex flex-col items-start gap-1.5 py-[7px] px-2.5 bg-white rounded-lg text-[12px] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&>span:first-child]:text-muted [&>span:first-child]:font-semibold">
+                      <div className={INFO_ROW_STACK}>
                         <span>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="14"
+                            height="14"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -2060,7 +1801,7 @@ CRITICAL JSON FORMATTING RULES:
                           </svg>
                           Files
                         </span>
-                        <span className="text-[11px] text-muted leading-[1.4] font-medium">
+                        <span className="text-[11px] text-starlight/70 leading-[1.4] font-medium">
                           {selectedFiles
                             .map((fileId: any) => {
                               const file = classData?.files?.find(
@@ -2075,17 +1816,17 @@ CRITICAL JSON FORMATTING RULES:
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 pt-[5px] max-md:flex-row max-md:gap-2">
+                  <div className="flex flex-col gap-2 px-5 pb-5 pt-4 border-0 border-t border-solid border-line-night max-[1024px]:px-4 max-md:flex-row max-md:px-4 max-md:pb-4">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`${RESULTS_ACTION_BASE} bg-sage text-ink`}
+                      className={`${UI.btnGold} w-full px-[18px] py-3 text-[13px] max-md:flex-1`}
                       onClick={handleDone}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -2098,13 +1839,13 @@ CRITICAL JSON FORMATTING RULES:
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`${RESULTS_ACTION_BASE} bg-white text-ink`}
+                      className={`${NIGHT_GHOST_BTN} w-full px-[18px] py-3 text-[13px] font-semibold max-md:flex-1`}
                       onClick={handleRetakeWithSameSettings}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"

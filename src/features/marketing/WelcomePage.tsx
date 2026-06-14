@@ -1,34 +1,109 @@
 import type { Session } from "@supabase/supabase-js";
 import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
-import LazyLottie from "@shared/components/LazyLottie";
+import {
+  Constellation,
+  LumiStar,
+  CornerTicks,
+  UI,
+  btnClass,
+  starPath,
+} from "@shared/components/atlas";
+import { plateLift, pressLift } from "@shared/motion";
 
-// Heavy Lottie animation JSON (books ~312 KB, brain ~183 KB, notes ~22 KB) is
-// loaded on demand instead of statically imported, so it isn't inlined into
-// the landing-page chunk. Each becomes its own async chunk fetched when the
-// feature cards mount — keeps the homepage's first paint fast.
-const loadBooks = () => import("@/assets/books.json");
-const loadBrain = () => import("@/assets/brain.json");
-const loadNotes = () => import("@/assets/notes.json");
+/* Hand-engraved feature emblems - stroke-drawn instruments, one gold accent
+   each. Replaces the old Lottie animations (and the ~520 KB of JSON they
+   pulled into the landing experience). */
+const EmblemChat = () => (
+  <svg viewBox="0 0 56 56" width="64" height="64" aria-hidden="true">
+    <g
+      fill="none"
+      stroke="var(--color-ink)"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M28 23 C23.5 19.5 16 19 11 21.5 V41 C16 38.5 23.5 39 28 42.5" />
+      <path d="M28 23 C32.5 19.5 40 19 45 21.5 V41 C40 38.5 32.5 39 28 42.5" />
+      <path d="M28 23 V42.5" />
+    </g>
+    <path d={starPath(28, 10.5, 5)} fill="var(--color-gold)" />
+    <path d={starPath(41, 13, 2)} fill="var(--color-ink)" opacity="0.45" />
+    <path d={starPath(15.5, 12, 1.6)} fill="var(--color-ink)" opacity="0.35" />
+  </svg>
+);
+
+const EmblemQuiz = () => (
+  <svg viewBox="0 0 56 56" width="64" height="64" aria-hidden="true">
+    <g fill="none" stroke="var(--color-ink)" strokeWidth="1.6">
+      <circle cx="28" cy="30" r="16.5" />
+      <path
+        d="M28 9.5 V13 M28 47 V50.5 M6.5 30 H10 M46 30 H49.5"
+        strokeLinecap="round"
+      />
+      <path d={starPath(28, 30, 12.5)} strokeLinejoin="round" />
+    </g>
+    <path
+      d={starPath(28, 30, 7)}
+      transform="rotate(45 28 30)"
+      fill="var(--color-gold)"
+      opacity="0.9"
+    />
+    <circle cx="28" cy="30" r="1.6" fill="var(--color-ink)" />
+  </svg>
+);
+
+const EmblemReview = () => (
+  <svg viewBox="0 0 56 56" width="64" height="64" aria-hidden="true">
+    <g fill="none" stroke="var(--color-ink)">
+      <ellipse
+        cx="28"
+        cy="30"
+        rx="16.5"
+        ry="6.6"
+        transform="rotate(-16 28 30)"
+        strokeWidth="1.6"
+      />
+      <ellipse
+        cx="28"
+        cy="30"
+        rx="21.5"
+        ry="9.2"
+        transform="rotate(-16 28 30)"
+        strokeWidth="1.1"
+        strokeDasharray="0.5 4"
+        strokeLinecap="round"
+        opacity="0.7"
+      />
+    </g>
+    <circle cx="28" cy="30" r="5.5" fill="var(--color-ink)" />
+    <circle cx="26.2" cy="28.2" r="1.4" fill="var(--color-vellum)" />
+    <circle cx="43" cy="25" r="2.7" fill="var(--color-gold)" />
+    <path d={starPath(12, 13, 1.8)} fill="var(--color-ink)" opacity="0.4" />
+  </svg>
+);
 
 const FEATURES = [
   {
-    load: loadBooks,
-    title: "Chat With Your Materials",
+    Emblem: EmblemChat,
+    plate: "PLATE 01",
+    title: "Converse with your materials",
     description:
-      "Ask questions and get answers grounded in your own uploaded documents.",
+      "Ask anything. Lumi answers from your own uploaded notes, slides, and readings - grounded in what you actually study.",
   },
   {
-    load: loadBrain,
-    title: "Quizzes & Flashcards",
+    Emblem: EmblemQuiz,
+    plate: "PLATE 02",
+    title: "Quizzes & flashcards",
     description:
-      "Generate practice quizzes and flashcard decks from any class instantly.",
+      "Generate practice expeditions from any class in seconds - your difficulty, your question styles, your sky.",
   },
   {
-    load: loadNotes,
-    title: "Notes & Review",
+    Emblem: EmblemReview,
+    plate: "PLATE 03",
+    title: "Review that returns",
     description:
-      "Keep notes and lock them in with spaced-repetition review that sticks.",
+      "Spaced repetition brings each card back just before you'd forget - on schedule, like clockwork orbits.",
   },
 ];
 
@@ -38,41 +113,37 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
     visible: {
       opacity: 1,
       transition: {
-        delayChildren: 0.2,
-        staggerChildren: 0.2,
+        delayChildren: 0.15,
+        staggerChildren: 0.13,
       },
     },
   };
 
   const itemVariants: Variants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 18, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 10,
-      },
+      transition: { type: "spring", stiffness: 110, damping: 16 },
     },
   };
 
   // Entrance stagger lives on the parent so each card's own transition has no
-  // delay — otherwise framer reuses that delayed transition for the hover-out,
+  // delay - otherwise framer reuses that delayed transition for the hover-out,
   // making the card wait ~1s before dropping back down.
   const featuresContainerVariants: Variants = {
     hidden: {},
     visible: {
-      transition: { delayChildren: 0.3, staggerChildren: 0.15 },
+      transition: { delayChildren: 0.45, staggerChildren: 0.12 },
     },
   };
 
   const featureCardVariants: Variants = {
-    hidden: { opacity: 0, y: 50 },
+    hidden: { opacity: 0, y: 40 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { type: "spring", stiffness: 100, damping: 14 },
+      transition: { type: "spring", stiffness: 100, damping: 16 },
     },
   };
 
@@ -80,96 +151,195 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
 
   return (
     <motion.div
-      className="relative flex min-h-[100dvh] w-full flex-col items-center justify-center gap-6 overflow-hidden px-10 py-[60px] max-md:gap-[18px] max-md:px-6 max-md:py-10 max-[480px]:justify-start max-[360px]:gap-3 max-[360px]:px-3 max-[360px]:pb-5 max-[360px]:pt-[50px]"
+      className="relative flex min-h-[100dvh] w-full flex-col items-center overflow-hidden px-10 pb-14 pt-7 max-md:px-6 max-md:pt-5 max-[360px]:px-3"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      <motion.p
-        className="relative text-[clamp(60px,12vw,120px)] font-extrabold tracking-[-2px] max-[1024px]:text-[clamp(50px,10vw,90px)] max-md:text-[52px] max-md:tracking-[-1px] max-[480px]:text-[42px] max-[360px]:text-[36px]"
-        variants={itemVariants}
+      {/* The night's faint instruments behind everything. */}
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden="true"
       >
-        Lumi AI
-      </motion.p>
-      <motion.p
-        className="relative overflow-hidden rounded-full border border-solid border-black/[0.08] bg-white px-6 py-2.5 text-[14px] font-semibold uppercase tracking-[4px] text-muted max-md:px-[18px] max-md:py-2 max-md:text-[12px] max-md:tracking-[3px] max-[360px]:px-3 max-[360px]:py-[5px] max-[360px]:text-[9px] max-[360px]:tracking-[1.5px]"
-        variants={itemVariants}
-      >
-        Your AI Study Assistant
-      </motion.p>
-      <motion.p
-        className="mt-2 mb-4 max-w-[550px] text-center text-[18px] leading-[1.7] text-muted max-md:mt-1.5 max-md:mb-3 max-md:max-w-[85%] max-md:text-[15px] max-[480px]:max-w-full max-[480px]:leading-[1.5] max-[360px]:text-[12px]"
-        variants={itemVariants}
-      >
-        Upload your study materials and get instant help, summaries, and study
-        tools powered by AI.
-      </motion.p>
+        <Constellation
+          name="The Luminarium"
+          size={620}
+          twinkle
+          className="absolute -right-36 -top-24 text-ink/[0.15] max-md:-right-52"
+        />
+        <Constellation
+          name="studywithlumi"
+          size={460}
+          twinkle
+          className="absolute -bottom-32 -left-28 text-ink/[0.12] max-md:-left-44"
+        />
+      </div>
 
-      <motion.div
+      {/* Masthead */}
+      <motion.header
+        className="relative z-10 flex w-full max-w-[1200px] items-center justify-between"
         variants={itemVariants}
-        whileHover={{
-          scale: 1.03,
-          y: -6,
-          transition: { type: "spring", stiffness: 300, damping: 5 },
-        }}
-        whileTap={{ scale: 0.98 }}
       >
-        <Link to={targetRoute} className="link">
-          <motion.button className="rounded-full border-2 border-solid border-ink bg-sage px-[60px] py-[15px] text-[16px] font-bold shadow-[0px_2px_0_#000] max-md:px-11 max-md:py-[14px] max-md:text-[14px] max-[360px]:px-7 max-[360px]:py-2.5 max-[360px]:text-[12px]">
-            Get Started
-          </motion.button>
+        <div className="flex items-center gap-2.5">
+          <LumiStar size={30} />
+          <span className="font-display text-[21px] font-semibold tracking-[-0.01em]">
+            Lumi AI
+          </span>
+        </div>
+        <Link to="/login" className="link">
+          <motion.span
+            className="flex items-center gap-1.5 rounded-full border border-solid border-ink/25 bg-vellum/70 px-5 py-2 text-[13px] font-semibold text-ink transition-[color,background-color,border-color] duration-200 hover:border-ink hover:bg-vellum"
+            {...pressLift}
+          >
+            Sign in
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </motion.span>
         </Link>
+      </motion.header>
+
+      {/* Hero */}
+      <motion.div
+        className="relative z-10 mt-16 flex flex-col items-center max-md:mt-10"
+        variants={itemVariants}
+      >
+        <div className="text-ink/45">
+          <LumiStar
+            size={104}
+            orbit
+            breathe
+            className="max-md:h-[84px] max-md:w-[84px]"
+          />
+        </div>
       </motion.div>
 
+      <motion.p
+        className={`relative z-10 mt-7 ${UI.overline} max-md:mt-5 max-[360px]:tracking-[0.14em]`}
+        variants={itemVariants}
+      >
+        ✦&ensp;Your AI study observatory&ensp;✦
+      </motion.p>
+
+      <motion.h1
+        className="relative z-10 mt-4 max-w-[840px] text-center font-display text-[clamp(40px,7vw,76px)] font-semibold leading-[1.06] tracking-[-0.02em] text-ink max-md:mt-3"
+        variants={itemVariants}
+      >
+        Every class becomes{" "}
+        <em className="text-gold-deep [font-variation-settings:'SOFT'_60,'WONK'_1]">
+          a constellation
+        </em>
+        .
+      </motion.h1>
+
+      <motion.p
+        className="relative z-10 mt-5 max-w-[560px] text-center text-[17px] leading-[1.7] text-muted max-md:max-w-[85%] max-md:text-[15px] max-[480px]:max-w-full"
+        variants={itemVariants}
+      >
+        Upload your study materials and Lumi turns them into conversations,
+        quizzes, flashcards, and review that sticks - a sky's worth of
+        understanding, charted from your own notes.
+      </motion.p>
+
       <motion.div
-        className="mt-[60px] grid w-full max-w-[1200px] grid-cols-3 gap-6 px-5 max-[1024px]:gap-5 max-[1024px]:px-4 max-[900px]:max-w-[700px] max-[900px]:grid-cols-2 max-md:mt-9 max-md:max-w-[380px] max-md:grid-cols-1 max-md:gap-4 max-[480px]:mt-6 max-[480px]:px-0 max-[360px]:mt-5 max-[360px]:gap-2.5"
+        className="relative z-10 mt-9 flex items-center gap-4 max-md:mt-7 max-[480px]:flex-col max-[480px]:gap-3"
+        variants={itemVariants}
+      >
+        <Link to={targetRoute} className="link">
+          <motion.span
+            className={`${btnClass("gold")} px-9 text-[16px]`}
+            {...pressLift}
+          >
+            Start charting
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </motion.span>
+        </Link>
+        <span className={UI.overlineMuted}>Free · Google sign-in</span>
+      </motion.div>
+
+      {/* Feature plates */}
+      <motion.div
+        className="relative z-10 mt-24 grid w-full max-w-[1140px] grid-cols-3 gap-6 max-[1024px]:gap-5 max-[900px]:max-w-[700px] max-[900px]:grid-cols-2 max-md:mt-14 max-md:max-w-[420px] max-md:grid-cols-1 max-md:gap-4"
         initial="hidden"
         animate="visible"
         variants={featuresContainerVariants}
       >
         {FEATURES.map((feature, i) => (
           <motion.div
-            className={`relative flex cursor-pointer flex-col items-center justify-start gap-4 overflow-hidden rounded-3xl border-[1.5px] border-solid border-black/[0.08] bg-white px-[30px] py-10 text-center max-[1024px]:px-6 max-[1024px]:py-8 max-md:gap-3 max-md:px-5 max-md:py-6 max-[360px]:gap-2 max-[360px]:rounded-2xl max-[360px]:px-3 max-[360px]:py-4 ${
+            className={`${UI.plate} ${UI.plateHover} flex flex-col items-start gap-3 px-7 py-8 max-[1024px]:px-6 max-[1024px]:py-7 ${
               i === 2
                 ? "max-[900px]:col-span-full max-[900px]:max-w-[340px] max-[900px]:justify-self-center max-md:max-w-none"
                 : ""
             }`}
             key={i}
             variants={featureCardVariants}
-            whileHover={{
-              y: -10,
-              transition: { duration: 0.2, ease: "easeOut" },
-            }}
+            {...plateLift}
           >
-            <div className="rounded-[20px] p-2.5 max-md:p-1.5 max-[480px]:rounded-[14px] [&>div]:h-[120px]! max-md:[&>div]:h-[100px]! max-[480px]:[&>div]:h-[120px]! max-[360px]:[&>div]:h-[80px]!">
-              <LazyLottie
-                style={{ height: 120 }}
-                getAnimationData={feature.load}
-                loop={true}
-                autoplay={true}
-              />
+            <CornerTicks />
+            <div className="flex w-full items-start justify-between">
+              <feature.Emblem />
+              <span className={UI.overlineMuted}>{feature.plate}</span>
             </div>
-            <p className="mt-2 text-[22px] font-semibold max-md:mt-1 max-md:text-[18px] max-[360px]:text-[14px]">
+            <p className="mt-2 font-display text-[22px] font-semibold leading-snug text-ink max-md:text-[20px]">
               {feature.title}
             </p>
-            <p className="text-[15px] leading-[1.6] text-muted max-md:text-[13px] max-[360px]:text-[11px]">
+            <p className="text-[14.5px] leading-[1.65] text-muted">
               {feature.description}
             </p>
           </motion.div>
         ))}
       </motion.div>
 
+      {/* Colophon */}
       <motion.footer
-        className="mt-2 text-[0.9rem] text-muted"
+        className="relative z-10 mt-20 flex w-full max-w-[1140px] flex-col items-center gap-4 max-md:mt-12"
         variants={itemVariants}
       >
-        <Link to="/privacy" className="text-muted no-underline hover:text-ink">
-          Privacy Policy
-        </Link>
-        <span aria-hidden="true"> · </span>
-        <Link to="/terms" className="text-muted no-underline hover:text-ink">
-          Terms of Service
-        </Link>
+        <div className={UI.rule} />
+        <div className="flex items-center gap-5 text-[12px]">
+          <Link
+            to="/privacy"
+            className="font-mono uppercase tracking-[0.16em] text-muted no-underline transition-colors hover:text-gold-deep"
+          >
+            Privacy
+          </Link>
+          <span className="text-gold" aria-hidden="true">
+            ✦
+          </span>
+          <Link
+            to="/terms"
+            className="font-mono uppercase tracking-[0.16em] text-muted no-underline transition-colors hover:text-gold-deep"
+          >
+            Terms
+          </Link>
+        </div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted/70">
+          Lumi AI · studywithlumi.com
+        </p>
       </motion.footer>
     </motion.div>
   );

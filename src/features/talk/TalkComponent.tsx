@@ -1,6 +1,16 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { fetchAIResponse, type ChatMessage } from "@shared/services/aiService";
+import {
+  LumiStar,
+  Starfield,
+  UI,
+  btnClass,
+  starPath,
+} from "@shared/components/atlas";
+import { CloseButton } from "@shared/components/controls";
+import { keyPress, pressLift } from "@shared/motion";
+import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 
 interface Props {
   isOpen?: boolean;
@@ -12,14 +22,15 @@ interface Props {
   _initialClassId?: string | number | null;
 }
 
-// Round bottom control button (mute / stop) — base look; mute(when muted) and
-// stop swap to the red variant.
+// Round bottom control keys (mute / stop) on the night scene - hairline
+// starlight circle by default; muted = filled starlight; stop = vermilion ink.
 const TALK_BTN =
-  "flex h-[65px] w-[65px] items-center justify-center rounded-full border-[1.5px] border-solid [transition:none] max-md:h-16 max-md:w-16 max-[480px]:h-14 max-[480px]:w-14";
+  "flex h-[65px] w-[65px] cursor-pointer items-center justify-center rounded-full border border-solid transition-colors duration-200 max-md:h-16 max-md:w-16 max-[480px]:h-14 max-[480px]:w-14";
 const TALK_BTN_RED =
-  "border-[#dc2626] bg-[#fee2e2] text-[#dc2626] shadow-[0px_2px_0_#dc2626]";
+  "border-[#e2674a]/60 bg-transparent text-[#ff9c82] hover:border-[#e2674a] hover:bg-[#b23a1d] hover:text-starlight";
 const TALK_BTN_DEFAULT =
-  "border-ink bg-sage text-ink shadow-[0px_2px_0_#000]";
+  "border-starlight/30 bg-transparent text-starlight hover:border-starlight/70 hover:bg-starlight/10";
+const TALK_BTN_MUTED = "border-starlight bg-starlight text-ink";
 
 const TalkComponent = ({
   isOpen = true,
@@ -37,7 +48,7 @@ const TalkComponent = ({
   const synthRef = useRef<SpeechSynthesis | null>(
     typeof window !== "undefined" ? window.speechSynthesis : null
   );
-  // Web Speech API recognition typings are inconsistent across browsers — use
+  // Web Speech API recognition typings are inconsistent across browsers - use
   // `any` for the recognition instance and event objects.
   const recognitionRef = useRef<any>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -364,20 +375,43 @@ const TalkComponent = ({
     }
   };
 
+  // Dismiss the whole talk overlay - stop any in-flight speech/recognition,
+  // then hand control back to the caller. Shared by the header ✕ and Escape.
+  const handleClose = () => {
+    handleStop();
+    onClose();
+  };
+
+  // Lock background scroll while the fullscreen night scene is open and let
+  // Escape leave it (routed through the same stop+close path), both via the
+  // shared overlay hooks so this stacks with any dialog above it.
+  useScrollLock(isOpen);
+  useEscapeToClose(isOpen, handleClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1200] flex flex-col overflow-hidden bg-cream">
+    <div className="fixed inset-0 z-[1200] flex flex-col overflow-hidden bg-night">
+      <Starfield count={70} seed={11} />
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden="true"
+        style={{
+          background:
+            "radial-gradient(60rem 40rem at 50% 110%, rgb(199 154 51 / 0.12), transparent 60%)",
+        }}
+      />
       <div className="fixed inset-x-0 top-0 z-[1210] flex items-center justify-between bg-transparent p-[30px]">
         <div className="flex items-center gap-2.5">
           {!started && (
             <div className="relative">
               <motion.button
-                className="flex h-[45px] items-center gap-2 rounded-full border-[1.5px] border-solid border-ink bg-sage px-4 text-[14px] text-ink shadow-[0px_2px_0_#000] max-[480px]:h-10 max-[480px]:px-3"
+                type="button"
+                className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-solid border-starlight/30 bg-transparent px-4 text-starlight transition-colors duration-200 hover:border-starlight/70 hover:bg-starlight/10 max-[480px]:px-3"
                 title={voices[voiceIndex]?.name || "Change voice"}
+                aria-label="Change voice"
                 onClick={openVoiceMenu}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                {...keyPress}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -393,13 +427,13 @@ const TalkComponent = ({
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                 </svg>
-                <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">
+                <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] tracking-wide">
                   {voices[voiceIndex]?.name?.substring(0, 15) || "Voice"}
                 </span>
               </motion.button>
               {voiceMenuOpen && (
                 <motion.div
-                  className="absolute left-0 top-[58px] z-[1400] min-w-[240px] overflow-hidden rounded-xl border-[1.5px] border-solid border-ink bg-white shadow-[0_6px_20px_rgba(0,0,0,0.08)]"
+                  className="absolute left-0 top-[58px] z-[1400] min-w-[240px] overflow-hidden rounded-xl border border-solid border-line-night bg-night-2 shadow-night"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
@@ -408,22 +442,28 @@ const TalkComponent = ({
                     voices.map((v, i) => (
                       <motion.button
                         key={i}
-                        className={`block w-full border-none px-4 py-3 text-left text-[14px] [transition:none] ${
+                        type="button"
+                        className={`flex w-full cursor-pointer items-center gap-2.5 border-0 border-l-2 border-solid px-4 py-3 text-left font-mono text-[12.5px] transition-colors duration-200 ${
                           i === voiceIndex
-                            ? "bg-[rgba(127,75,248,0.2)] font-semibold text-[#8b5cf6]"
-                            : "bg-transparent text-ink"
+                            ? "border-gold/50 bg-gold/10 font-semibold text-gold"
+                            : "border-transparent bg-transparent text-starlight/85 hover:bg-starlight/[0.07]"
                         }`}
                         onClick={() => selectVoice(i)}
-                        whileHover={{
-                          backgroundColor: "rgba(139,92,246,0.08)",
-                        }}
                         whileTap={{ scale: 0.98 }}
                       >
+                        <span
+                          aria-hidden="true"
+                          className={`text-[11px] text-gold ${
+                            i === voiceIndex ? "opacity-100" : "opacity-0"
+                          }`}
+                        >
+                          ✦
+                        </span>
                         {v.name}
                       </motion.button>
                     ))
                   ) : (
-                    <div className="p-4 text-center text-[14px] text-muted">
+                    <div className="p-4 text-center font-mono text-[12px] text-starlight/60">
                       No voices available
                     </div>
                   )}
@@ -433,81 +473,145 @@ const TalkComponent = ({
           )}
         </div>
         <div className="flex items-center gap-2.5">
-          <motion.button
-            className="flex h-[45px] w-[45px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage text-ink shadow-[0px_2px_0_#000] max-[480px]:h-10 max-[480px]:w-10"
-            onClick={() => {
-              handleStop();
-              onClose();
-            }}
-            title="Close"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </motion.button>
+          <CloseButton
+            variant="night"
+            label="Close voice conversation"
+            onClick={handleClose}
+          />
         </div>
       </div>
-      <div className="flex flex-1 items-center justify-center px-5 pt-20 pb-10">
+      <div className="relative flex flex-1 items-center justify-center px-5 pt-20 pb-10">
         {!started ? (
           <div className="flex flex-col items-center gap-[18px] text-center">
             <motion.div
-              className="flex h-[100px] w-[100px] items-center justify-center rounded-full border-[1.5px] border-solid border-ink bg-sage text-ink shadow-[0px_3px_0_#000] max-md:h-20 max-md:w-20"
+              className="text-starlight/35"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="48"
-                height="48"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" y1="19" x2="12" y2="23"></line>
-                <line x1="8" y1="23" x2="16" y2="23"></line>
-              </svg>
+              <LumiStar
+                size={110}
+                orbit
+                breathe
+                core="var(--color-night)"
+                className="max-md:h-20 max-md:w-20"
+              />
             </motion.div>
-            <h3 className="m-0 text-[28px] font-semibold text-ink max-md:text-[24px]">
+            <p className={`m-0 ${UI.overlineNight}`}>
+              The observatory is listening
+            </p>
+            <h3 className="m-0 font-display text-[28px] font-semibold leading-tight text-starlight max-md:text-[24px]">
               Talk with AI
             </h3>
-            <p className="m-0 text-[16px] text-muted max-md:text-[14px]">
+            <p className="m-0 text-[16px] leading-[1.6] text-starlight/60 max-md:text-[14px]">
               Start a natural voice conversation
             </p>
             <motion.button
-              className="mt-3 rounded-full border-[1.5px] border-solid border-ink bg-sage px-8 py-3.5 text-[16px] font-medium text-ink shadow-[0px_3px_0_#000] disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              className={`${btnClass("gold")} mt-3`}
               onClick={startConversation}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+              {...pressLift}
             >
-              Start
+              <span aria-hidden="true" className="text-[13px]">
+                ✦
+              </span>
+              Begin
             </motion.button>
           </div>
         ) : (
           <div className="flex h-full w-full max-w-[600px] flex-col items-center justify-center gap-10">
             <motion.div
-              className="relative mb-[50px] h-[200px] w-[200px] rounded-full border-2 border-solid border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.2)] shadow-[rgba(149,157,165,0.2)_0px_8px_24px] before:absolute before:left-[10%] before:top-[10%] before:h-[80%] before:w-[80%] before:rounded-full before:bg-[radial-gradient(circle_at_40%_40%,rgba(255,255,255,0.4),transparent_60%)] before:opacity-30 before:content-[''] max-md:h-[180px] max-md:w-[180px] max-[480px]:h-[160px] max-[480px]:w-[160px]"
+              className="relative h-[250px] w-[250px] max-md:h-[210px] max-md:w-[210px] max-[480px]:h-[180px] max-[480px]:w-[180px]"
               animate={circleControls}
               initial={{ scale: 1 }}
-            />
+            >
+              {/* Outer soft halo */}
+              <div
+                className="pointer-events-none absolute -inset-10 rounded-full"
+                aria-hidden="true"
+                style={{
+                  background:
+                    "radial-gradient(rgb(199 154 51 / 0.35), transparent 70%)",
+                }}
+              />
+              {/* Slow orbit ring with a tiny star riding it */}
+              <svg
+                viewBox="0 0 100 100"
+                className="absolute inset-0 h-full w-full text-starlight/40"
+                aria-hidden="true"
+              >
+                <g
+                  className="animate-orbit"
+                  style={{ transformOrigin: "50px 50px" }}
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="47"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="0.6"
+                    strokeDasharray="0.5 5.5"
+                    strokeLinecap="round"
+                    opacity="0.7"
+                  />
+                  <path d={starPath(97, 50, 2.6)} fill="var(--color-gold)" />
+                </g>
+              </svg>
+              {/* The star core - long + short rays, bright starlight heart */}
+              <svg
+                viewBox="0 0 100 100"
+                className="relative h-full w-full"
+                aria-hidden="true"
+                style={{
+                  filter: "drop-shadow(0 0 18px rgb(199 154 51 / 0.45))",
+                }}
+              >
+                <g
+                  className="animate-breathe"
+                  style={{ transformOrigin: "50px 50px" }}
+                >
+                  <path
+                    d={starPath(50, 50, 25)}
+                    transform="rotate(45 50 50)"
+                    fill="var(--color-gold)"
+                    opacity="0.65"
+                  />
+                  <path d={starPath(50, 50, 37)} fill="var(--color-gold)" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="11"
+                    fill="var(--color-starlight)"
+                    opacity="0.3"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="6.5"
+                    fill="var(--color-starlight)"
+                  />
+                </g>
+              </svg>
+            </motion.div>
+            <div className="flex flex-col items-center gap-2.5 text-center">
+              <p className="m-0 font-mono text-[12px] font-medium uppercase tracking-[0.32em] text-gold">
+                {speaking
+                  ? "Speaking…"
+                  : thinking
+                    ? "Thinking…"
+                    : muted
+                      ? "Muted"
+                      : "Listening…"}
+              </p>
+              <p className="m-0 text-[14px] text-starlight/60 max-[480px]:text-[13px]">
+                {muted ? (
+                  <>Microphone off - unmute to continue.</>
+                ) : (
+                  <>Speak whenever you&rsquo;re ready.</>
+                )}
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -515,11 +619,12 @@ const TalkComponent = ({
       {started && (
         <div className="fixed bottom-10 left-1/2 z-[1220] flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-[30px] max-md:gap-6 max-[480px]:bottom-6 max-[480px]:gap-5">
           <motion.button
-            className={`${TALK_BTN} ${muted ? TALK_BTN_RED : TALK_BTN_DEFAULT}`}
+            type="button"
+            className={`${TALK_BTN} ${muted ? TALK_BTN_MUTED : TALK_BTN_DEFAULT}`}
             title={muted ? "Unmute" : "Mute"}
+            aria-label={muted ? "Unmute microphone" : "Mute microphone"}
             onClick={toggleMute}
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
+            {...keyPress}
           >
             {muted ? (
               <svg
@@ -557,11 +662,12 @@ const TalkComponent = ({
             )}
           </motion.button>
           <motion.button
+            type="button"
             className={`${TALK_BTN} ${TALK_BTN_RED}`}
             title="End conversation"
+            aria-label="End conversation"
             onClick={handleStop}
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
+            {...keyPress}
           >
             <svg
               width="22"

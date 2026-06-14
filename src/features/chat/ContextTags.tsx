@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { keyPress, pressLift } from "@shared/motion";
 
 interface ClassFile {
   id: string;
@@ -33,12 +34,16 @@ interface ContextTagsProps {
   onClearAll: () => void;
 }
 
+// Specimen labels - mono micro-pills pinned above the writing desk, all on the
+// same hairline ring. Class = verdigris, file = ink, uploaded = gold.
 const TAG_BASE =
-  "flex items-center gap-1.5 rounded-full border-[1.5px] border-solid px-2 py-[5px]";
+  "flex items-center gap-1.5 rounded-full border border-solid px-2.5 py-1 font-mono text-[11.5px] leading-tight";
+// Inline remove key inside a pill - inherits the pill's colour (text-current);
+// the press pop comes from framer (`keyPress`), CSS animates opacity only.
 const TAG_REMOVE =
-  "flex h-[18px] w-[18px] items-center justify-center rounded-full border-none bg-black/5 p-0 text-ink [transition:background-color_0.2s] hover:bg-black/10";
+  "flex h-4 w-4 max-md:h-6 max-md:w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 text-current opacity-55 transition-opacity duration-150 hover:opacity-100";
 const ACTION_BTN =
-  "flex items-center gap-[5px] border-none bg-transparent text-[14px] font-medium text-ink opacity-80 [transition:opacity_0.2s] hover:opacity-100";
+  "flex cursor-pointer items-center gap-1 rounded-full border border-solid border-ink/20 bg-transparent px-2.5 py-1 max-md:px-3 max-md:py-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted transition-colors duration-150 hover:border-ink hover:text-ink";
 
 const ContextTags = ({
   selectedClasses,
@@ -81,44 +86,60 @@ const ContextTags = ({
   }
 
   return (
-    <div className="bg-cream px-5 py-2.5">
-      <div className="mb-2.5 flex items-center justify-between">
-        <h4 className="m-0 text-[15px] font-semibold">Files for this message</h4>
-        <div className="flex items-center gap-3">
-          <button className={ACTION_BTN} onClick={onShowTagSelector}>
+    <div className="px-5 pb-0 pt-2.5 max-md:px-0">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h4 className="m-0 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted">
+          Files for this message
+        </h4>
+        <div className="flex items-center gap-1.5">
+          <motion.button
+            type="button"
+            className={ACTION_BTN}
+            onClick={onShowTagSelector}
+            aria-label="Edit selected sources"
+            {...pressLift}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
+              width="11"
+              height="11"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
             Edit
-          </button>
-          <button className={ACTION_BTN} onClick={onClearAll}>
+          </motion.button>
+          <motion.button
+            type="button"
+            className={ACTION_BTN}
+            onClick={onClearAll}
+            aria-label="Clear all selected sources"
+            {...pressLift}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
+              width="11"
+              height="11"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
             Clear
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -144,16 +165,16 @@ const ContextTags = ({
             return (
               <motion.div
                 key={classItem.id}
-                className={`${TAG_BASE} border-ink bg-sage`}
+                className={`${TAG_BASE} border-verdi/40 bg-sage/15 text-verdi`}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
               >
-                <span className="flex items-center justify-center text-ink">
+                <span className="flex shrink-0 items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -165,26 +186,30 @@ const ContextTags = ({
                     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                   </svg>
                 </span>
-                <span className="text-[14px] font-medium">{classItem.name}</span>
-                <button
+                <span className="font-medium">{classItem.name}</span>
+                <motion.button
+                  type="button"
                   className={TAG_REMOVE}
                   onClick={() => onRemoveTag("class", classItem.id)}
+                  aria-label={`Remove ${classItem.name}`}
+                  {...keyPress}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="11"
+                    height="11"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
-                </button>
+                </motion.button>
               </motion.div>
             );
           })}
@@ -192,16 +217,16 @@ const ContextTags = ({
           {selectedFileObjects.map((file) => (
             <motion.div
               key={file.id}
-              className={`${TAG_BASE} border-ink bg-sage`}
+              className={`${TAG_BASE} border-ink/25 bg-vellum text-ink`}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
             >
-              <span className="flex items-center justify-center text-ink">
+              <span className="flex shrink-0 items-center justify-center opacity-70">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
+                  width="12"
+                  height="12"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -214,28 +239,34 @@ const ContextTags = ({
                 </svg>
               </span>
               <div className="flex flex-col">
-                <span className="text-[14px] font-medium">{file.name}</span>
-                <span className="text-[10px] opacity-70">{file.className}</span>
+                <span className="font-medium leading-[1.25]">{file.name}</span>
+                <span className="text-[9px] uppercase leading-[1.25] tracking-[0.08em] opacity-60">
+                  {file.className}
+                </span>
               </div>
-              <button
+              <motion.button
+                type="button"
                 className={TAG_REMOVE}
                 onClick={() => onRemoveTag("file", file.id)}
+                aria-label={`Remove ${file.name}`}
+                {...keyPress}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
+                  width="11"
+                  height="11"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </motion.button>
             </motion.div>
           ))}
 
@@ -243,18 +274,18 @@ const ContextTags = ({
           {uploadedFiles.map((file, index) => (
             <motion.div
               key={`uploaded-${index}`}
-              className={`${TAG_BASE} border-[#3B82F6] bg-[#F0F9FF]`}
+              className={`${TAG_BASE} border-gold-deep/40 bg-gold/10 text-gold-deep`}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               title="This file is only for this message"
             >
-              <span className="flex items-center justify-center text-[#1D4ED8]">
+              <span className="flex shrink-0 items-center justify-center">
                 {file.base64 && file.type && file.type.startsWith("image/") ? (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -274,8 +305,8 @@ const ContextTags = ({
                 ) : (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
+                    width="12"
+                    height="12"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -286,32 +317,36 @@ const ContextTags = ({
                 )}
               </span>
               <div className="flex flex-col">
-                <span className="text-[14px] font-medium">{file.name}</span>
-                <span className="text-[10px] italic text-[#1D4ED8] opacity-70">
+                <span className="font-medium leading-[1.25]">{file.name}</span>
+                <span className="text-[9px] uppercase leading-[1.25] tracking-[0.08em] opacity-80">
                   Uploaded
                 </span>
               </div>
-              <button
+              <motion.button
+                type="button"
                 className={TAG_REMOVE}
                 onClick={() =>
                   onRemoveUploadedFile && onRemoveUploadedFile(index)
                 }
+                aria-label={`Remove uploaded file ${file.name ?? ""}`.trim()}
+                {...keyPress}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
+                  width="11"
+                  height="11"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </motion.button>
             </motion.div>
           ))}
         </AnimatePresence>

@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { CornerTicks } from "@shared/components/atlas";
+import { Button } from "@shared/components/controls";
+import { scrimFade, modalPop } from "@shared/motion";
+import { useEscapeToClose } from "@shared/hooks/overlay";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -14,9 +18,9 @@ interface ConfirmDialogProps {
   hideBackground?: boolean;
 }
 
-// Shared dialog button base (the confirm variant only swaps its background).
-const BTN_BASE =
-  "min-w-[120px] cursor-pointer rounded-full border-[1.5px] border-solid border-ink px-[25px] py-3 text-[16px] font-medium text-ink shadow-[0px_2px_0_#000] max-md:min-w-0 max-md:text-[14px] max-[480px]:min-w-[100px] max-[480px]:px-[18px] max-[480px]:py-2.5 max-[480px]:text-[14px]";
+// Width treatment for paired dialog buttons (atlas UI.btn* supplies the rest).
+const BTN_PAIR_W =
+  "min-w-[120px] max-md:min-w-[100px] max-[480px]:min-w-0 max-[480px]:flex-1 max-[480px]:px-5";
 
 const ConfirmDialog = ({
   isOpen,
@@ -29,53 +33,17 @@ const ConfirmDialog = ({
   danger = false,
   hideBackground = false,
 }: ConfirmDialogProps) => {
-  const overlayVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.2 },
-    },
-    exit: {
-      opacity: 0,
-      transition: { duration: 0.2 },
-    },
-  };
-
-  const dialogVariants = {
-    hidden: {
-      opacity: 0,
-      y: 20,
-      scale: 0.95,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 25,
-      },
-    },
-    exit: {
-      opacity: 0,
-      y: 20,
-      scale: 0.95,
-      transition: { duration: 0.2 },
-    },
-  };
-
   const renderIcon = () => {
     if (title && title.includes("Sign Out")) {
       return (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="30"
-          height="30"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -93,12 +61,12 @@ const ConfirmDialog = ({
       return (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="30"
-          height="30"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -110,12 +78,12 @@ const ConfirmDialog = ({
       return (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="30"
-          height="30"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -135,12 +103,12 @@ const ConfirmDialog = ({
       return (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="30"
-          height="30"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -153,12 +121,12 @@ const ConfirmDialog = ({
       return (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="30"
-          height="30"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -172,12 +140,12 @@ const ConfirmDialog = ({
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="30"
-        height="30"
+        width="24"
+        height="24"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.75"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
@@ -187,28 +155,28 @@ const ConfirmDialog = ({
     );
   };
 
-  // Per-type icon-wrapper coloring (was the .accdel-*-icon classes).
+  // Per-type medallion tinting - intent → wash / hairline ring / icon ink.
   const getIconClass = () => {
     if (title && title.includes("Sign Out"))
-      return "bg-[#E0E7FF] text-[#4F46E5] border-[1.5px] border-solid border-[#4F46E5]";
+      return "bg-cream border-line text-ink";
     if (
       title &&
       (title.includes("Successfully Deleted") ||
         title.includes("Deleted Successfully"))
     )
-      return "bg-[#D1FAE5] text-[#10B981] border-[1.5px] border-solid border-[#10B981]";
+      return "bg-sage/30 border-verdi/30 text-verdi";
     if (title && title.includes("File Already Exists"))
-      return "bg-[#FEF3C7] text-[#D97706] border-[1.5px] border-solid border-[#D97706]";
+      return "bg-gold/15 border-gold-deep/30 text-gold-deep";
     if (
       title &&
       (title.includes("Unsupported") ||
         title.includes("No Files") ||
         title.includes("Failed"))
     )
-      return "bg-[#FEF3C7] text-[#F59E0B] border-[1.5px] border-solid border-[#F59E0B]";
+      return "bg-gold/15 border-gold-deep/30 text-gold-deep";
     if (title && title.toLowerCase().includes("coming"))
-      return "bg-[#EFF6FF] text-[#1D4ED8] border-[1.5px] border-solid border-[#1D4ED8]";
-    return "bg-[#FEE2E2] text-[#EF4444] border-[1.5px] border-solid border-[#EF4444]";
+      return "bg-cream border-line text-ink";
+    return "bg-vermilion-wash border-vermilion/30 text-vermilion";
   };
 
   const getDisplayTitle = () => {
@@ -216,7 +184,7 @@ const ConfirmDialog = ({
     const lower = title.toLowerCase();
     if (lower.includes("coming")) {
       return title
-        .replace(/\s*[—-]\s*coming\s*soon\s*$/i, "")
+        .replace(/\s*-\s*coming\s*soon\s*$/i, "")
         .replace(/\s*coming\s*soon\s*$/i, "")
         .trim();
     }
@@ -245,70 +213,67 @@ const ConfirmDialog = ({
 
   const isSingle = !cancelText || cancelText.trim() === "";
 
+  // Escape resolves the dialog the safe way (cancel), stacking correctly
+  // above any fullscreen takeover underneath.
+  useEscapeToClose(isOpen, onClose);
+
   return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="accdel-dialog-overlay pointer-events-auto fixed inset-0 isolate z-[999999] flex h-full w-full items-center justify-center bg-black/75"
-          variants={overlayVariants}
+          className="accdel-dialog-overlay pointer-events-auto fixed inset-0 isolate z-[999999] flex h-full w-full items-center justify-center bg-night/60 backdrop-blur-[3px]"
+          variants={scrimFade}
           initial="hidden"
           animate="visible"
           exit="exit"
           onClick={onClose}
         >
           <motion.div
-            className="flex w-[90%] max-w-[500px] flex-col items-center rounded-xl border-[1.5px] border-solid border-ink bg-white p-[30px] shadow-[0_10px_25px_rgba(0,0,0,0.2)] max-md:w-full max-[480px]:w-[calc(100%-24px)] max-[480px]:max-w-[min(420px,calc(100%-24px))] max-[480px]:p-5"
-            variants={dialogVariants}
+            className="relative flex w-[90%] max-w-[440px] flex-col items-center rounded-xl border border-solid border-line bg-vellum px-8 py-9 shadow-float max-md:w-full max-[480px]:w-[calc(100%-24px)] max-[480px]:max-w-[min(420px,calc(100%-24px))] max-[480px]:px-5 max-[480px]:py-7"
+            variants={modalPop}
             initial="hidden"
             animate="visible"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
           >
+            <CornerTicks />
             <div
-              className={`mb-5 flex h-[70px] w-[70px] items-center justify-center rounded-full max-[480px]:h-[50px] max-[480px]:w-[50px] [&_svg]:h-9 [&_svg]:w-9 max-md:[&_svg]:h-[22px] max-md:[&_svg]:w-[22px] ${getIconClass()}`}
+              className={`mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-solid max-md:h-[60px] max-md:w-[60px] max-[480px]:h-14 max-[480px]:w-14 ${getIconClass()}`}
             >
               {renderIcon()}
             </div>
-            <h2 className="mb-[15px] text-center text-[24px] font-bold text-ink max-md:text-[22px] max-[480px]:mb-2.5 max-[480px]:text-[20px]">
+            <h2 className="mb-3 text-center font-display text-[22px] font-semibold leading-[1.3] tracking-[-0.01em] text-ink max-md:text-[21px] max-[480px]:mb-2.5 max-[480px]:text-[20px]">
               {getDisplayTitle()}
             </h2>
-            <p className="mb-[30px] whitespace-pre-line text-center text-[16px] leading-[1.5] text-muted max-[480px]:mb-[25px] max-[480px]:text-[14px]">
+            <p className="mb-6 whitespace-pre-line text-center text-[14.5px] leading-[1.65] text-muted max-[480px]:mb-5 max-[480px]:text-[13.5px]">
               {message}
             </p>
-            <div className="flex w-full justify-center gap-[15px]">
+            <div
+              className="mb-6 flex w-full items-center gap-3 max-[480px]:mb-5"
+              aria-hidden="true"
+            >
+              <span className="h-px flex-1 bg-line" />
+              <span className="text-[11px] leading-none text-gold">✦</span>
+              <span className="h-px flex-1 bg-line" />
+            </div>
+            <div className="flex w-full items-center justify-center gap-3 max-[480px]:gap-2.5">
               {cancelText && cancelText.trim() !== "" && (
-                <motion.button
-                  className={`${BTN_BASE} bg-transparent`}
+                <Button
+                  variant="ghost"
+                  className={BTN_PAIR_W}
                   onClick={onClose}
-                  whileHover={{
-                    scale: 1.03,
-                    y: -3,
-                    transition: { type: "spring", stiffness: 300, damping: 25 },
-                  }}
-                  whileTap={{ scale: 0.98 }}
                 >
                   {cancelText}
-                </motion.button>
+                </Button>
               )}
 
-              <motion.button
-                className={`${BTN_BASE} ${
-                  danger
-                    ? "bg-[#EF4444] text-white"
-                    : isSingle
-                      ? "bg-[#10B981] text-white"
-                      : "bg-sage"
-                }`}
+              <Button
+                variant={danger ? "danger" : "primary"}
+                className={isSingle ? "min-w-[160px]" : BTN_PAIR_W}
                 onClick={onConfirm}
-                whileHover={{
-                  scale: 1.03,
-                  y: -3,
-                  transition: { type: "spring", stiffness: 300, damping: 25 },
-                }}
-                whileTap={{ scale: 0.98 }}
               >
                 {confirmText}
-              </motion.button>
+              </Button>
             </div>
           </motion.div>
         </motion.div>

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { detectRegion } from "@shared/utils/region";
+import { UI } from "@shared/components/atlas";
+import { Spinner } from "@shared/components/controls";
+import { fadeRise, stagger } from "@shared/motion";
 
 const AuthRedirect = () => {
   const [error, setError] = useState<string | null>(null);
@@ -122,19 +126,46 @@ const AuthRedirect = () => {
     handleAuthRedirect();
   }, [navigate]);
 
-  // Render nothing during a normal redirect; only show UI when there's an error
+  // Surface a styled error plate on failure; otherwise show a deliberate
+  // "completing sign-in" wait while the session is exchanged/polled (the auth
+  // flow above is unchanged - this only replaces the previously blank screen).
   if (error) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center p-5">
-        <div className="w-full max-w-[400px] text-center">
-          <div>Lumi AI</div>
-          <div>{error}</div>
-        </div>
+        <motion.div
+          className={`${UI.plate} flex w-full max-w-[420px] flex-col items-center gap-3 px-8 py-9 text-center`}
+          initial="hidden"
+          animate="visible"
+          variants={stagger()}
+        >
+          <motion.p className={UI.overline} variants={fadeRise}>
+            Lumi AI
+          </motion.p>
+          <motion.p
+            className="font-display text-[22px] font-semibold text-ink"
+            variants={fadeRise}
+          >
+            Sign-in interrupted
+          </motion.p>
+          <motion.p
+            className="rounded-lg border border-solid border-vermilion/30 bg-vermilion-wash px-4 py-3 text-[13.5px] font-medium leading-[1.6] text-vermilion"
+            variants={fadeRise}
+          >
+            {error}
+          </motion.p>
+          <motion.p className={UI.overlineMuted} variants={fadeRise}>
+            Returning to the entrance…
+          </motion.p>
+        </motion.div>
       </div>
     );
   }
 
-  return null;
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center p-5">
+      <Spinner label="Completing sign-in…" />
+    </div>
+  );
 };
 
 export default AuthRedirect;

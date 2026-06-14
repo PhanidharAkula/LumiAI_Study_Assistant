@@ -1,34 +1,79 @@
 /*
  * Tailwind v4 entry — utilities + theme only, NO preflight.
  *
- * The app already ships its own global reset and hand-written component CSS, so
- * we deliberately skip Tailwind's preflight to guarantee the existing design is
- * untouched. Tailwind utilities are additive: used as components are migrated.
+ * The app ships its own global reset (in the `base` layer below) so Tailwind's
+ * preflight stays off. The reset MUST live in `base` — an unlayered
+ * `* { margin:0; padding:0; color; … }` would override layered utilities
+ * regardless of specificity, silently killing `p-*`/`text-*`/`tracking-*`.
  *
- * The app's global reset lives in the `base` layer (below `utilities`) so that
- * Tailwind utilities reliably win over the universal `*` reset. Without this,
- * an unlayered `* { margin:0; padding:0; color; letter-spacing }` would override
- * layered utilities regardless of specificity, and `p-*`/`text-*`/`tracking-*`
- * would silently do nothing.
+ * ───────────────────────────────────────────────────────────────────────────
+ *  THE LUMINARIUM — LumiAI's design language: a celestial atlas for your mind.
+ *
+ *  Lumi means light. The app is an astronomer's study atelier: warm parchment
+ *  pages, midnight-ink plates, gold-leaf stars, engraved hairlines, chart
+ *  plates with corner ticks, and mono "instrument" labels. Every class gets
+ *  its own procedurally-generated constellation (see shared/components/atlas).
+ *
+ *  Rules of the house:
+ *  · Hairline borders (1px, `border-line`) — never thick black outlines.
+ *  · Soft layered shadows (`shadow-plate` / `shadow-float`) — never hard
+ *    0 2px 0 #000 offsets.
+ *  · Fraunces for display, Schibsted Grotesk for UI, Spline Sans Mono for
+ *    overline labels (uppercase, tracked out).
+ *  · Gold is precious: tiny ✦ accents, alpha stars, focus rings — not floods.
+ *  · Night plates (`bg-night`) are reserved for focus moments: active quiz,
+ *    talk, flashcard backs, results.
+ * ───────────────────────────────────────────────────────────────────────────
  */
 @layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-/* Design tokens — mirror the existing palette so utilities match 1:1. */
 @theme {
-  --color-cream: #f0ebe1; /* background — primary */
-  --color-sage: #93c1c1; /* background — secondary / accent */
-  --color-ink: #000000; /* text — primary */
-  --color-muted: #707070; /* text — secondary */
+  /* ── Surfaces ─────────────────────────────────────────────── */
+  --color-cream: #f3edde; /* parchment — page bg (legacy token name, kept) */
+  --color-vellum: #fbf7ec; /* raised plate surface */
+  --color-night: #171326; /* midnight plate — inverted focus surfaces */
+  --color-night-2: #241e38; /* raised midnight surface */
 
-  --font-display: "Winky Sans", sans-serif;
+  /* ── Ink ──────────────────────────────────────────────────── */
+  --color-ink: #1d1b16; /* warm near-black (legacy token name, kept) */
+  --color-muted: #6f6757; /* secondary text (legacy token name, kept) */
+  --color-starlight: #f5eedb; /* text on night surfaces */
+  --color-line: rgb(29 27 22 / 0.14); /* hairline rules on parchment */
+  --color-line-night: rgb(245 238 219 / 0.16); /* hairlines on night */
 
-  /* Chat streaming indicators (used via animate-* utilities in ChatMessage). */
+  /* ── Accents ──────────────────────────────────────────────── */
+  --color-sage: #9ac2b9; /* verdigris — brand continuity (legacy name) */
+  --color-verdi: #3f6e66; /* deep verdigris — text-safe accent */
+  --color-gold: #c79a33; /* gold leaf — decorative */
+  --color-gold-deep: #8a6516; /* gold — text-safe on parchment */
+  --color-vermilion: #b23a1d; /* red ink — errors / danger */
+  --color-vermilion-wash: #f7e4da; /* red-ink wash background */
+
+  /* ── Type ─────────────────────────────────────────────────── */
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Spline Sans Mono", "SFMono-Regular", Menlo, monospace;
+
+  /* ── Shadows — soft + layered, never hard offsets ─────────── */
+  --shadow-plate:
+    0 1px 0 rgb(29 27 22 / 0.04), 0 14px 36px -22px rgb(29 27 22 / 0.38);
+  --shadow-float:
+    0 2px 6px rgb(29 27 22 / 0.06), 0 24px 48px -24px rgb(29 27 22 / 0.42);
+  --shadow-night: 0 18px 50px -20px rgb(8 6 16 / 0.7);
+
+  /* ── Motion ───────────────────────────────────────────────── */
   --animate-blink: blink 1s infinite;
   --animate-thinking-fade: thinking-fade 1.4s infinite;
   --animate-typing-bounce: typing-bounce 1.5s infinite ease-in-out;
+  --animate-twinkle: twinkle 3.2s ease-in-out infinite;
+  --animate-orbit: orbit 60s linear infinite;
+  --animate-orbit-slow: orbit 140s linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-breathe: breathe 5.5s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.8s linear infinite;
 }
 
 @keyframes blink {
@@ -62,39 +107,141 @@
   }
 }
 
-/* Quiz history score ring — animates the SVG dash-array in from 0 on mount
-   (was in QuizComponent.css, moved here so it survives that file's deletion). */
+/* Quiz history score ring — animates the SVG dash-array in from 0 on mount. */
 @keyframes progress {
   0% {
     stroke-dasharray: 0 100;
   }
 }
 
-/* Global reset (moved here from App.css so it sits in the `base` layer and
-   never overrides Tailwind utilities). Identical declarations to before. */
+/* Stars breathing in and out of the dark. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Slow instrument rotation (orbit rings, dashed circles). */
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Plate entrance — rise out of the page. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Gentle scale breathing (the Lumi star at rest). */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+/* Gold sheen sweep (use on gradient backgrounds sized 200%). */
+@keyframes shimmer {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+
+/* Global reset — identical mechanics to before (base layer so utilities win),
+   re-tuned for the Luminarium: Schibsted Grotesk body, warm ink, calm
+   tracking. `--text-primary-color` is defined in App.css :root. */
 @layer base {
+  /* NOTE: no `color` here — the old reset forced ink onto EVERY element,
+     which broke natural inheritance (children inside ink-filled/night
+     surfaces rendered ink-on-ink). `color` is an inherited property; body
+     sets the ink default (App.css) and tinted containers cascade normally. */
   * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: "Winky Sans", sans-serif;
-    font-weight: 300;
-    letter-spacing: 1px;
+    font-family: var(--font-body);
+    font-weight: 400;
+    letter-spacing: 0.01em;
     scroll-behavior: smooth;
-    color: var(--text-primary-color);
+    /* Hide scrollbars app-wide — scrolling still works (Firefox + IE/Edge). */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  p,
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  span,
-  label,
+  button,
   a,
-  button {
+  label,
+  select,
+  summary,
+  [role="button"] {
     cursor: pointer;
+  }
+
+  ::selection {
+    background: rgb(199 154 51 / 0.35);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+
+  /* Input fields never show a focus outline (the gold border + caret indicate
+     focus). Buttons/links keep the :focus-visible ring above for keyboard nav. */
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none;
+  }
+
+  /* Scrollbars hidden app-wide for WebKit/Blink (Chrome, Safari, Edge).
+     Scrolling still works; the bar just isn't drawn. Firefox/IE are handled by
+     scrollbar-width / -ms-overflow-style on the `*` reset above. */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+/* Reduced motion — kill the ambient celestial loops and smooth scrolling for
+   users who ask for it. framer-motion transforms are handled separately by
+   <MotionConfig reducedMotion="user"> in App.tsx; functional indicators
+   (.spinner, typing dots) intentionally keep animating — they convey state.
+   UNLAYERED on purpose: must beat the layered `animate-*` utilities. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto;
+  }
+  .animate-twinkle,
+  .animate-orbit,
+  .animate-orbit-slow,
+  .animate-breathe,
+  .animate-shimmer,
+  .animate-rise {
+    animation: none;
   }
 }
