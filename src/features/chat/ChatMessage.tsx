@@ -187,6 +187,28 @@ const latexToReadable = (tex: string): string => {
   return s.replace(/[ \t]+/g, " ").trim();
 };
 
+// A render error in ONE message (a transient highlight/KaTeX failure on
+// partially-streamed markup, say) must never blank the whole chat. This boundary
+// falls back to the raw text for that message and recovers on the next streamed
+// frame (resetKey grows with the content).
+class MessageErrorBoundary extends React.Component<
+  { resetKey: unknown; fallback: React.ReactNode; children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidUpdate(prev: { resetKey: unknown }) {
+    if (this.state.failed && prev.resetKey !== this.props.resetKey) {
+      this.setState({ failed: false });
+    }
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
 // Small ghost key - copy actions on parchment. The lift comes from framer
 // (`keyPress`); CSS animates color/border only (motion doctrine §7).
 const COPY_BTN =
@@ -545,9 +567,24 @@ const ChatMessage = ({
             </div>
           ) : (
             <>
-              <ReactMarkdown
+              <MessageErrorBoundary
+                resetKey={message}
+                fallback={
+                  <div className="whitespace-pre-wrap wrap-anywhere">
+                    {message}
+                  </div>
+                }
+              >
+                <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeHighlight, rehypeKatex]}
+                rehypePlugins={[
+                  // ignoreMissing: while streaming, a code fence's language tag
+                  // arrives char-by-char ("jav" before "java"), and an
+                  // unregistered language otherwise THROWS and (with no boundary)
+                  // blanked the whole chat. Now it just renders unhighlighted.
+                  [rehypeHighlight, { ignoreMissing: true }],
+                  rehypeKatex,
+                ]}
                 components={{
                   // `node` is destructured out (not a valid DOM attr) so it is
                   // never spread onto the native elements below - that spread
@@ -725,6 +762,7 @@ const ChatMessage = ({
               >
                 {escapeCurrency(message as string)}
               </ReactMarkdown>
+              </MessageErrorBoundary>
               {isStreaming && (
                 <span
                   className="ml-0.5 inline-block h-3.75 w-0.5 animate-blink rounded-full bg-gold align-middle"
