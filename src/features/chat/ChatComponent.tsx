@@ -396,16 +396,6 @@ const ChatComponent = ({
   // first message and conversation loads start glued to the latest turn.
   const pinnedToBottom = useRef(true);
 
-  // The scrollTop we last parked at the bottom while following (-1 = none).
-  // Content growth never LOWERS scrollTop, so if it drops below this the user
-  // scrolled up - and we let go instead of slamming back, which removes the
-  // residual one-frame scroll fight at its source.
-  // The last bottom (scrollHeight - clientHeight) we parked at. A scrollTop drop
-  // BELOW this is the user; a drop because the bottom itself moved up (a content
-  // shrink OR the context-tags block collapsing, which changes clientHeight) is
-  // just the browser clamping - not the user.
-  const followParkRef = useRef(-1);
-
   // Guards the "create a new conversation" insert so two rapid saves can't both
   // insert a row before the first conversation id propagates (would duplicate).
   const creatingConvRef = useRef(false);
@@ -425,40 +415,25 @@ const ChatComponent = ({
     const container = chatContainerRef.current;
     if (container) {
       container.scrollTop = container.scrollHeight;
-      followParkRef.current = container.scrollHeight - container.clientHeight;
     }
   };
 
-  // Auto-follow during streaming. Unlike the unconditional jump above, this lets
-  // go the instant the user scrolls up: while following we park at the bottom
-  // each frame, and content growth never lowers scrollTop - so any drop below
-  // the park is the user, and we release rather than fight to re-pin them.
+  // Auto-follow during streaming: while pinned, snap to the bottom each frame.
+  // Letting go is NOT decided here - it's driven by scroll-up intent (the wheel
+  // / touchmove listeners). Reading scrollTop to detect a scroll-up is unreliable
+  // because a streaming reflow (markdown / KaTeX re-rendering each frame), a
+  // shrinking bubble, or a collapsing context block all jitter scrollTop, and any
+  // of those would falsely read as the user scrolling up and stop following.
   const followToBottom = () => {
     if (!pinnedToBottom.current) return;
     const container = chatContainerRef.current;
     if (!container) return;
-    // Let go ONLY on a real scroll-up: scrollTop dropped below the parked bottom
-    // AND the bottom didn't move up under it. A shrinking bubble or a collapsing
-    // context block raises the bottom (smaller scrollHeight or larger
-    // clientHeight) and clamps scrollTop down - that's layout, not the user.
-    const bottom = container.scrollHeight - container.clientHeight;
-    if (
-      followParkRef.current >= 0 &&
-      container.scrollTop < followParkRef.current - 2 &&
-      bottom >= followParkRef.current
-    ) {
-      pinnedToBottom.current = false;
-      setShowJumpButton(true);
-      return;
-    }
     container.scrollTop = container.scrollHeight;
-    followParkRef.current = bottom;
   };
 
   // Re-pin and snap to the latest turn (used on send/submit and the jump btn).
   const pinAndScrollToBottom = () => {
     pinnedToBottom.current = true;
-    followParkRef.current = -1; // fresh follow: let it catch up to the bottom
     setShowJumpButton(false);
     requestAnimationFrame(scrollToBottomInstant);
   };
@@ -488,27 +463,17 @@ const ChatComponent = ({
       }
     };
 
-    // While pinned, the auto-scroll only ever INCREASES scrollTop, so any
-    // decrease is the user scrolling up - let go. Re-pin only once they are
-    // genuinely back at the bottom. (The old pure-distance threshold re-pinned
-    // on every small scroll, so the per-frame auto-scroll kept winning.)
-    let lastScrollTop = container.scrollTop;
-    let lastBottom = container.scrollHeight - container.clientHeight;
+    // Re-pin once the user is genuinely back at the bottom, and keep the jump
+    // button in sync. Unpinning is NOT done here: scroll events fire for
+    // programmatic scrolls, reflows, and clamps too, so inferring a scroll-up
+    // from scroll position is unreliable - it's driven by the wheel / touchmove
+    // intent listeners instead.
     const handleScroll = () => {
-      const top = container.scrollTop;
-      const bottom = container.scrollHeight - container.clientHeight;
-      const distanceFromBottom = bottom - top;
-      // Unpin on a genuine scroll-up only: scrollTop dropped AND the bottom
-      // didn't move up under it. A shrink or a collapsing context block raises
-      // the bottom and clamps scrollTop down - that's layout, not the user.
-      if (top < lastScrollTop - 1 && bottom >= lastBottom) {
-        pinnedToBottom.current = false;
-      } else if (distanceFromBottom < PIN_AT_BOTTOM) {
+      const distanceFromBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < PIN_AT_BOTTOM) {
         pinnedToBottom.current = true;
-        followParkRef.current = -1; // re-pinned by the user: allow catch-up
       }
-      lastScrollTop = top;
-      lastBottom = bottom;
       const pinned = pinnedToBottom.current;
       // Only flip state when it actually changes (avoids per-frame re-renders
       // during a streaming-driven scroll storm).
@@ -533,7 +498,6 @@ const ChatComponent = ({
     const resizeObserver = new ResizeObserver(() => {
       if (pinnedToBottom.current) {
         container.scrollTop = container.scrollHeight;
-        followParkRef.current = container.scrollHeight - container.clientHeight;
       }
     });
     resizeObserver.observe(container);
@@ -544,9 +508,6 @@ const ChatComponent = ({
     setShowJumpButton(false);
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
-      lastScrollTop = container.scrollTop;
-      lastBottom = container.scrollHeight - container.clientHeight;
-      followParkRef.current = lastBottom;
     });
     return () => {
       container.removeEventListener("scroll", handleScroll);
@@ -875,10 +836,9 @@ const ChatComponent = ({
           messageArray.push(...messagesFromConv(conv));
         }
 
-        // Re-pin and clear the park before committing so the [messages] effect
-        // snaps to the latest turn immediately (no flash if scrolled up earlier).
+        // Re-pin before committing so the [messages] effect snaps to the latest
+        // turn immediately (no flash if the user had scrolled up earlier).
         pinnedToBottom.current = true;
-        followParkRef.current = -1;
         setMessages(messageArray);
         setCurrentConversationId(id);
         setCurrentSessionId(data.session_id || `session-${Date.now()}`);
@@ -1738,7 +1698,6 @@ const ChatComponent = ({
     }
 
     pinnedToBottom.current = true;
-    followParkRef.current = -1;
     setMessages(messageArray);
 
     if (conversationPair.context_classes) {
