@@ -51,14 +51,6 @@ const TEXT_EXT = new Set([
 // Image extensions the browser/canvas can decode and re-encode for the API.
 const RASTER_IMG_EXT = /\.(png|jpe?g|gif|webp|bmp|tiff?|avif)$/i;
 
-const blobToDataUrl = (blob: Blob): Promise<string | null> =>
-  new Promise((resolve) => {
-    const r = new FileReader();
-    r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
-    r.onerror = () => resolve(null);
-    r.readAsDataURL(blob);
-  });
-
 // Ensure a data URL declares the given MIME (the API only accepts a fixed set).
 const withType = (dataUrl: string, type: string): string =>
   dataUrl.startsWith(`data:${type};`)
@@ -90,8 +82,9 @@ function bitmapToDataUrl(
   return canvas.toDataURL(preferType, 0.85);
 }
 
-// Decode + downscale an image blob. Falls back to the raw blob if the browser
-// can't decode it via canvas (e.g. some TIFF/SVG).
+// Decode + downscale an image blob to an API-accepted data URL. Returns null if
+// the browser can't decode it via canvas (e.g. an exotic/corrupt image) -
+// reporting "couldn't load" beats sending bytes the API would reject.
 async function imageToDataUrl(
   blob: Blob,
   preferType: "image/png" | "image/jpeg"
@@ -99,7 +92,7 @@ async function imageToDataUrl(
   try {
     return bitmapToDataUrl(await createImageBitmap(blob), preferType);
   } catch {
-    return blobToDataUrl(blob);
+    return null;
   }
 }
 
@@ -250,8 +243,13 @@ export async function resolveFileForAI(
       return { ...none, note: `[Could not convert photo "${name}".]` };
     }
 
-    // --- Other raster images (bmp/tiff/avif...) -> canvas -> vision ---
-    if (mime.startsWith("image/") || RASTER_IMG_EXT.test(lower)) {
+    // --- Other raster images (bmp/tiff/avif...) -> canvas -> vision. SVG is
+    // excluded here: it's readable XML (handled by the text path below) and
+    // rasterizing it via canvas is unreliable. ---
+    if (
+      (mime.startsWith("image/") && !mime.includes("svg")) ||
+      RASTER_IMG_EXT.test(lower)
+    ) {
       const url = await imageToDataUrl(blob, "image/png");
       if (url)
         return {
