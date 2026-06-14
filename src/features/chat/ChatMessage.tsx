@@ -149,21 +149,31 @@ const texScript = (
 };
 const latexToReadable = (tex: string): string => {
   let s = tex;
+  // Environment delimiters (matrices, aligned, cases): drop them; the & column
+  // separators and \\ row breaks are turned into spaces / "; " in cleanup.
+  s = s.replace(/\\(?:begin|end)\s*\{[^{}]*\}/g, "");
   // Strip styling wrappers (keep the content).
   s = s.replace(
     /\\(?:text|mathrm|mathbf|mathit|mathsf|mathtt|mathcal|mathbb|operatorname)\s*\{([^{}]*)\}/g,
     "$1"
   );
-  // Accents -> combining marks (computed so no combining char floats in source).
-  s = s.replace(/\\bar\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0304));
-  s = s.replace(/\\hat\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0302));
-  s = s.replace(/\\vec\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x20d7));
-  s = s.replace(/\\tilde\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0303));
-  s = s.replace(/\\dot\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0307));
-  // Greek + symbol commands -> Unicode (before frac/scripts so wrappers see it).
+  // Greek + symbol commands -> Unicode. Structural commands (\frac, \sqrt, \bar)
+  // aren't in the maps, so they're left intact for the brace loop below.
   s = s.replace(/\\([A-Za-z]+)/g, (m, n) => TEX_GREEK[n] ?? TEX_SYM[n] ?? m);
-  // Fractions -> a/b (parenthesize a multi-term numerator/denominator).
-  for (let i = 0; i < 4; i++) {
+  // Brace-commands, INNERMOST-FIRST: each pass only matches braces with no
+  // nested braces, so looping resolves nesting like \frac{\sqrt{..}}{..} (the
+  // \sqrt becomes √(..) first, freeing the \frac on the next pass).
+  for (let i = 0; i < 6; i++) {
+    const before = s;
+    // Accents -> combining marks (computed so no combining char sits in source).
+    s = s.replace(/\\bar\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0304));
+    s = s.replace(/\\hat\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0302));
+    s = s.replace(/\\vec\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x20d7));
+    s = s.replace(/\\tilde\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0303));
+    s = s.replace(/\\dot\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0307));
+    s = s.replace(/\^\{([^{}]*)\}/g, (_m, x) => texScript(x, TEX_SUP) ?? `^(${x})`);
+    s = s.replace(/_\{([^{}]*)\}/g, (_m, x) => texScript(x, TEX_SUB) ?? `_(${x})`);
+    s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, (_m, x) => `√(${x})`);
     s = s.replace(/\\(?:d|t)?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_m, a, b) => {
       const w = (x: string) => {
         x = x.trim();
@@ -171,14 +181,14 @@ const latexToReadable = (tex: string): string => {
       };
       return `${w(a)}/${w(b)}`;
     });
+    if (s === before) break;
   }
-  s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, (_m, x) => `√(${x})`);
-  s = s.replace(/\^\{([^{}]*)\}/g, (_m, x) => texScript(x, TEX_SUP) ?? `^(${x})`);
+  // Single-char scripts (no braces): x^2 -> x², a_i -> aᵢ.
   s = s.replace(/\^(\\?\w)/g, (_m, x) => texScript(x, TEX_SUP) ?? `^${x}`);
-  s = s.replace(/_\{([^{}]*)\}/g, (_m, x) => texScript(x, TEX_SUB) ?? `_(${x})`);
   s = s.replace(/_(\\?\w)/g, (_m, x) => texScript(x, TEX_SUB) ?? `_${x}`);
   s = s.replace(/\\left\s*/g, "").replace(/\\right\s*/g, "");
-  s = s.replace(/\\\\/g, "; "); // row break in a matrix/aligned block
+  s = s.replace(/\s*\\\\\s*/g, "; "); // matrix/aligned row break
+  s = s.replace(/\s*&\s*/g, " "); // matrix/aligned column separator
   s = s.replace(/\\[,;:!> ]/g, " "); // spacing commands
   s = s.replace(/[{}]/g, "");
   s = s.replace(/\\([%$&#_])/g, "$1"); // escaped literals
@@ -296,7 +306,14 @@ const ChatMessage = ({
     });
     t = t
       .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1") // images -> alt text
-      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // links -> link text
+      // Links -> "text (url)" so the destination isn't lost on a plain-text
+      // paste; a link whose url equals its text, or an in-page (#) anchor, keeps
+      // just the text. (Rich HTML paste keeps the real clickable link.)
+      .replace(/\[([^\]]+)\]\(([^)]*)\)/g, (_m, text, url) => {
+        const u = String(url).trim();
+        return !u || u === text || u.startsWith("#") ? text : `${text} (${u})`;
+      })
+      .replace(/\[\^([^\]]+)\]/g, "[$1]") // footnote refs/defs: [^1] -> [1]
       // Headings/blockquotes: trim only horizontal space ([ \t]) so the regex
       // can't swallow the preceding blank line and glue blocks together on copy.
       .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, "") // headings
@@ -305,11 +322,21 @@ const ChatMessage = ({
       // emphasis rules chew a run of * / _ down into a stray bullet/underscore.
       .replace(/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm, "")
       .replace(/~~(?=\S)(.*?\S)~~/g, "$1") // strikethrough
-      .replace(/(\*\*\*|\*\*|\*)(?=\S)(.*?\S)\1/g, "$2") // bold/italic (asterisk)
-      // Underscore emphasis is intentionally NOT stripped: `__init__`/`__name__`
-      // dunders and snake_case identifiers are far more common in study prose
-      // than `_italic_`, and mangling them silently corrupts copied answers.
+      // Task-list items -> a real checkbox glyph (BEFORE bullets so the "- "
+      // isn't turned into a bullet first): - [ ] -> ☐, - [x] -> ☑.
+      .replace(/^([ \t]*)[-*+][ \t]+\[([ xX])\][ \t]+/gm, (_m, ind, mk) =>
+        ind + (mk === " " ? "☐ " : "☑ ")
+      )
       .replace(/^([ \t]*)[-*+][ \t]+/gm, "$1• "); // bullet markers
+    // Bold/italic, LOOPED so italic nested inside bold is fully unwrapped (the
+    // outer ** goes first, then the inner * on the next pass). Underscore
+    // emphasis is intentionally NOT stripped: `__init__`/`__name__` dunders and
+    // snake_case identifiers are far more common in study prose than `_italic_`.
+    for (let i = 0; i < 3; i++) {
+      const before = t;
+      t = t.replace(/(\*\*\*|\*\*|\*)(?=\S)(.*?\S)\1/g, "$2");
+      if (t === before) break;
+    }
     // Inline math unwrap (shared so table cells get their FINAL width before
     // padding): real math (incl. digit-led like $3x$, $5+x$, $2\pi r$) is
     // unwrapped; currency ($5, "$5 and $10") and lone amounts are kept.
