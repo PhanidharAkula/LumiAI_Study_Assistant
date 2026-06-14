@@ -71,11 +71,13 @@ export default defineConfig(({ mode }) => {
       // <link rel="modulepreload"> natively; older ones just skip the hint and
       // still load the app through the module scripts.
       modulePreload: { polyfill: false },
-      // pdfjs-dist (~680 KB) is an irreducible vendor chunk, lazy-loaded only
-      // when a user uploads a PDF, so it legitimately exceeds Vite's default
-      // 500 KB chunk-size warning. Raise the limit just above it to keep the
-      // build log clean — every other chunk stays well under 500 KB.
-      chunkSizeWarningLimit: 750,
+      // A couple of irreducible vendor chunks are lazy-loaded only when their
+      // feature is used and legitimately exceed Vite's default 500 KB warning:
+      // pdfjs-dist (~680 KB, on PDF read) and heic2any/libheif (~1.35 MB, only
+      // when an iPhone HEIC needs converting in a browser that can't decode it
+      // natively). Raise the limit just above them to keep the build log clean;
+      // every eagerly-loaded chunk stays well under 500 KB.
+      chunkSizeWarningLimit: 1400,
       rollupOptions: {
         output: {
           // Peel the heavy, self-contained vendor libraries out of the route

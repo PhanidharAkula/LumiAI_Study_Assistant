@@ -10,7 +10,7 @@ import {
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { IconButton } from "@shared/components/controls";
 import type { UploadedFile } from "@shared/services/aiService";
-import { extractPdfText } from "@shared/lib/pdf";
+import { resolveFileForAI } from "@shared/lib/fileExtract";
 
 // Key for storing draft message in localStorage
 const DRAFT_MESSAGE_KEY = "lumiAI_draft_message";
@@ -117,88 +117,54 @@ const ChatInput = ({
     }
   };
 
-  // Extract text from text files
-  const extractTextFile = async (file: File): Promise<string | null> => {
-    try {
-      return await file.text();
-    } catch (error) {
-      console.error("Error reading text file:", error);
-      return null;
-    }
-  };
-
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-
     if (files.length === 0) return;
 
-    // File size limits (in bytes)
-    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB for images
-    const MAX_DOCUMENT_SIZE = 50 * 1024 * 1024; // 50MB for documents
-
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
     const validFiles: LocalUploadedFile[] = [];
     let errorMessage = "";
 
     for (const file of files) {
-      const isImage = file.type.startsWith("image/");
-      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
-      const maxSizeMB = isImage ? 20 : 50;
-
-      if (file.size > maxSize) {
-        errorMessage = `File "${
-          file.name
-        }" is too large. Maximum size is ${maxSizeMB}MB for ${
-          isImage ? "images" : "documents"
-        }.`;
+      if (file.size > MAX_FILE_SIZE) {
+        errorMessage = `File "${file.name}" is too large. Maximum size is 50MB.`;
         break;
       }
-
-      // Convert file to base64 for images (for vision API)
-      if (isImage) {
-        const reader = new FileReader();
-        const base64Promise = new Promise<LocalUploadedFile>((resolve) => {
-          reader.onload = (e: ProgressEvent<FileReader>) => {
-            resolve({
-              file,
-              type: file.type,
-              name: file.name,
-              size: file.size,
-              base64: e.target?.result as string,
-            });
-          };
-          reader.readAsDataURL(file);
-        });
-        validFiles.push(await base64Promise);
-      } else {
-        // Extract text from documents
-        let extractedText: string | null = null;
-
-        if (file.type === "application/pdf") {
-          extractedText = await extractPdfText(await file.arrayBuffer());
-        } else if (file.type === "text/plain") {
-          extractedText = await extractTextFile(file);
-        }
-
+      // Unified resolver: text and/or vision images - identical to the tagged
+      // class-file path (PDFs incl. scanned, docx/pptx, code/text, web images,
+      // HEIC, and a text sniff for unknown types).
+      const resolved = await resolveFileForAI(file, file.name);
+      const isImageFile =
+        file.type.startsWith("image/") ||
+        /\.(heic|heif|png|jpe?g|gif|webp|bmp|tiff?|avif)$/i.test(file.name);
+      if (isImageFile && resolved.images[0]) {
+        // A single image: keep it on `base64` (normalized type) so the sent
+        // message shows a thumbnail preview, not just a filename.
         validFiles.push({
           file,
-          type: file.type,
           name: file.name,
           size: file.size,
-          text: extractedText, // Store extracted text
+          type: resolved.images[0].type,
+          base64: resolved.images[0].base64,
+        });
+      } else {
+        // Document/other: text + any rendered page images (shown as a filename).
+        validFiles.push({
+          file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          text: resolved.text || resolved.note || null,
+          images: resolved.images,
         });
       }
     }
 
     if (errorMessage) {
-      setFileSizeError({
-        isOpen: true,
-        message: errorMessage,
-      });
-    } else if (validFiles.length > 0) {
+      setFileSizeError({ isOpen: true, message: errorMessage });
+    } else if (validFiles.length > 0 && onUploadFiles) {
       // The parent owns the file list (shown in ContextTags + sent on submit).
-      if (onUploadFiles) {
-        onUploadFiles(validFiles);
-      }
+      onUploadFiles(validFiles);
     }
 
     // Reset input
@@ -216,7 +182,6 @@ const ChatInput = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,.pdf,.txt"
           onChange={handleFileChange}
           style={{ display: "none" }}
         />

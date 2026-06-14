@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
-import { extractPdfText } from "@shared/lib/pdf";
+import { resolveFileForAI } from "@shared/lib/fileExtract";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import ContextTags from "./ContextTags";
@@ -900,45 +900,6 @@ const ChatComponent = ({
 
   // Tag selection is handled by `handleTagSelection` defined below (keeps modal control with TagSelector)
 
-  // Fetch a tagged image from storage and return it as a base64 vision input
-  // (the API accepts png/jpeg/gif/webp). Tagged images have no text to extract,
-  // so this is how they reach the model - the same shape as an uploaded image.
-  const fetchTaggedImage = async (fileObj: any): Promise<any | null> => {
-    try {
-      const { url, error } = await getFilePublicUrl("files", fileObj.path);
-      if (!url || error) return null;
-      const resp = await fetch(url);
-      if (!resp.ok) return null;
-      const blob = await resp.blob();
-      const dataUrl: string | null = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
-      });
-      if (!dataUrl || !dataUrl.startsWith("data:")) return null;
-      // The API only accepts these four types; trust the blob's type when it's
-      // one of them, otherwise derive it from the filename extension.
-      let type = blob.type;
-      if (!/^image\/(png|jpeg|gif|webp)$/.test(type)) {
-        const ext = (fileObj.name || "")
-          .toLowerCase()
-          .match(/\.(png|jpe?g|gif|webp)$/)?.[1];
-        type =
-          ext === "jpg" || ext === "jpeg"
-            ? "image/jpeg"
-            : ext
-              ? `image/${ext}`
-              : "image/png";
-      }
-      const b64 = dataUrl.split(",")[1] || "";
-      if (!b64) return null;
-      return { name: fileObj.name, type, base64: `data:${type};base64,${b64}` };
-    } catch {
-      return null;
-    }
-  };
-
   const buildAIContext = async () => {
     // Build a clear, delimited context block. This returns a short string
     // describing which classes and files are active. If nothing is selected,
@@ -983,116 +944,52 @@ const ChatComponent = ({
                 `- ${fileObj.name} (id: ${fileObj.id}) from ${cls.name}`
               );
 
-              // Attempt to fetch textual content for supported MIME types
+              // Resolve the file into text and/or vision images via the shared
+              // resolver (text/code, PDF text + figures, scanned PDFs, docx,
+              // pptx, web images, HEIC, and a text sniff for unknown types).
               try {
-                const mime = (fileObj.type || "").toLowerCase();
-                const fileName = (fileObj.name || "").toLowerCase();
-                const isText =
-                  mime.startsWith("text") ||
-                  mime.includes("json") ||
-                  mime.includes("xml") ||
-                  mime.includes("markdown") ||
-                  mime.includes("csv") ||
-                  mime.includes("plain");
-                const isPDF = mime.includes("pdf") || fileName.endsWith(".pdf");
-
-                if (isText) {
-                  const { url, error } = await getFilePublicUrl(
-                    "files",
-                    fileObj.path
-                  );
-                  if (url && !error) {
-                    try {
-                      const resp = await fetch(url);
-                      if (resp.ok) {
-                        const text = await resp.text();
-                        const truncated = text.slice(0, 20000);
-                        parts.push("---BEGIN FILE CONTENT---");
-                        parts.push(truncated);
-                        parts.push("---END FILE CONTENT---");
-                        if (text.length > truncated.length)
-                          parts.push("[Truncated file content]");
-                      } else {
-                        parts.push(
-                          `[Could not fetch file content: HTTP ${resp.status}]`
-                        );
-                      }
-                    } catch {
-                      parts.push("[Error fetching file content]");
+                const { url, error } = await getFilePublicUrl(
+                  "files",
+                  fileObj.path
+                );
+                if (url && !error) {
+                  const resp = await fetch(url);
+                  if (resp.ok) {
+                    const blob = await resp.blob();
+                    const resolved = await resolveFileForAI(
+                      blob,
+                      fileObj.name || "file"
+                    );
+                    if (resolved.text.trim()) {
+                      parts.push("---BEGIN FILE CONTENT---");
+                      parts.push(resolved.text);
+                      parts.push("---END FILE CONTENT---");
                     }
-                  } else {
-                    parts.push(
-                      "[Could not generate URL for file to fetch content]"
-                    );
-                  }
-                } else if (isPDF) {
-                  // Try to extract text from PDF client-side (all pages, no limit)
-                  try {
-                    const { url, error } = await getFilePublicUrl(
-                      "files",
-                      fileObj.path
-                    );
-                    if (url && !error) {
-                      // fetch binary and pass arrayBuffer to pdfjs
-                      const resp = await fetch(url);
-                      if (resp.ok) {
-                        const arrayBuffer = await resp.arrayBuffer();
-                        const pdfText = await extractPdfText(arrayBuffer);
-
-                        if (pdfText.trim().length > 0) {
-                          parts.push("---BEGIN FILE CONTENT (PDF EXTRACT)---");
-                          parts.push(pdfText);
-                          parts.push("---END FILE CONTENT (PDF EXTRACT)---");
-                        } else {
-                          parts.push(
-                            `[PDF "${fileObj.name}" appears to be image-based or contains no extractable text. Consider uploading it via the + button for image analysis.]`
-                          );
-                        }
-                      } else {
-                        console.error(
-                          `❌ PDF fetch failed: HTTP ${resp.status}`
-                        );
-                        parts.push(
-                          `[Could not fetch PDF: HTTP ${resp.status}]`
-                        );
-                      }
-                    } else {
-                      console.error(`❌ Could not get PDF URL:`, error);
+                    if (resolved.note) parts.push(resolved.note);
+                    for (const img of resolved.images) {
+                      images.push({
+                        name: fileObj.name,
+                        type: img.type,
+                        base64: img.base64,
+                      });
+                    }
+                    if (
+                      !resolved.text.trim() &&
+                      !resolved.images.length &&
+                      !resolved.note
+                    ) {
                       parts.push(
-                        "[Could not generate URL for PDF to extract content]"
+                        `[${fileObj.type || "file"} - no readable content]`
                       );
                     }
-                  } catch (err) {
-                    console.error("PDF extraction error:", err);
-                    parts.push(
-                      `[⚠️ Unable to extract text from PDF "${fileObj.name}". The file may be image-based or have extraction restrictions. Consider uploading it via the + button for analysis.]`
-                    );
-                  }
-                } else if (
-                  /^image\/(png|jpeg|gif|webp)$/.test(mime) ||
-                  /\.(png|jpe?g|gif|webp)$/.test(fileName)
-                ) {
-                  // Images can't be text-extracted: fetch + base64 so the model
-                  // gets them as actual VISION inputs (merged into the API files
-                  // below), the same way an uploaded image is handled.
-                  const img = await fetchTaggedImage(fileObj);
-                  if (img) {
-                    images.push(img);
-                    parts.push(
-                      `[Image "${fileObj.name}" is attached below for you to view.]`
-                    );
                   } else {
-                    parts.push(`[Could not load image "${fileObj.name}".]`);
+                    parts.push(`[Could not fetch file: HTTP ${resp.status}]`);
                   }
                 } else {
-                  parts.push(
-                    `[${
-                      fileObj.type || "file"
-                    } not included - content not extracted]`
-                  );
+                  parts.push("[Could not generate URL for file]");
                 }
               } catch {
-                parts.push("[Error while attempting to include file content]");
+                parts.push("[Error reading file]");
               }
 
               break;
