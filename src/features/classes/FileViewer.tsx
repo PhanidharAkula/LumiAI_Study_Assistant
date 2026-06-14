@@ -4,6 +4,7 @@ import { Constellation, UI, btnClass } from "@shared/components/atlas";
 import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
 import { pressLift } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
+import { isTextLikeFile } from "@shared/lib/fileExtract";
 
 interface FileMeta {
   name: string;
@@ -20,25 +21,60 @@ interface FileViewerProps {
 
 const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
   const [loading, setLoading] = useState(true);
+  const [textContent, setTextContent] = useState<string | null>(null);
+  const [textError, setTextError] = useState(false);
 
   // Fullscreen takeover: lock background scroll and close on Escape (shared,
   // reference-counted/stacked so a dialog above it pops first).
   useScrollLock(true);
   useEscapeToClose(true, onClose);
 
+  // Text/code/data files preview as text (fetched below); images + PDFs render
+  // directly. Everything else falls back to the download card.
+  const isText =
+    !!file &&
+    !file.type?.includes("image") &&
+    !file.type?.includes("pdf") &&
+    isTextLikeFile(file.name, file.type);
   const isGenericFile = file
-    ? !(
-        file.type?.includes("image") ||
-        file.type?.includes("pdf") ||
-        file.type?.includes("text") ||
-        file.name.endsWith(".txt")
-      )
+    ? !(file.type?.includes("image") || file.type?.includes("pdf") || isText)
     : false;
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Fetch the text for text/code/data previews and render it (escaped) in a
+  // <pre> - reliable regardless of the stored MIME, and safer than framing the
+  // raw file. Capped so a huge file can't freeze the viewer.
+  useEffect(() => {
+    if (!isText || !url) return;
+    let cancelled = false;
+    setLoading(true);
+    setTextContent(null);
+    setTextError(false);
+    fetch(url)
+      .then((r) =>
+        r.ok ? r.text() : Promise.reject(new Error(String(r.status)))
+      )
+      .then((t) => {
+        if (cancelled) return;
+        const MAX = 500_000;
+        setTextContent(
+          t.length > MAX ? t.slice(0, MAX) + "\n\n[Preview truncated]" : t
+        );
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTextError(true);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isText, url]);
 
   const handleSmallButtonDownload = async () => {
     if (!url || !file?.name) return;
@@ -87,18 +123,23 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
       );
     }
 
-    if (file.type?.includes("text") || file.name.endsWith(".txt")) {
+    if (isText) {
+      if (loading) return null;
       return (
-        // sandbox="" fully isolates the framed file: an uploaded .txt/.html is
-        // displayed but can never execute scripts (files are served from the
-        // storage origin), neutralizing stored-XSS via a malicious upload.
-        <iframe
-          src={url}
-          sandbox=""
-          className="h-full w-full border-none"
-          onLoad={() => setLoading(false)}
-          title={file.name}
-        />
+        // Rendered as escaped text in a <pre> (not framed), so a malicious
+        // upload can't execute scripts - and any text/code/data format previews,
+        // not just .txt.
+        <div className="h-full w-full overflow-auto bg-white">
+          {textError ? (
+            <div className="flex h-full items-center justify-center p-6 text-center text-[14px] text-muted">
+              Couldn't load a preview for this file.
+            </div>
+          ) : (
+            <pre className="m-0 whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-[1.6] text-ink">
+              {textContent}
+            </pre>
+          )}
+        </div>
       );
     }
 

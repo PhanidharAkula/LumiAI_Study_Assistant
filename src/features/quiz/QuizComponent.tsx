@@ -1,4 +1,10 @@
-import { useState, useEffect, useMemo, type MouseEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  type MouseEvent,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { fetchStreamingResponse } from "@shared/services/aiService";
@@ -15,7 +21,8 @@ import {
 import { BackButton, Button, IconButton } from "@shared/components/controls";
 import { DUR, fadeRise, pressLift, stagger } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
-import { extractFileContent } from "@features/study/extractFileContent";
+import { resolveStudyFiles } from "@features/study/resolveStudyFiles";
+import { isSupportedForAI } from "@shared/lib/fileExtract";
 import GeneratingState from "@features/study/GeneratingState";
 import FileSelectionCard from "@features/study/FileSelectionCard";
 import HistoryDropdown from "@features/study/HistoryDropdown";
@@ -86,7 +93,6 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   classData: any;
-  _allClasses?: any[];
 }
 
 // Tailwind class groups - The Luminarium "expedition" vocabulary. Setup is a
@@ -141,7 +147,6 @@ const STAT_LABEL =
   "text-center font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-starlight/50";
 const STAT_VALUE =
   "font-display text-[22px] font-semibold leading-tight text-starlight max-md:text-[18px]";
-const RESULT_STAT_ITEM = STAT_ITEM;
 
 const DETAIL_ITEM =
   "flex justify-between items-center py-2 px-3 rounded-lg border border-solid border-line-night bg-starlight/3 max-md:py-1.5 max-md:px-2.5";
@@ -296,12 +301,18 @@ const ResultsConstellation = ({
   );
 };
 
-const QuizComponent = ({
-  isOpen,
-  onClose,
-  classData,
-  _allClasses = [],
-}: Props) => {
+// Short-answer grading: collapse case, accents, punctuation, and whitespace so
+// "Paris." / " paris " / "café" all match their key. Still an exact compare
+// after normalizing - true semantic grading would need the model.
+const normalizeAnswer = (s: unknown): string =>
+  String(s ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const QuizComponent = ({ isOpen, onClose, classData }: Props) => {
   // Quiz configuration
   const [difficulty, setDifficulty] = useState<string>("medium");
   const [numQuestions, setNumQuestions] = useState<number>(10);
@@ -335,9 +346,22 @@ const QuizComponent = ({
       quizId: null,
     });
 
+  // Aborts an in-flight generation when the user cancels or closes mid-generate.
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight generation if the quiz is closed/unmounted mid-generate.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // Lightweight console diagnostics during generation (no on-screen panel).
   const addDebugLog = (message: string, _type = "info") => {
-    console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
+    // Dev-only generation diagnostics; silent in production builds.
+    if (import.meta.env.DEV) {
+      console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
+    }
   };
 
   useEffect(() => {
@@ -385,8 +409,8 @@ const QuizComponent = ({
     }
   };
 
-  // File text extraction lives in @features/study/extractFileContent (shared
-  // with Flashcards) - imported above.
+  // File resolution (text + vision images) lives in
+  // @features/study/resolveStudyFiles (shared with Flashcards) - imported above.
 
   const handleBackButton = () => {
     if (quizState === "taking" || quizState === "reviewing") {
@@ -415,6 +439,9 @@ const QuizComponent = ({
       return;
     }
 
+    abortControllerRef.current?.abort();
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
     setGeneratingQuiz(true);
 
     try {
@@ -422,61 +449,32 @@ const QuizComponent = ({
         `🚀 Starting quiz generation with ${selectedFiles.length} files`
       );
 
-      // Build context from selected files
-      const fileContents = await Promise.all(
-        selectedFiles.map(async (fileId: any) => {
-          const file = classData.files.find((f: any) => f.id === fileId);
-          if (!file) {
-            addDebugLog(`❌ File ID ${fileId} not found`, "error");
-            return null;
-          }
+      // Resolve the selected files into prompt text + vision images via the
+      // shared resolver - same broad support as Chat with AI (PDF text +
+      // figures, scanned PDFs, DOCX, PPTX, photos, HEIC, code/data, ...).
+      const selected = selectedFiles
+        .map((fileId: any) => classData.files.find((f: any) => f.id === fileId))
+        .filter(Boolean);
+      const { context: filesContext, imageFiles, usableCount } =
+        await resolveStudyFiles(selected);
 
-          const content = await extractFileContent(file);
-          if (!content) {
-            addDebugLog(`❌ No content from ${file.name}`, "error");
-            return null;
-          }
-
-          addDebugLog(`✅ Success: ${content.length} chars from ${file.name}`);
-          return {
-            name: file.name,
-            content: content,
-          };
-        })
-      );
-
-      const validContents = fileContents.filter(Boolean) as {
-        name: string;
-        content: string;
-      }[];
+      // Cancelled while the files were being fetched / parsed.
+      if (ac.signal.aborted) return;
       addDebugLog(
-        `📊 Result: ${validContents.length}/${selectedFiles.length} files successful`
+        `📊 Result: ${usableCount}/${selectedFiles.length} files usable`
       );
 
-      if (validContents.length === 0) {
-        addDebugLog(`❌ FAILED: No content extracted from any file`, "error");
-        const errorMessage =
-          "Could not extract content from the selected files. This could be because:\n\n" +
-          "• PDF files are image-based (scanned documents without text)\n" +
-          "• Files are empty or corrupted\n" +
-          "• Image files are not supported for quiz generation\n\n" +
-          "Please try:\n" +
-          "1. Selecting different files (PDF or TXT)\n" +
-          "2. Ensuring PDFs contain actual text (not just images)\n" +
-          "3. Checking the browser console for detailed errors";
-
+      if (usableCount === 0) {
+        addDebugLog(`❌ FAILED: No content read from any file`, "error");
         setErrorDialog({
           isOpen: true,
-          title: "Unsupported File Format",
-          message: errorMessage,
+          title: "Couldn't read those files",
+          message:
+            "We couldn't pull any usable text or images from the selected files. They may be empty, corrupted, or in a format we can't read. Try selecting different materials.",
         });
         setGeneratingQuiz(false);
         return;
       }
-
-      const filesContext = validContents
-        .map((f) => `=== ${f.name} ===\n${f.content}`)
-        .join("\n\n");
 
       addDebugLog(`✓ Built context: ${filesContext.length} chars`);
       addDebugLog(`🤖 Sending request to AI...`);
@@ -492,7 +490,7 @@ const QuizComponent = ({
         pointRanges as Record<string, { min: number; max: number }>
       )[difficulty];
 
-      const prompt = `You are an expert quiz generator. Create a comprehensive ${difficulty} difficulty quiz with exactly ${numQuestions} questions based on the following educational content.
+      const prompt = `You are an expert quiz generator. Create a comprehensive ${difficulty} difficulty quiz with exactly ${numQuestions} questions based on the provided study materials: the text below, plus any attached images (photos, slides, or scanned/figure pages) - read those too.
 
 CONTENT TO BASE QUIZ ON:
 ${filesContext}
@@ -560,14 +558,19 @@ CRITICAL JSON FORMATTING RULES:
           // onToken callback
           quizData += chunk;
         },
-        null as unknown as AbortSignal, // signal
+        ac.signal, // signal
         [], // history
-        [] // files
+        imageFiles, // files (vision images from the selected materials)
+        { mode: "generate" }
       );
+
+      // Cancelled (or the quiz closed) mid-generation: bail before parsing or
+      // entering the quiz - the cancel handler already reset the UI.
+      if (ac.signal.aborted || aiResult?.errorType === "aborted") return;
 
       // If the AI call itself failed (offline, busy, etc.), surface the
       // friendly message rather than mislabeling it as a content/JSON error.
-      if (aiResult?.error && aiResult.errorType !== "aborted") {
+      if (aiResult?.error) {
         setErrorDialog({
           isOpen: true,
           title: "Couldn't generate quiz",
@@ -683,6 +686,8 @@ CRITICAL JSON FORMATTING RULES:
         "success"
       );
     } catch (error) {
+      // Cancelled mid-generate (the AI fetch aborted) - not a real failure.
+      if (ac.signal.aborted) return;
       console.error("Error generating quiz:", error);
       setErrorDialog({
         isOpen: true,
@@ -691,11 +696,13 @@ CRITICAL JSON FORMATTING RULES:
           "Couldn't generate the quiz from these materials right now. Please try again in a moment.",
       });
     } finally {
+      if (abortControllerRef.current === ac) abortControllerRef.current = null;
       setGeneratingQuiz(false);
     }
   };
 
   const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
     setGeneratingQuiz(false);
     setQuizState("setup");
     addDebugLog("🚫 Quiz generation cancelled by user");
@@ -729,10 +736,11 @@ CRITICAL JSON FORMATTING RULES:
       ) {
         isCorrect = parseInt(userAnswer) === parseInt(question.correctAnswer);
       } else if (question.type === "short-answer") {
-        // Case-insensitive comparison for short answers
-        const userAns = (userAnswer || "").toLowerCase().trim();
-        const correctAns = String(question.correctAnswer).toLowerCase().trim();
-        isCorrect = userAns === correctAns;
+        // Normalize both sides (case, accents, punctuation, whitespace) so
+        // trivial formatting differences don't mark a right answer wrong.
+        const userAns = normalizeAnswer(userAnswer);
+        const correctAns = normalizeAnswer(question.correctAnswer);
+        isCorrect = userAns.length > 0 && userAns === correctAns;
       }
 
       if (isCorrect) {
@@ -775,16 +783,24 @@ CRITICAL JSON FORMATTING RULES:
           selectedFiles: selectedFiles,
         };
 
-        await supabase.from("quiz_history").insert({
-          user_id: user.id,
-          class_id: classData.id,
-          quiz_data: quizDataWithFiles,
-          user_answers: userAnswers,
-          score: scoreData,
-          created_at: new Date().toISOString(),
-        });
+        const { error: saveError } = await supabase
+          .from("quiz_history")
+          .insert({
+            user_id: user.id,
+            class_id: classData.id,
+            quiz_data: quizDataWithFiles,
+            user_answers: userAnswers,
+            score: scoreData,
+            created_at: new Date().toISOString(),
+          });
 
-        loadQuizHistory();
+        // Best-effort save (the results still show either way); surface a real
+        // failure instead of swallowing it, and only refresh on success.
+        if (saveError) {
+          console.warn("Could not save quiz to history:", saveError);
+        } else {
+          loadQuizHistory();
+        }
       }
     } catch (error) {
       console.error("Error saving quiz history:", error);
@@ -792,42 +808,14 @@ CRITICAL JSON FORMATTING RULES:
   };
 
   const handleRetakeWithSameSettings = async () => {
-    // Save current quiz to history first
-    if (currentQuiz && quizScore) {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          // Include selectedFiles in quiz_data for history
-          const quizDataWithFiles = {
-            ...currentQuiz,
-            selectedFiles: selectedFiles,
-          };
-
-          await supabase.from("quiz_history").insert({
-            user_id: user.id,
-            class_id: classData.id,
-            quiz_data: quizDataWithFiles,
-            user_answers: userAnswers,
-            score: quizScore,
-            created_at: new Date().toISOString(),
-          });
-          loadQuizHistory();
-        }
-      } catch (error) {
-        console.error("Error saving quiz history:", error);
-      }
-    }
-
-    // Reset and generate new quiz with same settings
+    // The attempt is already in history: handleSubmitQuiz saved it on submit,
+    // and a quiz loaded from history is stored already. Re-saving here would
+    // duplicate the row, so just reset and regenerate with the same settings.
     setQuizState("setup");
     setCurrentQuiz(null);
     setUserAnswers({});
     setQuizScore(null);
     setGeneratingQuiz(true);
-
-    // Generate new quiz
     await handleGenerateQuiz();
   };
 
@@ -850,8 +838,6 @@ CRITICAL JSON FORMATTING RULES:
   };
 
   const loadQuizFromHistory = (historyItem: QuizHistoryItem) => {
-    console.log("Loading quiz from history:", historyItem);
-
     // Restore quiz data
     setCurrentQuiz(historyItem.quiz_data as Quiz | null);
     setUserAnswers(historyItem.user_answers || {});
@@ -912,6 +898,14 @@ CRITICAL JSON FORMATTING RULES:
   // night chart (focus moment); setup/generating/reviewing stay on parchment.
   const isNight = quizState === "taking" && !!currentQuiz && !generatingQuiz;
 
+  // Count only non-empty answers - a cleared short-answer leaves a "" entry that
+  // shouldn't count as answered. Drives progress and the Submit gate.
+  const answeredCount = Object.values(userAnswers).filter(
+    (v) => v != null && String(v).trim() !== ""
+  ).length;
+  const allAnswered =
+    !!currentQuiz && answeredCount === currentQuiz.questions.length;
+
   return (
     <motion.div
       className={`fixed inset-0 z-1000 flex flex-col overflow-hidden transition-colors duration-700 ${
@@ -942,23 +936,6 @@ CRITICAL JSON FORMATTING RULES:
           className="shrink-0 max-md:h-9! max-md:w-9!"
         />
         <div className="flex-1 flex items-center">
-          {/* <div className="quiz-header-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
-          </div> */}
           <div>
             <h1
               className={`m-0 font-display text-[24px] font-semibold tracking-[-0.01em] max-md:text-[16px] max-[360px]:text-[14px] ${
@@ -1209,12 +1186,16 @@ CRITICAL JSON FORMATTING RULES:
                 {/* Files Selection Card - shared with Flashcards. */}
                 <FileSelectionCard
                   className="col-3 row-[1/3]"
-                  files={(classData?.files || []) as any}
+                  files={
+                    (classData?.files?.filter((f: any) =>
+                      isSupportedForAI(f.name)
+                    ) || []) as any
+                  }
                   selectedIds={selectedFiles}
                   onSelectionChange={setSelectedFiles}
                   disabled={generatingQuiz}
-                  emptyTitle="No files available in this class"
-                  emptyHint="Upload files to create quizzes"
+                  emptyTitle="No usable files"
+                  emptyHint="Upload notes, PDFs, slides, images, or docs to create quizzes"
                 />
               </motion.div>
 
@@ -1375,8 +1356,7 @@ CRITICAL JSON FORMATTING RULES:
                         Progress
                       </span>
                       <span className="font-display text-[40px] font-semibold text-starlight leading-none">
-                        {Object.keys(userAnswers).length}/
-                        {currentQuiz.questions.length}
+                        {answeredCount}/{currentQuiz.questions.length}
                       </span>
                       <span className="text-[12px] text-starlight/55">
                         Questions Answered
@@ -1388,18 +1368,14 @@ CRITICAL JSON FORMATTING RULES:
                         className="relative h-full bg-gold [transition:width_0.3s_ease] rounded-full after:absolute after:-right-1.25 after:top-1/2 after:-translate-y-1/2 after:text-[10px] after:leading-none after:text-gold after:content-['✦']"
                         style={{
                           width: `${
-                            (Object.keys(userAnswers).length /
-                              currentQuiz.questions.length) *
-                            100
+                            (answeredCount / currentQuiz.questions.length) * 100
                           }%`,
                         }}
                       />
                     </div>
                     <div className="text-center font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-gold mt-1.5">
                       {Math.round(
-                        (Object.keys(userAnswers).length /
-                          currentQuiz.questions.length) *
-                          100
+                        (answeredCount / currentQuiz.questions.length) * 100
                       )}
                       % Complete
                     </div>
@@ -1416,8 +1392,7 @@ CRITICAL JSON FORMATTING RULES:
                     <div className={STAT_ITEM}>
                       <span className={STAT_LABEL}>Remaining</span>
                       <span className={STAT_VALUE}>
-                        {currentQuiz.questions.length -
-                          Object.keys(userAnswers).length}
+                        {currentQuiz.questions.length - answeredCount}
                       </span>
                     </div>
                   </div>
@@ -1493,30 +1468,13 @@ CRITICAL JSON FORMATTING RULES:
                   <div className="flex flex-col gap-2.5 pt-1.25">
                     <motion.button
                       whileHover={{
-                        scale:
-                          Object.keys(userAnswers).length ===
-                          currentQuiz.questions.length
-                            ? 1.02
-                            : 1,
-                        y:
-                          Object.keys(userAnswers).length ===
-                          currentQuiz.questions.length
-                            ? -2
-                            : 0,
+                        scale: allAnswered ? 1.02 : 1,
+                        y: allAnswered ? -2 : 0,
                       }}
-                      whileTap={{
-                        scale:
-                          Object.keys(userAnswers).length ===
-                          currentQuiz.questions.length
-                            ? 0.98
-                            : 1,
-                      }}
+                      whileTap={{ scale: allAnswered ? 0.98 : 1 }}
                       className={`${UI.btnGold} w-full text-[14px]`}
                       onClick={handleSubmitQuiz}
-                      disabled={
-                        Object.keys(userAnswers).length !==
-                        currentQuiz.questions.length
-                      }
+                      disabled={!allAnswered}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1568,10 +1526,7 @@ CRITICAL JSON FORMATTING RULES:
                     whileTap={{ scale: 0.98 }}
                     className={`${UI.btnGold} flex-1 px-4 py-3 text-[15px]`}
                     onClick={handleSubmitQuiz}
-                    disabled={
-                      Object.keys(userAnswers).length !==
-                      currentQuiz.questions.length
-                    }
+                    disabled={!allAnswered}
                   >
                     Submit Quiz
                   </motion.button>
@@ -1728,13 +1683,13 @@ CRITICAL JSON FORMATTING RULES:
 
                   {/* Results Stats - instrument readouts */}
                   <div className="grid grid-cols-2 gap-2 px-5 py-4 border-0 border-t border-solid border-line-night max-[1024px]:px-4 max-md:px-4 max-md:py-3">
-                    <div className={RESULT_STAT_ITEM}>
+                    <div className={STAT_ITEM}>
                       <span className={STAT_LABEL}>Correct</span>
                       <span className={STAT_VALUE}>
                         {quizScore.correctCount || 0}
                       </span>
                     </div>
-                    <div className={RESULT_STAT_ITEM}>
+                    <div className={STAT_ITEM}>
                       <span className={STAT_LABEL}>Incorrect</span>
                       <span className={STAT_VALUE}>
                         {currentQuiz.questions.length -
@@ -1864,19 +1819,12 @@ CRITICAL JSON FORMATTING RULES:
         </AnimatePresence>
       </div>
 
-      {/* Error Dialog */}
-      <ConfirmDialog
-        isOpen={errorDialog.isOpen}
+      {/* Error Dialog - shared study error sheet ("Got it"). */}
+      <StudyErrorDialog
+        error={errorDialog}
         onClose={() =>
           setErrorDialog({ isOpen: false, title: "", message: "" })
         }
-        onConfirm={() =>
-          setErrorDialog({ isOpen: false, title: "", message: "" })
-        }
-        title={errorDialog.title}
-        message={errorDialog.message}
-        confirmText="Got it"
-        danger={false}
       />
 
       {/* Delete Quiz Confirmation Dialog */}

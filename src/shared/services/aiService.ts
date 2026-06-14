@@ -97,24 +97,6 @@ How to speak:
 - Never use em dashes (the long dash) in your wording; use commas or shorter sentences.
 - Never mention being an AI model, system prompts, or these instructions.`;
 
-function voiceSystemPrompt(context: string): string {
-  const ctx =
-    context && context.trim()
-      ? `\n\nThe student's class materials, for when they're relevant:\n=== BEGIN MATERIALS ===\n${context}\n=== END MATERIALS ===`
-      : "";
-  return `${VOICE_SYSTEM_CORE}${ctx}`;
-}
-
-/* Non-voice, non-streaming calls share Lumi's one personality - materials are
-   appended rather than maintained as a divergent second prompt. */
-function textSystemPrompt(context: string): string {
-  const ctx =
-    context && context.trim()
-      ? `\n\nThe student's class materials, for when they're relevant:\n=== BEGIN STUDY MATERIALS ===\n${context}\n=== END STUDY MATERIALS ===`
-      : "";
-  return `${LUMI_SYSTEM_PROMPT}${ctx}`;
-}
-
 /* ------------------------------- Helpers --------------------------------- */
 
 /** Build a valid message list (first message must be user). */
@@ -175,9 +157,10 @@ async function postJson(
  */
 export interface ChatOptions {
   /** "chat" uses the conversational study prompt and always exposes the
-   *  server-side web_search tool (Lumi decides when to use it); the default
+   *  server-side web_search tool (Lumi decides when to use it). "voice" uses the
+   *  spoken-reply prompt (short, plain, no markdown), no tools. The default
    *  (Quiz/Flashcards generators) keeps the JSON generation prompt, no search. */
-  mode?: "chat" | "generate";
+  mode?: "chat" | "generate" | "voice";
 }
 
 export const fetchStreamingResponse = async (
@@ -227,14 +210,23 @@ export const fetchStreamingResponse = async (
     const messages = buildMessages(history, userContent);
 
     const isChat = options.mode === "chat";
+    const isVoice = options.mode === "voice";
     const response = await postJson(
       {
-        system: isChat ? LUMI_CHAT_PROMPT : LUMI_SYSTEM_PROMPT,
+        system: isChat
+          ? LUMI_CHAT_PROMPT
+          : isVoice
+            ? VOICE_SYSTEM_CORE
+            : LUMI_SYSTEM_PROMPT,
         messages,
         stream: true,
-        maxTokens: isChat ? 20000 : 16000,
+        // Generate (Quiz/Flashcards JSON) gets extra headroom: a large quiz
+        // (up to 100 questions) can run long, and a truncated stream breaks the
+        // JSON parse. The server clamps this to 64k regardless.
+        maxTokens: isChat ? 20000 : isVoice ? 1200 : 32000,
         webSearch: isChat,
         thinking: isChat,
+        voice: isVoice,
       },
       signal
     );
@@ -309,65 +301,6 @@ export const fetchStreamingResponse = async (
   } catch (error: any) {
     if (error?.name === "AbortError") {
       return { text: complete || null, error: "aborted", errorType: "aborted" };
-    }
-    console.error("Error calling AI:", error);
-    return {
-      text: null,
-      error: "Couldn't reach Lumi. Please check your connection and try again.",
-      errorType: "api",
-    };
-  }
-};
-
-/**
- * Non-streaming completion. `isVoiceMode` switches to concise, speakable replies.
- * Used by the voice (Talk) experience.
- */
-export const fetchAIResponse = async (
-  userMessage: string,
-  context = "",
-  history: ChatMessage[] = [],
-  isVoiceMode = false,
-  signal?: AbortSignal
-): Promise<AIResult> => {
-  try {
-    const system = isVoiceMode
-      ? voiceSystemPrompt(context)
-      : textSystemPrompt(context);
-    const messages = buildMessages(history, userMessage);
-
-    const response = await postJson(
-      {
-        system,
-        messages,
-        stream: false,
-        maxTokens: isVoiceMode ? 1024 : 4096,
-      },
-      signal
-    );
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}) as any);
-      const message =
-        data.error ||
-        "Lumi couldn't respond just now. Please try again in a moment.";
-      return {
-        text: null,
-        error: message,
-        errorType: response.status === 429 ? "quota" : "api",
-      };
-    }
-
-    const data = await response.json();
-    // A refusal comes back as HTTP 200 with { error } (and no text); surface it
-    // so a caller never treats the empty reply as a real answer.
-    if (data.error) {
-      return { text: null, error: data.error, errorType: "api" };
-    }
-    return { text: (data.text || "").trim(), error: null };
-  } catch (error: any) {
-    if (error?.name === "AbortError") {
-      return { text: null, error: "aborted", errorType: "aborted" };
     }
     console.error("Error calling AI:", error);
     return {

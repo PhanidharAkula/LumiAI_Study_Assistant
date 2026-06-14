@@ -12,9 +12,10 @@ function devApiPlugin() {
     apply: "serve",
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (!req.url || !req.url.startsWith("/api/chat")) return next();
+        const route = (req.url || "").match(/^\/api\/(chat|tts)(?:[/?]|$)/);
+        if (!route) return next();
         try {
-          const mod = await server.ssrLoadModule("/api/chat.ts");
+          const mod = await server.ssrLoadModule(`/api/${route[1]}.ts`);
           await mod.default(req, res);
         } catch (err) {
           server.config.logger.error(
@@ -41,6 +42,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   if (env.LUMI_API_KEY) process.env.LUMI_API_KEY = env.LUMI_API_KEY;
   if (env.LUMI_MODEL) process.env.LUMI_MODEL = env.LUMI_MODEL;
+  // Text-to-speech (voice replies) - key + optional model override.
+  if (env.LUMI_TTS_KEY) process.env.LUMI_TTS_KEY = env.LUMI_TTS_KEY;
+  if (env.LUMI_TTS_MODEL) process.env.LUMI_TTS_MODEL = env.LUMI_TTS_MODEL;
   // Expose Supabase URL + anon key to the dev /api/chat so it can verify the
   // caller's session (in production Vercel provides these to the function).
   if (env.VITE_SUPABASE_URL)

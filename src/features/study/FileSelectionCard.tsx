@@ -7,7 +7,7 @@
 import { motion } from "framer-motion";
 import { Constellation, UI } from "@shared/components/atlas";
 import { fadeRise, keyPress } from "@shared/motion";
-import type { StudyFile } from "./extractFileContent";
+import type { StudyFile } from "./resolveStudyFiles";
 
 const fileRow = (checked: boolean) =>
   `flex items-center gap-3 rounded-lg border border-solid px-3.5 py-3 cursor-pointer transition-colors duration-200 ${

@@ -9,9 +9,15 @@
  * and through the Vite dev middleware (which does not) - see vite.config.js.
  */
 import AI from "@anthropic-ai/sdk";
+import { getAuthedUser } from "./_auth";
 
 // The chat model id, supplied by the LUMI_MODEL env var.
 const MODEL = process.env.LUMI_MODEL || "";
+
+// Voice (Talk) replies use a faster model by default for low latency - they're
+// short and spoken, so they don't need the heavier chat model. Override with
+// LUMI_VOICE_MODEL (e.g. set it to LUMI_MODEL for matching quality).
+const VOICE_MODEL = process.env.LUMI_VOICE_MODEL || "claude-haiku-4-5";
 
 // Thinking effort for chat. Sonnet 4.6 defaults to "high", which over-reasons
 // (and over-delays) lighter turns; "medium" keeps answer quality while trimming
@@ -36,6 +42,8 @@ interface ChatBody {
   /** When true, enable adaptive extended thinking (hidden reasoning before the
    *  answer). Keeps any "should I search?" deliberation out of the streamed text. */
   thinking?: boolean;
+  /** When true, this is a spoken (Talk) reply: use the faster voice model. */
+  voice?: boolean;
 }
 
 /** Read + parse the JSON body whether or not the runtime pre-parsed it. */
@@ -123,57 +131,6 @@ function friendlyError(status?: number, raw?: string): string {
   return "Lumi couldn't respond just now. Please try again in a moment.";
 }
 
-type AuthResult =
-  | { ok: true; userId: string }
-  | { ok: false; status: 401 | 503 };
-
-/**
- * Verify the caller's Supabase session. The browser sends its access token as a
- * Bearer header; we validate it against Supabase's auth endpoint using the
- * public project URL + anon key (no secrets needed) so this endpoint can't be
- * used anonymously to burn AI credits. Distinguishes a bad/missing token (401)
- * from the auth service being unreachable (503) so a brief Supabase blip doesn't
- * tell a signed-in user to sign in again.
- */
-async function getAuthedUser(req: any): Promise<AuthResult> {
-  const header: string =
-    req.headers?.authorization || req.headers?.Authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) return { ok: false, status: 401 };
-
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const anon =
-    process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!url || !anon) {
-    console.error(
-      "[chat] Supabase URL/anon key not set - cannot verify session"
-    );
-    return { ok: false, status: 503 };
-  }
-
-  try {
-    const resp = await fetch(`${url}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: anon },
-      // Don't let a hung auth endpoint hang the whole chat request.
-      signal: AbortSignal.timeout(8000),
-    });
-    // A real auth rejection is the only "please sign in" case; anything else
-    // (5xx, unexpected) is a service problem, not the user's token.
-    if (resp.status === 401 || resp.status === 403) {
-      return { ok: false, status: 401 };
-    }
-    if (!resp.ok) return { ok: false, status: 503 };
-    const user = (await resp.json()) as { id?: string };
-    return user?.id
-      ? { ok: true, userId: user.id }
-      : { ok: false, status: 401 };
-  } catch (err: any) {
-    // Network error / timeout: the auth service is unreachable, not a bad token.
-    console.error("[chat] session verification failed:", err?.message);
-    return { ok: false, status: 503 };
-  }
-}
-
 export default async function handler(req: any, res: any): Promise<void> {
   if (req.method !== "POST") {
     return sendJson(res, 405, { error: "Method not allowed" });
@@ -214,6 +171,7 @@ export default async function handler(req: any, res: any): Promise<void> {
     maxTokens,
     webSearch,
     thinking,
+    voice,
   } = body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return sendJson(res, 400, {
@@ -260,7 +218,7 @@ export default async function handler(req: any, res: any): Promise<void> {
   );
 
   const request: Record<string, unknown> = {
-    model: MODEL,
+    model: voice ? VOICE_MODEL : MODEL,
     max_tokens,
     messages: apiMessages,
   };

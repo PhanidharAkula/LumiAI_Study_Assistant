@@ -68,9 +68,7 @@ const Dashboard = ({ session }: Props) => {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  // Rename-in-place from a dashboard card (a Modal over the grid, like create);
-  // separate from `isEditing`, which renames from inside ClassDetails.
+  // Rename-in-place from a dashboard card (a Modal over the grid, like create).
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -134,11 +132,12 @@ const Dashboard = ({ session }: Props) => {
   const [chatConversationId, setChatConversationId] = useState<string | null>(
     null
   );
-  const [talkOpen, setTalkOpen] = useState(() => {
-    // Restore Talk state from sessionStorage on page load
-    return sessionStorage.getItem("lumiTalkOpen") === "true";
-  });
-  const [talkClassId, setTalkClassId] = useState<string | number | null>(null);
+  // Keep the Talk overlay open across a refresh so a reload doesn't bounce the
+  // user back to the dashboard. The conversation is in-memory, so it reopens to
+  // the Begin screen (ready to start again), not mid-conversation.
+  const [talkOpen, setTalkOpen] = useState(
+    () => sessionStorage.getItem("lumiTalkOpen") === "true"
+  );
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
 
   // Spaced repetition: how many flashcards are due, for the menu badge.
@@ -359,13 +358,6 @@ const Dashboard = ({ session }: Props) => {
     }
   };
 
-  // Rename from inside ClassDetails: stay in the class with the new name.
-  const handleUpdateClass = async (updatedClass: ClassItem) => {
-    if (!(await persistClassUpdate(updatedClass))) return;
-    setSelectedClass(updatedClass);
-    setIsEditing(false);
-  };
-
   // Rename from a dashboard card: stay on the dashboard, just close the modal.
   const handleUpdateClassInline = async (updatedClass: ClassItem) => {
     if (await persistClassUpdate(updatedClass)) setEditingClass(null);
@@ -566,15 +558,13 @@ const Dashboard = ({ session }: Props) => {
     navigate(`?${searchParams.toString()}`, { replace: true });
   };
 
-  const handleTalkWithAI = (classId: string | number | null = null) => {
-    setTalkClassId(classId);
+  const handleTalkWithAI = () => {
     setTalkOpen(true);
     sessionStorage.setItem("lumiTalkOpen", "true");
   };
 
   const handleCloseTalk = () => {
     setTalkOpen(false);
-    setTalkClassId(null);
     sessionStorage.removeItem("lumiTalkOpen");
   };
 
@@ -874,17 +864,6 @@ const Dashboard = ({ session }: Props) => {
                 >
                   <ClassDetails
                     classData={selectedClass}
-                    isEditing={isEditing}
-                    onEdit={() => setIsEditing(true)}
-                    onCancelEdit={() => {
-                      // when canceling edit from ClassDetails, go back to the dashboard
-                      setIsEditing(false);
-                      skipUrlSelectRef.current = true;
-                      setSelectedClass(null);
-                      navigate(location.pathname, { replace: true });
-                    }}
-                    onUpdate={handleUpdateClass}
-                    onDelete={handleDeleteClass}
                     onBack={handleBackToClasses}
                   />
                 </motion.div>
@@ -1243,11 +1222,7 @@ const Dashboard = ({ session }: Props) => {
       <AnimatePresence>
         {talkOpen && (
           <Suspense fallback={null}>
-            <TalkComponent
-              isOpen={talkOpen}
-              onClose={handleCloseTalk}
-              initialClassId={talkClassId}
-            />
+            <TalkComponent isOpen={talkOpen} onClose={handleCloseTalk} />
           </Suspense>
         )}
       </AnimatePresence>

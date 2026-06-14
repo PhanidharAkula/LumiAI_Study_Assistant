@@ -3,7 +3,6 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@shared/lib/supabaseClient";
 import FileViewer from "./FileViewer";
-import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
@@ -45,12 +44,6 @@ interface FileRow {
   [key: string]: any;
 }
 
-interface DeleteConfirmState {
-  isOpen: boolean;
-  hasFiles: boolean;
-  fileCount: number;
-}
-
 interface FileDeleteConfirmState {
   isOpen: boolean;
   fileId: string | number | null;
@@ -67,26 +60,10 @@ interface UploadConfirmState {
 
 interface Props {
   classData: ClassData | null;
-  isEditing: boolean;
-  // Dashboard passes `onEdit`; the binding below is the unused `_onEdit`.
-  // Accept both so the prop surface matches what callers actually pass.
-  onEdit?: () => void;
-  _onEdit?: () => void;
-  onCancelEdit: () => void;
-  onUpdate: (cls: any) => void;
-  onDelete: (id: string | number) => void;
   onBack: () => void;
 }
 
-const ClassDetails = ({
-  classData,
-  isEditing,
-  _onEdit,
-  onCancelEdit,
-  onUpdate,
-  onDelete,
-  onBack,
-}: Props) => {
+const ClassDetails = ({ classData, onBack }: Props) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [files, setFiles] = useState<FileRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,13 +72,6 @@ const ClassDetails = ({
   const [viewingFile, setViewingFile] = useState<FileRow | null>(null);
   const [fileUrl, setFileUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [deleteConfirmData, setDeleteConfirmData] =
-    useState<DeleteConfirmState>({
-      isOpen: false,
-      hasFiles: false,
-      fileCount: 0,
-    });
-
   const [fileDeleteConfirm, setFileDeleteConfirm] =
     useState<FileDeleteConfirmState>({
       isOpen: false,
@@ -117,6 +87,14 @@ const ClassDetails = ({
       pendingFiles: [],
       currentIndex: 0,
     });
+
+  // Surfaces file-op failures (load / view / delete / upload) to the user
+  // instead of failing silently to the console.
+  const [errorDialog, setErrorDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({ isOpen: false, title: "", message: "" });
 
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -164,26 +142,14 @@ const ClassDetails = ({
       setFiles((data as FileRow[]) || []);
     } catch (err) {
       console.error("Error fetching files:", err);
+      setErrorDialog({
+        isOpen: true,
+        title: "Couldn't load files",
+        message: "We couldn't load this class's files. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleConfirmDelete = () => {
-    setDeleteConfirmData({
-      isOpen: false,
-      hasFiles: false,
-      fileCount: 0,
-    });
-    onDelete(classData!.id);
-  };
-
-  const handleCancelDelete = () => {
-    setDeleteConfirmData({
-      isOpen: false,
-      hasFiles: false,
-      fileCount: 0,
-    });
   };
 
   const handleFileDelete = (
@@ -214,6 +180,11 @@ const ClassDetails = ({
       setFiles((prev) => prev.filter((file) => file.id !== fileId));
     } catch (err) {
       console.error("Error deleting file:", err);
+      setErrorDialog({
+        isOpen: true,
+        title: "Couldn't delete file",
+        message: "We couldn't delete this file. Please try again.",
+      });
     } finally {
       cancelFileDelete();
     }
@@ -235,19 +206,25 @@ const ClassDetails = ({
         file.path as string
       );
 
-      if (error) {
+      if (error || !url) {
         console.error("Error getting URL:", error);
+        setErrorDialog({
+          isOpen: true,
+          title: "Couldn't open file",
+          message: "We couldn't open this file. Please try again.",
+        });
         return;
       }
 
-      if (url) {
-        setViewingFile(file);
-        setFileUrl(url);
-      } else {
-        console.error("No URL returned");
-      }
+      setViewingFile(file);
+      setFileUrl(url);
     } catch (error) {
       console.error("Error viewing file:", error);
+      setErrorDialog({
+        isOpen: true,
+        title: "Couldn't open file",
+        message: "We couldn't open this file. Please try again.",
+      });
     }
   };
 
@@ -300,6 +277,7 @@ const ClassDetails = ({
       } = await supabase.auth.getUser();
 
       if (!user) {
+        setUploading(false);
         return;
       }
 
@@ -367,6 +345,11 @@ const ClassDetails = ({
 
       if (uploadError) {
         console.error("File upload error:", uploadError);
+        setErrorDialog({
+          isOpen: true,
+          title: "Upload failed",
+          message: `Couldn't upload "${file.name}". Please try again.`,
+        });
         return;
       }
 
@@ -381,6 +364,11 @@ const ClassDetails = ({
 
       if (dbError) {
         console.error("Database error:", dbError);
+        setErrorDialog({
+          isOpen: true,
+          title: "Upload failed",
+          message: `Couldn't save "${file.name}". Please try again.`,
+        });
 
         await supabase.storage
           .from("files")
@@ -389,6 +377,11 @@ const ClassDetails = ({
       }
     } catch (err) {
       console.error("Error uploading file:", err);
+      setErrorDialog({
+        isOpen: true,
+        title: "Upload failed",
+        message: `Couldn't upload "${file.name}". Please try again.`,
+      });
     }
   };
 
@@ -552,16 +545,6 @@ const ClassDetails = ({
       exit={{ opacity: 0, y: -20 }}
       transition={spring.gentle}
     >
-      {/* Rename floats above the record as a Modal plate (AddClassForm renders
-          the kit Modal) instead of replacing the whole view. */}
-      {isEditing && (
-        <AddClassForm
-          isEditing={true}
-          initialData={classData as any}
-          onCancel={onCancelEdit}
-          onClassUpdated={onUpdate}
-        />
-      )}
       {/* Hide all ClassDetails content when quiz or flashcards is open */}
       {!showQuiz && !showFlashcards && (
         <>
@@ -690,7 +673,6 @@ const ClassDetails = ({
                   onChange={handleFileChange}
                   className="hidden"
                   ref={fileInputRef}
-                  accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.py,.ipynb,.zip,.rar,.csv,.xlsx,.xls,.md"
                 />
 
                 {uploading ? (
@@ -744,7 +726,7 @@ const ClassDetails = ({
                       Add documents to this constellation
                     </p>
                     <p className={UI.overlineMuted}>
-                      PDF, DOC, PPT, JPG, PNG, etc.
+                      PDFs, docs, slides, images, notes, and more
                     </p>
                   </div>
                 )}
@@ -948,24 +930,6 @@ const ClassDetails = ({
               />
             )}
           </AnimatePresence>
-          {/* Study pages are opened in full-screen routes now */}
-          <ConfirmDialog
-            isOpen={deleteConfirmData.isOpen}
-            onClose={handleCancelDelete}
-            onConfirm={handleConfirmDelete}
-            title={
-              deleteConfirmData.hasFiles
-                ? "Delete Class and Files"
-                : "Delete Class"
-            }
-            message={
-              deleteConfirmData.hasFiles
-                ? `This class contains ${deleteConfirmData.fileCount} file(s). Deleting the class will also delete all associated files. This action cannot be undone. Are you sure you want to proceed?`
-                : `Are you sure you want to delete ${classData?.name}? This action cannot be undone.`
-            }
-            confirmText={deleteConfirmData.hasFiles ? "Delete All" : "Delete"}
-            danger={true}
-          />
           <ConfirmDialog
             isOpen={fileDeleteConfirm.isOpen}
             onClose={cancelFileDelete}
@@ -983,6 +947,19 @@ const ClassDetails = ({
             message={`A file named "${uploadConfirmData.file?.name}" already exists. Do you want to upload it anyway?`}
             confirmText="Upload Anyway"
             cancelText="Skip"
+            danger={false}
+          />
+          <ConfirmDialog
+            isOpen={errorDialog.isOpen}
+            onClose={() =>
+              setErrorDialog({ isOpen: false, title: "", message: "" })
+            }
+            onConfirm={() =>
+              setErrorDialog({ isOpen: false, title: "", message: "" })
+            }
+            title={errorDialog.title}
+            message={errorDialog.message}
+            confirmText="Got it"
             danger={false}
           />
         </>

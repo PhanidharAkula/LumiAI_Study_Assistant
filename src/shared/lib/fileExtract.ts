@@ -36,7 +36,7 @@ const IMG_MAX_DIM = 1568;
 // reads source as well as prose, so this list is deliberately broad.
 const TEXT_EXT = new Set([
   "txt", "text", "md", "markdown", "mdx", "rst", "log", "csv", "tsv", "json",
-  "json5", "jsonl", "ndjson", "xml", "yaml", "yml", "toml", "ini", "cfg",
+  "json5", "jsonl", "ndjson", "ipynb", "xml", "yaml", "yml", "toml", "ini", "cfg",
   "conf", "config", "env", "properties", "html", "htm", "xhtml", "css", "scss",
   "sass", "less", "svg", "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "pyw",
   "pyi", "rb", "php", "java", "kt", "kts", "scala", "groovy", "c", "h", "cpp",
@@ -50,6 +50,42 @@ const TEXT_EXT = new Set([
 
 // Image extensions the browser/canvas can decode and re-encode for the API.
 const RASTER_IMG_EXT = /\.(png|jpe?g|gif|webp|bmp|tiff?|avif)$/i;
+
+// Extensions resolveFileForAI() turns into vision images (raster + iPhone HEIC).
+// SVG is intentionally absent: it's XML, read by the text path (it's in TEXT_EXT).
+const IMAGE_EXT = new Set([
+  "png", "jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff", "avif", "heic", "heif",
+]);
+// Document formats with dedicated text extractors.
+const DOC_EXT = new Set(["pdf", "docx", "pptx"]);
+
+/**
+ * Will resolveFileForAI() likely produce text or images the model can read for
+ * this file? Used to filter file pickers (the study tools' Sources list) so a
+ * student only picks materials that will actually generate content - even though
+ * a class lets them upload anything. Extension-based so it's cheap + synchronous;
+ * extension-less files pass optimistically (usually text like Dockerfile/README,
+ * and resolveFileForAI sniffs their bytes at read time anyway).
+ */
+export function isSupportedForAI(name: string): boolean {
+  const lower = (name || "").toLowerCase();
+  if (!lower.includes(".")) return true;
+  const ext = lower.split(".").pop() || "";
+  if (!ext) return true;
+  return IMAGE_EXT.has(ext) || DOC_EXT.has(ext) || TEXT_EXT.has(ext);
+}
+
+/**
+ * Will this file render as readable text for a source preview? Extension-based
+ * (the TEXT_EXT code/data/markup set) plus any text/* MIME. Images, PDFs, and
+ * office binaries are excluded - the caller previews those another way.
+ */
+export function isTextLikeFile(name: string, mime = ""): boolean {
+  if (mime.toLowerCase().startsWith("text/")) return true;
+  const lower = (name || "").toLowerCase();
+  const ext = lower.includes(".") ? lower.split(".").pop() || "" : "";
+  return TEXT_EXT.has(ext);
+}
 
 // Ensure a data URL declares the given MIME (the API only accepts a fixed set).
 const withType = (dataUrl: string, type: string): string =>

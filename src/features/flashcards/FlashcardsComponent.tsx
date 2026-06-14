@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { fetchStreamingResponse } from "@shared/services/aiService";
@@ -13,7 +13,8 @@ import {
 import { BackButton, Button, IconButton } from "@shared/components/controls";
 import { fadeRise, pressLift, stagger } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
-import { extractFileContent } from "@features/study/extractFileContent";
+import { resolveStudyFiles } from "@features/study/resolveStudyFiles";
+import { isSupportedForAI } from "@shared/lib/fileExtract";
 import GeneratingState from "@features/study/GeneratingState";
 import FileSelectionCard from "@features/study/FileSelectionCard";
 import HistoryDropdown from "@features/study/HistoryDropdown";
@@ -41,7 +42,6 @@ interface Flashcard {
   front: string;
   back: string;
   category?: string;
-  srs?: any;
   [key: string]: any;
 }
 
@@ -142,6 +142,11 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
   const [flashcardState, setFlashcardState] =
     useState<FlashcardStateType>("setup"); // setup, studying, completed
   const [currentDeck, setCurrentDeck] = useState<Flashcard[] | null>(null);
+  // The frozen card list for the current study session (the full deck, or a
+  // snapshot of the "unknown" subset). Frozen so marking a card mid-session
+  // doesn't reshuffle indices - re-filtering live used to skip the next card in
+  // unknown-review mode.
+  const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [generatingCards, setGeneratingCards] = useState(false);
@@ -171,6 +176,9 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
       deckId: null,
     });
 
+  // Aborts an in-flight generation when the user cancels or closes mid-generate.
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (isOpen && classData) {
       loadFlashcardHistory();
@@ -191,6 +199,13 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
       }
     }
   }, [flashcardState]);
+
+  // Abort any in-flight generation if the deck is closed/unmounted mid-generate.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const loadFlashcardHistory = async () => {
     try {
@@ -215,8 +230,8 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
     }
   };
 
-  // File text extraction lives in @features/study/extractFileContent (shared
-  // with Quiz) - imported above.
+  // File resolution (text + vision images) lives in
+  // @features/study/resolveStudyFiles (shared with Quiz) - imported above.
 
   const handleBackButton = () => {
     if (flashcardState === "studying" || flashcardState === "completed") {
@@ -246,52 +261,36 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
       return;
     }
 
+    abortControllerRef.current?.abort();
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
     setGeneratingCards(true);
 
     try {
-      // Build context from selected files
-      const fileContents = await Promise.all(
-        selectedFiles.map(async (fileId) => {
-          const file = classData.files?.find((f: ClassFile) => f.id === fileId);
-          if (!file) return null;
+      // Resolve the selected files into prompt text + vision images via the
+      // shared resolver - same broad support as Chat with AI (PDF text +
+      // figures, scanned PDFs, DOCX, PPTX, photos, HEIC, code/data, ...).
+      const selected = selectedFiles
+        .map((fileId) =>
+          classData.files?.find((f: ClassFile) => f.id === fileId)
+        )
+        .filter(Boolean) as ClassFile[];
+      const { context: filesContext, imageFiles, usableCount } =
+        await resolveStudyFiles(selected);
 
-          const content = await extractFileContent(file);
-          if (!content) return null;
+      // Cancelled while the files were being fetched / parsed.
+      if (ac.signal.aborted) return;
 
-          return {
-            name: file.name,
-            content: content,
-          };
-        })
-      );
-
-      const validContents = fileContents.filter(Boolean) as {
-        name: string;
-        content: string;
-      }[];
-
-      if (validContents.length === 0) {
-        const errorMessage =
-          "Could not extract content from the selected files. This could be because:\n\n" +
-          "• PDF files are image-based (scanned documents without text)\n" +
-          "• Files are empty or corrupted\n" +
-          "• Image files are not supported for flashcard generation\n\n" +
-          "Please try:\n" +
-          "1. Selecting different files (PDF or TXT)\n" +
-          "2. Ensuring PDFs contain actual text (not just images)";
-
+      if (usableCount === 0) {
         setErrorDialog({
           isOpen: true,
-          title: "Unsupported File Format",
-          message: errorMessage,
+          title: "Couldn't read those files",
+          message:
+            "We couldn't pull any usable text or images from the selected files. They may be empty, corrupted, or in a format we can't read. Try selecting different materials.",
         });
         setGeneratingCards(false);
         return;
       }
-
-      const filesContext = validContents
-        .map((f) => `=== ${f.name} ===\n${f.content}`)
-        .join("\n\n");
 
       const styleInstructions = {
         standard:
@@ -301,7 +300,7 @@ const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
         qa: "Create flashcards with a question on the front and the answer on the back.",
       };
 
-      const prompt = `You are an expert flashcard creator. Create exactly ${numCards} high-quality flashcards based on the following educational content.
+      const prompt = `You are an expert flashcard creator. Create exactly ${numCards} high-quality flashcards based on the provided study materials: the text below, plus any attached images (photos, slides, or scanned/figure pages) - read those too.
 
 CONTENT TO BASE FLASHCARDS ON:
 ${filesContext}
@@ -345,14 +344,19 @@ CRITICAL JSON FORMATTING RULES:
         (chunk: string) => {
           flashcardData += chunk;
         },
-        null as unknown as AbortSignal | undefined,
+        ac.signal,
         [],
-        []
+        imageFiles,
+        { mode: "generate" }
       );
+
+      // Cancelled (or the deck closed) mid-generation: bail before parsing,
+      // saving, or entering studying - the cancel handler already reset the UI.
+      if (ac.signal.aborted || aiResult?.errorType === "aborted") return;
 
       // If the AI call failed, show the friendly message rather than a
       // misleading "couldn't parse the flashcards" content error.
-      if (aiResult?.error && aiResult.errorType !== "aborted") {
+      if (aiResult?.error) {
         setErrorDialog({
           isOpen: true,
           title: "Couldn't generate flashcards",
@@ -415,25 +419,38 @@ CRITICAL JSON FORMATTING RULES:
           )
           .filter(Boolean);
 
-        await supabase.from("flashcard_history").insert({
-          user_id: user.id,
-          class_id: classData.id,
-          cards: parsedData.cards,
-          num_cards: parsedData.cards.length,
-          card_style: cardStyle,
-          source_files: selectedFileNames,
-        });
+        const { error: saveError } = await supabase
+          .from("flashcard_history")
+          .insert({
+            user_id: user.id,
+            class_id: classData.id,
+            cards: parsedData.cards,
+            num_cards: parsedData.cards.length,
+            card_style: cardStyle,
+            source_files: selectedFileNames,
+          });
 
-        loadFlashcardHistory();
+        // Saving is best-effort (the deck opens for study either way), but
+        // surface a real failure instead of swallowing it, and only refresh the
+        // history list when the insert actually succeeded.
+        if (saveError) {
+          console.warn("Could not save flashcard deck to history:", saveError);
+        } else {
+          loadFlashcardHistory();
+        }
       }
 
       setCurrentDeck(parsedData.cards);
+      setSessionCards(parsedData.cards);
       setCurrentCardIndex(0);
       setIsFlipped(false);
       setKnownCards([]);
       setUnknownCards([]);
+      setStudyMode("all");
       setFlashcardState("studying");
     } catch (error) {
+      // Cancelled mid-generate (the AI fetch aborted) - not a real failure.
+      if (ac.signal.aborted) return;
       console.error("Error generating flashcards:", error);
       setErrorDialog({
         isOpen: true,
@@ -442,11 +459,13 @@ CRITICAL JSON FORMATTING RULES:
           "An error occurred while generating flashcards. Please try again.",
       });
     } finally {
+      if (abortControllerRef.current === ac) abortControllerRef.current = null;
       setGeneratingCards(false);
     }
   };
 
   const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
     setGeneratingCards(false);
     setFlashcardState("setup");
   };
@@ -490,18 +509,18 @@ CRITICAL JSON FORMATTING RULES:
     handleNextCard();
   };
 
-  const getActiveCards = () => {
-    if (!currentDeck) return [];
-    if (studyMode === "unknown") {
-      return currentDeck.filter((card: Flashcard) =>
-        unknownCards.includes(card.id)
-      );
-    }
-    return currentDeck;
-  };
+  // The frozen card list for the current study session (set on each entry into
+  // studying). Returning a stable list keeps indices steady when a card is
+  // marked mid-session - re-filtering the unknown subset live used to skip the
+  // next card and jump the progress bar.
+  const getActiveCards = () => sessionCards;
 
   const handleStudyUnknown = () => {
-    if (unknownCards.length > 0) {
+    if (unknownCards.length > 0 && currentDeck) {
+      // Freeze the unknown subset now so marking cards doesn't reshuffle it.
+      setSessionCards(
+        currentDeck.filter((card) => unknownCards.includes(card.id))
+      );
       setStudyMode("unknown");
       setCurrentCardIndex(0);
       setIsFlipped(false);
@@ -510,6 +529,7 @@ CRITICAL JSON FORMATTING RULES:
   };
 
   const handleRestartDeck = () => {
+    setSessionCards(currentDeck || []);
     setCurrentCardIndex(0);
     setIsFlipped(false);
     setKnownCards([]);
@@ -520,6 +540,7 @@ CRITICAL JSON FORMATTING RULES:
 
   const handleLoadFromHistory = (historyItem: FlashcardHistoryItem) => {
     setCurrentDeck(historyItem.cards);
+    setSessionCards(historyItem.cards);
     setCurrentCardIndex(0);
     setIsFlipped(false);
     setKnownCards([]);
@@ -542,9 +563,18 @@ CRITICAL JSON FORMATTING RULES:
   if (!isOpen) return null;
 
   const currentCard = getActiveCards()[currentCardIndex];
-  const progress = currentDeck
+  const progress = getActiveCards().length
     ? ((currentCardIndex + 1) / getActiveCards().length) * 100
     : 0;
+  // Tallies scoped to THIS session's cards (the full deck, or the unknown
+  // subset under review) so the studying tally and completed totals match the
+  // "Card X / N" count and reconcile (known + learning + skipped = N).
+  const sessionKnown = getActiveCards().filter((c) =>
+    knownCards.includes(c.id)
+  ).length;
+  const sessionUnknown = getActiveCards().filter((c) =>
+    unknownCards.includes(c.id)
+  ).length;
 
   return (
     <motion.div
@@ -777,17 +807,15 @@ CRITICAL JSON FORMATTING RULES:
                 <FileSelectionCard
                   className="col-3 row-[1/3] max-[1200px]:col-span-full max-[1200px]:row-auto max-md:col-1 max-md:row-auto"
                   files={
-                    (classData?.files?.filter(
-                      (f: ClassFile) =>
-                        f.name.toLowerCase().endsWith(".pdf") ||
-                        f.name.toLowerCase().endsWith(".txt")
+                    (classData?.files?.filter((f: ClassFile) =>
+                      isSupportedForAI(f.name)
                     ) || []) as any
                   }
                   selectedIds={selectedFiles}
                   onSelectionChange={setSelectedFiles}
                   disabled={generatingCards}
-                  emptyTitle="No supported files"
-                  emptyHint="Upload PDF or TXT files to generate flashcards"
+                  emptyTitle="No usable files"
+                  emptyHint="Upload notes, PDFs, slides, images, or docs to generate flashcards"
                 />
               </motion.div>
 
@@ -1040,7 +1068,7 @@ CRITICAL JSON FORMATTING RULES:
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   <span className="font-display text-[17px] font-semibold leading-none">
-                    {knownCards.length}
+                    {sessionKnown}
                   </span>
                   <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] opacity-80">
                     Known
@@ -1063,7 +1091,7 @@ CRITICAL JSON FORMATTING RULES:
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                   <span className="font-display text-[17px] font-semibold leading-none">
-                    {unknownCards.length}
+                    {sessionUnknown}
                   </span>
                   <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] opacity-80">
                     Learning
@@ -1106,19 +1134,19 @@ CRITICAL JSON FORMATTING RULES:
                 <div className={COMPLETED_STAT}>
                   <span className={COMPLETED_STAT_LABEL}>Known</span>
                   <span className={`${COMPLETED_STAT_VALUE} text-verdi`}>
-                    {knownCards.length}
+                    {sessionKnown}
                   </span>
                 </div>
                 <div className={COMPLETED_STAT}>
                   <span className={COMPLETED_STAT_LABEL}>Reviewing</span>
                   <span className={`${COMPLETED_STAT_VALUE} text-vermilion`}>
-                    {unknownCards.length}
+                    {sessionUnknown}
                   </span>
                 </div>
                 <div className={COMPLETED_STAT}>
                   <span className={COMPLETED_STAT_LABEL}>Total</span>
                   <span className={`${COMPLETED_STAT_VALUE} text-ink`}>
-                    {currentDeck?.length || 0}
+                    {getActiveCards().length}
                   </span>
                 </div>
               </div>
