@@ -215,7 +215,7 @@ const ChatInput = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,.pdf,.doc,.docx,.txt,.ppt,.pptx"
+          accept="image/*,.pdf,.txt"
           onChange={handleFileChange}
           style={{ display: "none" }}
         />
@@ -279,7 +279,10 @@ const ChatInput = ({
           <IconButton
             variant="danger"
             label="Stop generating"
-            className="border-vermilion/40! bg-vermilion-wash!"
+            // Soft wash at rest AND on hover (just brighten the ring + keep the
+            // red glyph) - the danger variant's default hover inverts to a solid
+            // red fill with a white icon, which clashed with this softened key.
+            className="border-vermilion/40! bg-vermilion-wash! hover:border-vermilion! hover:bg-vermilion-wash! hover:text-vermilion!"
             onClick={onStopGeneration}
           >
             <svg

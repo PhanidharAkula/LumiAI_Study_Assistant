@@ -387,7 +387,9 @@ const ChatComponent = ({
   // surfaced as state so AnimatePresence can fade it in/out).
   const [showJumpButton, setShowJumpButton] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Mirror of the abort controller so the unmount cleanup can reach the live
+  // stream without it being a render dependency.
+  const abortControllerRef = useRef<AbortController | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const historyDropdownRef = useRef<HTMLDivElement>(null);
   // Pinned-to-bottom model: while the view is glued to the bottom we follow
@@ -522,6 +524,22 @@ const ChatComponent = ({
     messagesRef.current = messages;
   }, [messages]);
 
+  // Mirror the abort controller so the unmount cleanup can reach it.
+  useEffect(() => {
+    abortControllerRef.current = abortController;
+  }, [abortController]);
+
+  // On unmount (chat closed by ANY path, not just the close button) stop
+  // everything in flight - abort the stream and cancel the pending persist
+  // write - so nothing sets state after unmount or leaks a request/timer.
+  useEffect(
+    () => () => {
+      abortControllerRef.current?.abort();
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    },
+    []
+  );
+
   // Persist a lightweight snapshot for the 24h fast-restore - DEBOUNCED so the
   // ~33fps streaming setMessages can't thrash localStorage, and with the heavy
   // per-turn contextContent stripped (the DB v2 snapshot is the source of truth
@@ -592,7 +610,11 @@ const ChatComponent = ({
             conversationId: savedConversationId,
             timestamp,
           } = JSON.parse(savedChat);
-          if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          if (
+            Array.isArray(savedMessages) &&
+            typeof timestamp === "number" &&
+            Date.now() - timestamp < 24 * 60 * 60 * 1000
+          ) {
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
@@ -624,7 +646,11 @@ const ChatComponent = ({
             conversationId: savedConversationId,
             timestamp,
           } = JSON.parse(savedChat);
-          if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          if (
+            Array.isArray(savedMessages) &&
+            typeof timestamp === "number" &&
+            Date.now() - timestamp < 24 * 60 * 60 * 1000
+          ) {
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
@@ -2144,7 +2170,7 @@ const ChatComponent = ({
           {/* Scroll happens on the FULL width (ref here) so hovering anywhere
               scrolls; messages stay centered via the inner 820px column. */}
           <motion.div
-            className="w-full flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
+            className="w-full flex-1 overflow-y-auto scroll-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
             ref={chatContainerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -2179,7 +2205,6 @@ const ChatComponent = ({
                   />
                 ))
               )}
-              <div ref={messagesEndRef} />
             </div>
           </motion.div>
           {/* `atlas-sky` is background-attachment:fixed, so the dock paints the

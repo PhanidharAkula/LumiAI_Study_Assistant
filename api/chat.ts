@@ -316,6 +316,15 @@ export default async function handler(req: any, res: any): Promise<void> {
       res.end();
     } else {
       const msg = await client.messages.create(request as any);
+      // Mirror the streaming refusal handling: a safety refusal returns 200 with
+      // stop_reason "refusal" and little/no text - surface a friendly error so a
+      // caller (title generation, voice) never saves a blank reply as a real one.
+      if ((msg as any)?.stop_reason === "refusal") {
+        return sendJson(res, 200, {
+          error:
+            "Lumi can't help with that particular request. Try rephrasing or asking something else.",
+        });
+      }
       const text = (msg.content as any[])
         .filter((b) => b.type === "text")
         .map((b) => b.text)

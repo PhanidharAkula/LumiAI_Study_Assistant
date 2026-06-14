@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -63,6 +63,7 @@ const PROSE = [
   "[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-solid [&_pre]:border-line-night [&_pre]:bg-night [&_pre]:p-3.5 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-[1.65] [&_pre]:text-starlight",
   "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[13px]",
   "[&_blockquote]:my-4 [&_blockquote]:rounded-r-md [&_blockquote]:border-0 [&_blockquote]:border-l-2 [&_blockquote]:border-solid [&_blockquote]:border-gold/60 [&_blockquote]:bg-cream/60 [&_blockquote]:py-2.5 [&_blockquote]:pl-4 [&_blockquote]:pr-3.5 [&_blockquote]:italic [&_blockquote]:text-ink [&_blockquote_p:last-of-type]:mb-0",
+  "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg",
   "[&_table]:w-full [&_table]:border-collapse",
   "[&_th]:px-3 [&_th]:py-2.5 [&_th]:min-w-30 [&_th]:text-left [&_th]:text-ink [&_th]:font-semibold [&_th]:bg-sage/20 [&_th]:border-0 [&_th]:border-b [&_th]:border-r [&_th]:border-solid [&_th]:border-line [&_th:last-child]:border-r-0",
   "[&_td]:px-3 [&_td]:py-2.5 [&_td]:min-w-30 [&_td]:border-0 [&_td]:border-b [&_td]:border-r [&_td]:border-solid [&_td]:border-line [&_td]:bg-white/40 [&_td:last-child]:border-r-0 [&_tr:last-child_td]:border-b-0",
@@ -99,11 +100,33 @@ const ChatMessage = ({
   const [copySuccessFull, setCopySuccessFull] = useState(false);
   const [copySuccessUser, setCopySuccessUser] = useState(false);
   const [copyingCode, setCopyingCode] = useState<string | null>(null);
+  // The rendered-markdown container, grabbed for a rich (HTML) copy.
+  const proseRef = useRef<HTMLDivElement>(null);
 
-  const copyToClipboard = (text: string) => {
-    return navigator.clipboard.writeText(text).catch((err: unknown) => {
-      console.error("Could not copy text: ", err);
-    });
+  const copyToClipboard = (plain: string, html?: string): Promise<void> => {
+    // Rich + plain: a real <table>, headings, lists and code paste into
+    // Docs/Notion/Word, while plain-text targets fall back to the readable
+    // (monospace-aligned) plain version. The promise REJECTS on a real failure
+    // so the caller never flashes a false "copied" check.
+    if (
+      html &&
+      typeof ClipboardItem !== "undefined" &&
+      navigator.clipboard?.write
+    ) {
+      const item = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" }),
+      });
+      // Fall back to plain text if a multi-type write is rejected; a final
+      // failure still propagates.
+      return navigator.clipboard
+        .write([item])
+        .catch(() => navigator.clipboard.writeText(plain));
+    }
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard.writeText(plain);
+    }
+    return Promise.reject(new Error("Clipboard API unavailable"));
   };
 
   // Utility: extract plain text from React nodes / arrays / markdown node structures
@@ -147,7 +170,7 @@ const ChatMessage = ({
       // Headings/blockquotes: trim only horizontal space ([ \t]) so the regex
       // can't swallow the preceding blank line and glue blocks together on copy.
       .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, "") // headings
-      .replace(/^[ \t]{0,3}>[ \t]?/gm, "") // blockquotes
+      .replace(/^[ \t]{0,3}(?:>[ \t]?)+/gm, "") // blockquotes (incl. nested >)
       // Thematic breaks (***, ___, ---, * * *) BEFORE emphasis - otherwise the
       // emphasis rules chew a run of * / _ down into a stray bullet/underscore.
       .replace(/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm, "")
@@ -224,23 +247,48 @@ const ChatMessage = ({
       new RegExp(SENT + "(\\d+)" + SENT, "g"),
       (_m, i) => stash[Number(i)] ?? ""
     );
-    return t.replace(/\n{3,}/g, "\n\n").trim();
+    // Per-line trailing-space trim + strip leading/trailing blank lines, but
+    // KEEP leading spaces on content lines: a table whose header has an empty
+    // leading cell pads that header so its columns sit over the data, and a
+    // whole-string .trim() would strip the pad and shift the header out of line.
+    return t
+      .replace(/\n{3,}/g, "\n\n")
+      .split("\n")
+      .map((l) => l.replace(/[ \t]+$/, ""))
+      .join("\n")
+      .replace(/^\n+/, "")
+      .replace(/\n+$/, "");
   };
 
   const copyFull = (text: any) => {
     const plain = markdownToPlainText(getPlainText(text));
-    copyToClipboard(plain).then(() => {
-      setCopySuccessFull(true);
-      setTimeout(() => setCopySuccessFull(false), 2000);
-    });
+    // Also offer the rendered HTML so tables paste as REAL tables (and headings
+    // / lists / code keep their structure) in rich editors. Clone + strip the
+    // per-code-block copy buttons and the visual KaTeX layer (keep the semantic
+    // MathML) so the paste is clean.
+    let html: string | undefined;
+    const node = proseRef.current;
+    if (node) {
+      const clone = node.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll("button, .katex-html").forEach((el) => el.remove());
+      html = clone.innerHTML;
+    }
+    copyToClipboard(plain, html)
+      .then(() => {
+        setCopySuccessFull(true);
+        setTimeout(() => setCopySuccessFull(false), 2000);
+      })
+      .catch((err) => console.error("Could not copy: ", err));
   };
 
   const copyUser = (text: any) => {
     const plain = getPlainText(text);
-    copyToClipboard(plain).then(() => {
-      setCopySuccessUser(true);
-      setTimeout(() => setCopySuccessUser(false), 2000);
-    });
+    copyToClipboard(plain)
+      .then(() => {
+        setCopySuccessUser(true);
+        setTimeout(() => setCopySuccessUser(false), 2000);
+      })
+      .catch((err) => console.error("Could not copy: ", err));
   };
 
   const handleCopyFullResponse = () => {
@@ -367,7 +415,7 @@ const ChatMessage = ({
       );
     } else {
       return (
-        <div className={PROSE}>
+        <div className={PROSE} ref={proseRef}>
           {/* Show "Thinking..." animation when streaming with no content yet */}
           {isStreaming && (!message || message.trim() === "") ? (
             <div className="flex items-center gap-0.5 text-[15px] italic text-muted">
@@ -428,6 +476,11 @@ const ChatMessage = ({
                       /\n$/,
                       ""
                     );
+                    // Unique per block (source offset) so two same-language
+                    // blocks don't share the "Copied" check state.
+                    const blockKey = String(
+                      node?.position?.start?.offset ?? codeString
+                    );
 
                     if (!inline && match) {
                       return (
@@ -440,13 +493,21 @@ const ChatMessage = ({
                               className="flex cursor-pointer items-center justify-center rounded-md border border-solid border-transparent bg-transparent p-1.25 text-starlight/60 transition-colors duration-150 hover:border-line-night hover:bg-white/6 hover:text-starlight"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setCopyingCode(match[1]);
-                                copyToClipboard(codeString);
-                                setTimeout(() => setCopyingCode(null), 2000);
+                                copyToClipboard(codeString)
+                                  .then(() => {
+                                    setCopyingCode(blockKey);
+                                    setTimeout(
+                                      () => setCopyingCode(null),
+                                      2000
+                                    );
+                                  })
+                                  .catch((err) =>
+                                    console.error("Could not copy: ", err)
+                                  );
                               }}
                               aria-label="Copy code"
                             >
-                              {copyingCode === match[1] ? (
+                              {copyingCode === blockKey ? (
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
                                   width="16"
@@ -485,7 +546,7 @@ const ChatMessage = ({
                               )}
                             </button>
                           </div>
-                          <pre className={className} {...props}>
+                          <pre className={className}>
                             <code className={className} {...props}>
                               {children}
                             </code>
@@ -499,12 +560,18 @@ const ChatMessage = ({
                       </code>
                     );
                   },
-                  a: ({ node, ...props }: any) => {
+                  a: ({ node, href, ...props }: any) => {
+                    // Only open external (http) links in a new tab; in-page
+                    // anchors (footnotes, #refs) must stay in the same view.
+                    const external =
+                      typeof href === "string" && /^(https?:)?\/\//.test(href);
                     return (
                       <a
                         {...props}
-                        target="_blank"
-                        rel="noreferrer noopener"
+                        href={href}
+                        {...(external
+                          ? { target: "_blank", rel: "noreferrer noopener" }
+                          : {})}
                         className="text-verdi no-underline transition-colors duration-200 hover:text-gold-deep"
                       >
                         {props.children}
