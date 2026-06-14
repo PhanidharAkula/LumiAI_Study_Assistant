@@ -401,14 +401,16 @@ const ChatComponent = ({
   // scrolled up - and we let go instead of slamming back, which removes the
   // residual one-frame scroll fight at its source.
   const followParkRef = useRef(-1);
+  // The scrollHeight at the last park. A scrollTop drop with a SMALLER height is
+  // a content shrink clamping the view down (e.g. the thinking label collapsing
+  // into the first streamed line), NOT the user scrolling up.
+  const followHeightRef = useRef(-1);
 
   // Guards the "create a new conversation" insert so two rapid saves can't both
   // insert a row before the first conversation id propagates (would duplicate).
   const creatingConvRef = useRef(false);
 
-  // Mirror of `loading` for the scroll handler (which closes over a stale value),
-  // plus a debounce handle for the localStorage write.
-  const loadingRef = useRef(false);
+  // Debounce handle for the localStorage write.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // How close to the bottom (px) counts as "at the bottom" for RE-PINNING when
@@ -424,6 +426,7 @@ const ChatComponent = ({
     if (container) {
       container.scrollTop = container.scrollHeight;
       followParkRef.current = container.scrollTop;
+      followHeightRef.current = container.scrollHeight;
     }
   };
 
@@ -435,8 +438,14 @@ const ChatComponent = ({
     if (!pinnedToBottom.current) return;
     const container = chatContainerRef.current;
     if (!container) return;
+    // A drop in scrollTop is the user scrolling up ONLY if the content didn't
+    // shrink. When the bubble shrinks (the thinking label collapsing into the
+    // first streamed line) the browser clamps scrollTop down to the new bottom -
+    // that's not the user, so keep following instead of letting go.
+    const shrank = container.scrollHeight < followHeightRef.current;
     if (
       followParkRef.current >= 0 &&
+      !shrank &&
       container.scrollTop < followParkRef.current - 2
     ) {
       pinnedToBottom.current = false;
@@ -445,6 +454,7 @@ const ChatComponent = ({
     }
     container.scrollTop = container.scrollHeight;
     followParkRef.current = container.scrollTop;
+    followHeightRef.current = container.scrollHeight;
   };
 
   // Re-pin and snap to the latest turn (used on send/submit and the jump btn).
@@ -485,20 +495,21 @@ const ChatComponent = ({
     // genuinely back at the bottom. (The old pure-distance threshold re-pinned
     // on every small scroll, so the per-frame auto-scroll kept winning.)
     let lastScrollTop = container.scrollTop;
+    let lastScrollHeight = container.scrollHeight;
     const handleScroll = () => {
       const top = container.scrollTop;
-      const distanceFromBottom =
-        container.scrollHeight - top - container.clientHeight;
-      if (top < lastScrollTop - 1) {
+      const height = container.scrollHeight;
+      const distanceFromBottom = height - top - container.clientHeight;
+      // A scrollTop decrease is the user scrolling up ONLY if the content didn't
+      // shrink - a shrink clamps scrollTop down to the new bottom (not the user).
+      if (top < lastScrollTop - 1 && height >= lastScrollHeight) {
         pinnedToBottom.current = false;
-      } else if (!loadingRef.current && distanceFromBottom < PIN_AT_BOTTOM) {
-        // Re-pin by distance only when NOT streaming, so a touch-inertia
-        // overshoot that decelerates back into the bottom zone mid-reply can't
-        // re-pin the user who just scrolled away. (The jump button still re-pins.)
+      } else if (distanceFromBottom < PIN_AT_BOTTOM) {
         pinnedToBottom.current = true;
         followParkRef.current = -1; // re-pinned by the user: allow catch-up
       }
       lastScrollTop = top;
+      lastScrollHeight = height;
       const pinned = pinnedToBottom.current;
       // Only flip state when it actually changes (avoids per-frame re-renders
       // during a streaming-driven scroll storm).
@@ -525,7 +536,9 @@ const ChatComponent = ({
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
       lastScrollTop = container.scrollTop;
+      lastScrollHeight = container.scrollHeight;
       followParkRef.current = container.scrollTop;
+      followHeightRef.current = container.scrollHeight;
     });
     return () => {
       container.removeEventListener("scroll", handleScroll);
@@ -538,11 +551,6 @@ const ChatComponent = ({
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
-
-  // Mirror `loading` into a ref the scroll handler can read without re-binding.
-  useEffect(() => {
-    loadingRef.current = loading;
-  }, [loading]);
 
   // Persist a lightweight snapshot for the 24h fast-restore - DEBOUNCED so the
   // ~33fps streaming setMessages can't thrash localStorage, and with the heavy
