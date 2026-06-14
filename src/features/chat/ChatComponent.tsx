@@ -2185,7 +2185,7 @@ const ChatComponent = ({
           {/* Scroll happens on the FULL width (ref here) so hovering anywhere
               scrolls; messages stay centered via the inner 820px column. */}
           <motion.div
-            className="w-full flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-5 max-[1024px]:pb-3.5 max-md:pb-20"
+            className="w-full flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
             ref={chatContainerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -2265,32 +2265,33 @@ const ChatComponent = ({
               )}
             </AnimatePresence>
 
-            <AnimatePresence>
-              {(selectedClasses.length > 0 ||
-                selectedFiles.length > 0 ||
-                uploadedLocalFiles.length > 0) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                >
-                  <ContextTags
-                    selectedClasses={selectedClasses}
-                    selectedFiles={selectedFiles}
-                    allClasses={allClasses}
-                    onRemoveTag={handleRemoveTag}
-                    onShowTagSelector={() => setShowTagSelector(true)}
-                    uploadedFiles={uploadedLocalFiles}
-                    onRemoveUploadedFile={(index) => {
-                      setUploadedLocalFiles((prev) =>
-                        prev.filter((_, i) => i !== index)
-                      );
-                    }}
-                    onClearAll={handleClearAll}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {(selectedClasses.length > 0 ||
+              selectedFiles.length > 0 ||
+              uploadedLocalFiles.length > 0) && (
+              // No exit animation: on send the context clears, and an animated
+              // exit would keep this block occupying height for ~0.3s, then pop
+              // out - making the chat re-scroll DOWN to settle. Instant removal
+              // keeps the layout final so the view lands at the bottom at once.
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <ContextTags
+                  selectedClasses={selectedClasses}
+                  selectedFiles={selectedFiles}
+                  allClasses={allClasses}
+                  onRemoveTag={handleRemoveTag}
+                  onShowTagSelector={() => setShowTagSelector(true)}
+                  uploadedFiles={uploadedLocalFiles}
+                  onRemoveUploadedFile={(index) => {
+                    setUploadedLocalFiles((prev) =>
+                      prev.filter((_, i) => i !== index)
+                    );
+                  }}
+                  onClearAll={handleClearAll}
+                />
+              </motion.div>
+            )}
 
             <ChatInput
               onSendMessage={handleSendMessage}
