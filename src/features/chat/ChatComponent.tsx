@@ -592,8 +592,8 @@ const ChatComponent = ({
   ]);
 
   useEffect(() => {
-    // Follow new/updated messages via the guarded follow so a scrolled-up user
-    // is never dragged back (it releases instead of slamming to the bottom).
+    // Follow new/updated messages, but only while pinned - followToBottom
+    // no-ops when the user has scrolled up, so they're never dragged back.
     followToBottom();
   }, [messages]);
 
@@ -1257,7 +1257,7 @@ const ChatComponent = ({
           );
         }
         // Follow every frame (cheap, separate from the throttled reparse) so the
-        // parked guard releases within a single frame when the user scrolls up.
+        // view stays glued to the bottom even between the ~33fps repaints.
         followToBottom();
         if (streamShown < streamTarget.length) {
           smoothRaf = requestAnimationFrame(renderSmooth);
@@ -1680,6 +1680,9 @@ const ChatComponent = ({
     (files: any[]) => setUploadedLocalFiles((prev) => [...prev, ...files]),
     []
   );
+  const retryRef = useRef(handleRetry);
+  retryRef.current = handleRetry;
+  const onRetryStable = useCallback(() => retryRef.current(), []);
 
   const handleTagSelection = ({
     selectedClasses: newClasses,
@@ -2235,11 +2238,11 @@ const ChatComponent = ({
                     message={msg.content}
                     type={msg.type}
                     isStreaming={!!msg.isStreaming}
-                    files={msg.files || []}
-                    contextFiles={msg.contextFiles || []}
+                    files={msg.files}
+                    contextFiles={msg.contextFiles}
                     statusLabel={msg.statusLabel}
                     isLast={i === messages.length - 1}
-                    onRetry={handleRetry}
+                    onRetry={onRetryStable}
                   />
                 ))
               )}

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -859,4 +859,9 @@ const ChatMessage = ({
   );
 };
 
-export default ChatMessage;
+// Memoized: during streaming the parent re-renders ~33fps. Without this, EVERY
+// prior message re-ran react-markdown (+ KaTeX/highlight) on every frame - the
+// dominant main-thread cost. Message objects are referentially stable for prior
+// turns (only the streaming bubble gets a new object), and the parent passes a
+// stable onRetry, so the shallow compare lets all settled messages skip.
+export default memo(ChatMessage);

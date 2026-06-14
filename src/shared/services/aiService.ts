@@ -354,6 +354,11 @@ export const fetchAIResponse = async (
     }
 
     const data = await response.json();
+    // A refusal comes back as HTTP 200 with { error } (and no text); surface it
+    // so a caller never treats the empty reply as a real answer.
+    if (data.error) {
+      return { text: null, error: data.error, errorType: "api" };
+    }
     return { text: (data.text || "").trim(), error: null };
   } catch (error: any) {
     if (error?.name === "AbortError") {
