@@ -900,14 +900,57 @@ const ChatComponent = ({
 
   // Tag selection is handled by `handleTagSelection` defined below (keeps modal control with TagSelector)
 
+  // Fetch a tagged image from storage and return it as a base64 vision input
+  // (the API accepts png/jpeg/gif/webp). Tagged images have no text to extract,
+  // so this is how they reach the model - the same shape as an uploaded image.
+  const fetchTaggedImage = async (fileObj: any): Promise<any | null> => {
+    try {
+      const { url, error } = await getFilePublicUrl("files", fileObj.path);
+      if (!url || error) return null;
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      const dataUrl: string | null = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+      if (!dataUrl || !dataUrl.startsWith("data:")) return null;
+      // The API only accepts these four types; trust the blob's type when it's
+      // one of them, otherwise derive it from the filename extension.
+      let type = blob.type;
+      if (!/^image\/(png|jpeg|gif|webp)$/.test(type)) {
+        const ext = (fileObj.name || "")
+          .toLowerCase()
+          .match(/\.(png|jpe?g|gif|webp)$/)?.[1];
+        type =
+          ext === "jpg" || ext === "jpeg"
+            ? "image/jpeg"
+            : ext
+              ? `image/${ext}`
+              : "image/png";
+      }
+      const b64 = dataUrl.split(",")[1] || "";
+      if (!b64) return null;
+      return { name: fileObj.name, type, base64: `data:${type};base64,${b64}` };
+    } catch {
+      return null;
+    }
+  };
+
   const buildAIContext = async () => {
     // Build a clear, delimited context block. This returns a short string
     // describing which classes and files are active. If nothing is selected,
     // return an empty string so the assistant behaves as a general chat model.
     try {
-      if (!selectedClasses.length && !selectedFiles.length) return "";
+      if (!selectedClasses.length && !selectedFiles.length)
+        return { text: "", images: [] as any[] };
 
-      const parts = [];
+      const parts: string[] = [];
+      // Tagged images (resolved to base64) are returned separately and sent as
+      // vision inputs, since they have no text to put in the context string.
+      const images: any[] = [];
       // List selected classes and how many files are included
       if (selectedClasses.length) {
         parts.push("Selected classes:");
@@ -1025,6 +1068,22 @@ const ChatComponent = ({
                       `[⚠️ Unable to extract text from PDF "${fileObj.name}". The file may be image-based or have extraction restrictions. Consider uploading it via the + button for analysis.]`
                     );
                   }
+                } else if (
+                  /^image\/(png|jpeg|gif|webp)$/.test(mime) ||
+                  /\.(png|jpe?g|gif|webp)$/.test(fileName)
+                ) {
+                  // Images can't be text-extracted: fetch + base64 so the model
+                  // gets them as actual VISION inputs (merged into the API files
+                  // below), the same way an uploaded image is handled.
+                  const img = await fetchTaggedImage(fileObj);
+                  if (img) {
+                    images.push(img);
+                    parts.push(
+                      `[Image "${fileObj.name}" is attached below for you to view.]`
+                    );
+                  } else {
+                    parts.push(`[Could not load image "${fileObj.name}".]`);
+                  }
                 } else {
                   parts.push(
                     `[${
@@ -1057,10 +1116,10 @@ const ChatComponent = ({
         });
       }
 
-      return parts.join("\n");
+      return { text: parts.join("\n"), images };
     } catch (err) {
       console.error("Error building AI context:", err);
-      return "";
+      return { text: "", images: [] as any[] };
     }
   };
 
@@ -1201,9 +1260,10 @@ const ChatComponent = ({
       // Resolve the context: a retry reuses what the original message already
       // resolved; a fresh send does the (possibly slow) file fetch + PDF
       // extraction now, with the message + rotating indicator already on screen.
-      const messageContext = retryMsg
-        ? retryMsg.contextContent || ""
+      const ctx = retryMsg
+        ? { text: retryMsg.contextContent || "", images: [] as any[] }
         : await buildAIContext();
+      const messageContext = ctx.text;
 
       // Reading done: persist the resolved context onto the user message and
       // move the rotating label into its "thinking" phase for the rest of the wait.
@@ -1220,6 +1280,9 @@ const ChatComponent = ({
       );
 
       const context = messageContext;
+      // Tagged images were resolved to base64 in buildAIContext; send them as
+      // vision inputs alongside any uploaded files so the model can see them.
+      const apiFiles = ctx.images.length ? [...files, ...ctx.images] : files;
 
       let fullResponse = "";
 
@@ -1344,7 +1407,7 @@ const ChatComponent = ({
         },
         controller.signal,
         trimmedHistory,
-        files, // Pass files to the API
+        apiFiles, // uploaded files + any tagged images, as vision inputs
         { mode: "chat" } // conversational study prompt; web search always available
       );
 

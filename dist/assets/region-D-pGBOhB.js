@@ -1,0 +1,1 @@
+function a(){try{const n=Intl.DateTimeFormat().resolvedOptions().timeZone;if(!n)return"Unknown";const e=n.split("/")[0]||"Unknown";return{America:"America",Europe:"Europe",Asia:"Asia",Africa:"Africa",Australia:"Oceania",Pacific:"Oceania",Atlantic:"Atlantic",Indian:"Indian Ocean"}[e]||e}catch{return"Unknown"}}export{a as d};
