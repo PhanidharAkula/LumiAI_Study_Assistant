@@ -91,7 +91,7 @@ const styleBtn = (active: boolean) =>
   }`;
 
 const NUMBER_BTN_BASE =
-  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-[15px] px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
+  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-3.75 px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
 const numberBtn = (active: boolean) =>
   `${NUMBER_BTN_BASE} ${
     active
@@ -105,13 +105,13 @@ const HISTORY_ROW =
 
 /* ── Studying - the two-faced atlas plate ──────────────────────────────── */
 const FLASHCARD_FACE =
-  "absolute w-full h-full [backface-visibility:hidden] [-webkit-backface-visibility:hidden] flex flex-col justify-center items-center p-10 rounded-xl border border-solid text-center max-[480px]:py-[30px] max-[480px]:px-5";
+  "absolute w-full h-full [backface-visibility:hidden] [-webkit-backface-visibility:hidden] flex flex-col justify-center items-center p-10 rounded-xl border border-solid text-center max-[480px]:py-7.5 max-[480px]:px-5";
 const FLASHCARD_FACE_FRONT = `${FLASHCARD_FACE} border-line bg-vellum shadow-plate`;
 const FLASHCARD_FACE_BACK = `${FLASHCARD_FACE} overflow-hidden border-line-night bg-night text-starlight shadow-night [transform:rotateY(180deg)]`;
 const FLASHCARD_LABEL =
   "absolute top-4 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] font-medium uppercase tracking-[0.2em] max-[480px]:top-3 max-[480px]:text-[9px]";
 const FLASHCARD_CONTENT =
-  "relative font-display font-medium leading-[1.5] max-h-[200px] overflow-y-auto max-md:max-h-[170px] max-[480px]:max-h-[140px]";
+  "relative font-display font-medium leading-normal max-h-50 overflow-y-auto max-md:max-h-42.5 max-[480px]:max-h-35";
 const FLASHCARD_CONTENT_FRONT = `${FLASHCARD_CONTENT} text-[26px] text-ink max-md:text-[22px] max-[480px]:text-[19px]`;
 const FLASHCARD_CONTENT_BACK = `${FLASHCARD_CONTENT} text-[20px] text-starlight max-md:text-[18px] max-[480px]:text-[16px]`;
 
@@ -126,7 +126,7 @@ const STUDY_STAT_BASE =
 
 /* ── Completed (instrument readouts) ───────────────────────────────────── */
 const COMPLETED_STAT =
-  "flex flex-col items-center gap-1 rounded-lg border border-solid border-line bg-cream/50 py-5 px-[30px] max-md:py-[15px] max-md:px-5 max-[480px]:py-3 max-[480px]:px-4 max-[480px]:min-w-20";
+  "flex flex-col items-center gap-1 rounded-lg border border-solid border-line bg-cream/50 py-5 px-7.5 max-md:py-3.75 max-md:px-5 max-[480px]:py-3 max-[480px]:px-4 max-[480px]:min-w-20";
 const COMPLETED_STAT_LABEL =
   "font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-muted";
 const COMPLETED_STAT_VALUE =
@@ -548,13 +548,13 @@ CRITICAL JSON FORMATTING RULES:
 
   return (
     <motion.div
-      className="fixed inset-0 bg-cream/95 backdrop-blur-[2px] z-[1000] flex flex-col overflow-hidden"
+      className="fixed inset-0 bg-cream/95 backdrop-blur-[2px] z-1000 flex flex-col overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       {/* Header */}
-      <div className="py-5 px-[30px] flex items-center gap-5 relative z-[100] max-md:py-[15px] max-md:px-5 max-md:gap-[15px]">
+      <div className="py-5 px-7.5 flex items-center gap-5 relative z-100 max-md:py-3.75 max-md:px-5 max-md:gap-3.75">
         <BackButton
           onClick={handleBackButton}
           label={
@@ -658,21 +658,21 @@ CRITICAL JSON FORMATTING RULES:
           {flashcardState === "setup" && !generatingCards && (
             <motion.div
               key="setup"
-              className="w-full max-w-[1400px] m-auto flex flex-col gap-5 p-0 h-auto justify-center"
+              className="w-full max-w-350 m-auto flex flex-col gap-5 p-0 h-auto justify-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
               {/* Config Grid */}
               <motion.div
-                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-[15px] items-stretch mb-5 flex-1 max-[1200px]:grid-cols-2 max-[1200px]:grid-rows-[auto] max-md:grid-cols-1"
+                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-3.75 items-stretch mb-5 flex-1 max-[1200px]:grid-cols-2 max-[1200px]:grid-rows-[auto] max-md:grid-cols-1"
                 variants={stagger()}
                 initial="hidden"
                 animate="visible"
               >
                 {/* Setup Header - the deck's title plate */}
                 <motion.div
-                  className={`${UI.plate} text-center py-[30px] px-5 overflow-hidden col-[1/3] row-[1] flex flex-col justify-center items-center max-[1200px]:col-[1/-1] max-md:col-[1] max-md:row-[auto] max-md:py-5 max-md:px-4 max-md:rounded-[10px]`}
+                  className={`${UI.plate} text-center py-7.5 px-5 overflow-hidden col-[1/3] row-1 flex flex-col justify-center items-center max-[1200px]:col-span-full max-md:col-1 max-md:row-auto max-md:py-5 max-md:px-4 max-md:rounded-[10px]`}
                   variants={fadeRise}
                 >
                   <CornerTicks />
@@ -695,7 +695,7 @@ CRITICAL JSON FORMATTING RULES:
                 </motion.div>
                 {/* Card Style */}
                 <motion.div
-                  className={`${CONFIG_CARD} col-[1] row-[2] max-[1200px]:col-[1] max-[1200px]:row-[auto] max-md:col-[1] max-md:row-[auto]`}
+                  className={`${CONFIG_CARD} col-1 row-2 max-[1200px]:col-1 max-[1200px]:row-auto max-md:col-1 max-md:row-auto`}
                   variants={fadeRise}
                 >
                   <div className={CONFIG_CARD_HEADER}>
@@ -737,7 +737,7 @@ CRITICAL JSON FORMATTING RULES:
                         <span className="flex-1 text-[14px] font-semibold text-left">
                           {label}
                         </span>
-                        <span className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] opacity-60">
+                        <span className="font-mono text-[9px] font-medium uppercase tracking-widest opacity-60">
                           {desc}
                         </span>
                       </motion.button>
@@ -747,7 +747,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Number of Cards */}
                 <motion.div
-                  className={`${CONFIG_CARD} col-[2] row-[2] max-[1200px]:col-[2] max-[1200px]:row-[auto] max-md:col-[1] max-md:row-[auto]`}
+                  className={`${CONFIG_CARD} col-2 row-2 max-[1200px]:col-2 max-[1200px]:row-auto max-md:col-1 max-md:row-auto`}
                   variants={fadeRise}
                 >
                   <div className={CONFIG_CARD_HEADER}>
@@ -775,7 +775,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Files Selection Card - shared with Quiz. */}
                 <FileSelectionCard
-                  className="col-[3] row-[1/3] max-[1200px]:col-[1/-1] max-[1200px]:row-[auto] max-md:col-[1] max-md:row-[auto]"
+                  className="col-3 row-[1/3] max-[1200px]:col-span-full max-[1200px]:row-auto max-md:col-1 max-md:row-auto"
                   files={
                     (classData?.files?.filter(
                       (f: ClassFile) =>
@@ -820,7 +820,7 @@ CRITICAL JSON FORMATTING RULES:
           {flashcardState === "studying" && currentCard && (
             <motion.div
               key="studying"
-              className="w-full max-w-[800px] m-auto flex flex-col gap-[30px] p-5 max-[480px]:p-2.5 max-[480px]:gap-5"
+              className="w-full max-w-200 m-auto flex flex-col gap-7.5 p-5 max-[480px]:p-2.5 max-[480px]:gap-5"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -829,7 +829,7 @@ CRITICAL JSON FORMATTING RULES:
               <div className="w-full">
                 <div className="relative w-full h-1 rounded-full bg-ink/15">
                   <motion.div
-                    className="relative h-full rounded-full bg-gold after:absolute after:right-[-5px] after:top-1/2 after:-translate-y-1/2 after:text-[10px] after:leading-none after:text-gold after:content-['✦']"
+                    className="relative h-full rounded-full bg-gold after:absolute after:-right-1.25 after:top-1/2 after:-translate-y-1/2 after:text-[10px] after:leading-none after:text-gold after:content-['✦']"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.3 }}
@@ -851,11 +851,11 @@ CRITICAL JSON FORMATTING RULES:
               {/* Flashcard - a two-faced atlas plate: vellum day-side flips
                   to a midnight answer-plate (day → night). */}
               <div
-                className="[perspective:1000px] cursor-pointer w-full h-[350px] max-md:h-[300px] max-[480px]:h-[260px]"
+                className="perspective-[1000px] cursor-pointer w-full h-87.5 max-md:h-75 max-[480px]:h-65"
                 onClick={handleFlipCard}
               >
                 <motion.div
-                  className="w-full h-full relative [transform-style:preserve-3d]"
+                  className="w-full h-full relative transform-3d"
                   initial={false}
                   animate={{ rotateY: isFlipped ? 180 : 0 }}
                   transition={{ duration: 0.4, ease: "easeInOut" }}
@@ -937,7 +937,7 @@ CRITICAL JSON FORMATTING RULES:
                   </svg>
                 </IconButton>
 
-                <div className="flex items-center gap-3 max-md:w-full max-md:justify-center max-md:order-[-1] max-[480px]:gap-2">
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-center max-md:-order-1 max-[480px]:gap-2">
                   <motion.button
                     className={MARK_UNKNOWN_BTN}
                     onClick={handleMarkUnknown}
@@ -1023,7 +1023,7 @@ CRITICAL JSON FORMATTING RULES:
               </div>
 
               {/* Tally - running instrument readouts */}
-              <div className="flex justify-center gap-[30px] max-[480px]:gap-[15px]">
+              <div className="flex justify-center gap-7.5 max-[480px]:gap-3.75">
                 <div
                   className={`${STUDY_STAT_BASE} border-verdi/35 bg-sage/20 text-verdi`}
                 >
@@ -1077,7 +1077,7 @@ CRITICAL JSON FORMATTING RULES:
           {flashcardState === "completed" && (
             <motion.div
               key="completed"
-              className={`${UI.plate} w-full max-w-[600px] m-auto flex flex-col items-center gap-6 p-10 text-center max-md:p-6 max-[480px]:p-5 max-[480px]:gap-5`}
+              className={`${UI.plate} w-full max-w-150 m-auto flex flex-col items-center gap-6 p-10 text-center max-md:p-6 max-[480px]:p-5 max-[480px]:gap-5`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}

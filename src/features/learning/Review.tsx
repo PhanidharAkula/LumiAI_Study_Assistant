@@ -81,14 +81,14 @@ const Review = () => {
     !loading && hasDecks && queue.length > 0 && index < queue.length;
 
   return (
-    <div className="relative min-h-[100dvh] w-full px-5 pt-[84px] pb-[60px] max-[600px]:px-3.5 max-[600px]:pt-[72px] max-[600px]:pb-10">
+    <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       <BackButton
-        className="absolute left-6 top-6 z-[2] max-[600px]:left-4 max-[600px]:top-4"
+        className="absolute left-6 top-6 z-2 max-[600px]:left-4 max-[600px]:top-4"
         onClick={goDashboard}
         label="Back to dashboard"
       />
 
-      <div className="mx-auto max-w-[600px]">
+      <div className="mx-auto max-w-150">
         <div className="mb-6 flex items-end justify-between gap-3">
           <div>
             <p className={`${UI.overline} cursor-default`}>Spaced review</p>
@@ -109,7 +109,7 @@ const Review = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-[60px]">
+          <div className="flex justify-center py-15">
             <Spinner label="Loading your cards…" />
           </div>
         ) : !hasDecks ? (
@@ -127,7 +127,7 @@ const Review = () => {
               No flashcards yet
             </motion.p>
             <motion.p
-              className="max-w-[420px] text-[14.5px] leading-[1.65] text-muted"
+              className="max-w-105 text-[14.5px] leading-[1.65] text-muted"
               variants={fadeRise}
             >
               Generate flashcards from your class materials first, then come
@@ -151,13 +151,13 @@ const Review = () => {
               <LumiStar size={44} orbit className="text-ink/40" />
             </motion.div>
             <motion.p
-              className="mt-1 max-w-[420px] font-display italic text-[20px] leading-[1.5] text-ink"
+              className="mt-1 max-w-105 font-display italic text-[20px] leading-normal text-ink"
               variants={fadeRise}
             >
               All caught up - the sky is quiet tonight.
             </motion.p>
             <motion.p
-              className="max-w-[420px] font-mono text-[11px] leading-[1.8] text-muted"
+              className="max-w-105 font-mono text-[11px] leading-[1.8] text-muted"
               variants={fadeRise}
             >
               No cards are due right now. Check back later - spaced repetition
@@ -184,7 +184,7 @@ const Review = () => {
               Session complete
             </motion.p>
             <motion.p
-              className="max-w-[420px] font-display italic text-[19px] leading-[1.55] text-ink"
+              className="max-w-105 font-display italic text-[19px] leading-[1.55] text-ink"
               variants={fadeRise}
             >
               You reviewed {reviewed} card{reviewed === 1 ? "" : "s"}. Nice work
@@ -200,7 +200,7 @@ const Review = () => {
           <>
             <div
               key={`${current.deckId}:${current.cardIndex}:${index}`}
-              className={`${UI.plate} flex min-h-[240px] cursor-default flex-col p-7 max-[600px]:p-5`}
+              className={`${UI.plate} flex min-h-60 cursor-default flex-col p-7 max-[600px]:p-5`}
             >
               <CornerTicks />
               <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -208,18 +208,18 @@ const Review = () => {
                   {current.className}
                 </span>
                 {current.srs === null && (
-                  <span className="rounded-full border border-solid border-gold-deep/40 bg-gold/15 px-2.5 py-[3px] font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-gold-deep">
+                  <span className="rounded-full border border-solid border-gold-deep/40 bg-gold/15 px-2.5 py-0.75 font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-gold-deep">
                     New
                   </span>
                 )}
                 {current.category && (
-                  <span className="rounded-full border border-solid border-verdi/30 bg-sage/25 px-2.5 py-[3px] font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-verdi">
+                  <span className="rounded-full border border-solid border-verdi/30 bg-sage/25 px-2.5 py-0.75 font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-verdi">
                     {current.category}
                   </span>
                 )}
               </div>
 
-              <div className="flex flex-1 items-center justify-center whitespace-pre-wrap break-words py-2 text-center font-display text-[24px] font-semibold leading-[1.4] max-[600px]:text-[20px]">
+              <div className="flex flex-1 items-center justify-center whitespace-pre-wrap wrap-break-word py-2 text-center font-display text-[24px] font-semibold leading-[1.4] max-[600px]:text-[20px]">
                 {current.front}
               </div>
 
@@ -229,7 +229,7 @@ const Review = () => {
                 >
                   <Starfield count={14} seed={9} />
                   <p className={`relative ${UI.overlineNight}`}>Answer</p>
-                  <div className="relative mt-2.5 whitespace-pre-wrap break-words text-[16px] leading-[1.6] text-starlight">
+                  <div className="relative mt-2.5 whitespace-pre-wrap wrap-break-word text-[16px] leading-[1.6] text-starlight">
                     {current.back}
                   </div>
                 </div>

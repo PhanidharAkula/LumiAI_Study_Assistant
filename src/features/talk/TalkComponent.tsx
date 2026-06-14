@@ -25,7 +25,7 @@ interface Props {
 // Round bottom control keys (mute / stop) on the night scene - hairline
 // starlight circle by default; muted = filled starlight; stop = vermilion ink.
 const TALK_BTN =
-  "flex h-[65px] w-[65px] cursor-pointer items-center justify-center rounded-full border border-solid transition-colors duration-200 max-md:h-16 max-md:w-16 max-[480px]:h-14 max-[480px]:w-14";
+  "flex h-16.25 w-16.25 cursor-pointer items-center justify-center rounded-full border border-solid transition-colors duration-200 max-md:h-16 max-md:w-16 max-[480px]:h-14 max-[480px]:w-14";
 const TALK_BTN_RED =
   "border-[#e2674a]/60 bg-transparent text-[#ff9c82] hover:border-[#e2674a] hover:bg-[#b23a1d] hover:text-starlight";
 const TALK_BTN_DEFAULT =
@@ -391,7 +391,7 @@ const TalkComponent = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1200] flex flex-col overflow-hidden bg-night">
+    <div className="fixed inset-0 z-1200 flex flex-col overflow-hidden bg-night">
       <Starfield count={70} seed={11} />
       <div
         className="pointer-events-none absolute inset-0"
@@ -401,7 +401,7 @@ const TalkComponent = ({
             "radial-gradient(60rem 40rem at 50% 110%, rgb(199 154 51 / 0.12), transparent 60%)",
         }}
       />
-      <div className="fixed inset-x-0 top-0 z-[1210] flex items-center justify-between bg-transparent p-[30px]">
+      <div className="fixed inset-x-0 top-0 z-1210 flex items-center justify-between bg-transparent p-7.5">
         <div className="flex items-center gap-2.5">
           {!started && (
             <div className="relative">
@@ -427,13 +427,13 @@ const TalkComponent = ({
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                 </svg>
-                <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] tracking-wide">
+                <span className="max-w-30 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] tracking-wide">
                   {voices[voiceIndex]?.name?.substring(0, 15) || "Voice"}
                 </span>
               </motion.button>
               {voiceMenuOpen && (
                 <motion.div
-                  className="absolute left-0 top-[58px] z-[1400] min-w-[240px] overflow-hidden rounded-xl border border-solid border-line-night bg-night-2 shadow-night"
+                  className="absolute left-0 top-14.5 z-1400 min-w-60 overflow-hidden rounded-xl border border-solid border-line-night bg-night-2 shadow-night"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
@@ -446,7 +446,7 @@ const TalkComponent = ({
                         className={`flex w-full cursor-pointer items-center gap-2.5 border-0 border-l-2 border-solid px-4 py-3 text-left font-mono text-[12.5px] transition-colors duration-200 ${
                           i === voiceIndex
                             ? "border-gold/50 bg-gold/10 font-semibold text-gold"
-                            : "border-transparent bg-transparent text-starlight/85 hover:bg-starlight/[0.07]"
+                            : "border-transparent bg-transparent text-starlight/85 hover:bg-starlight/7"
                         }`}
                         onClick={() => selectVoice(i)}
                         whileTap={{ scale: 0.98 }}
@@ -482,7 +482,7 @@ const TalkComponent = ({
       </div>
       <div className="relative flex flex-1 items-center justify-center px-5 pt-20 pb-10">
         {!started ? (
-          <div className="flex flex-col items-center gap-[18px] text-center">
+          <div className="flex flex-col items-center gap-4.5 text-center">
             <motion.div
               className="text-starlight/35"
               initial={{ scale: 0.8, opacity: 0 }}
@@ -519,9 +519,9 @@ const TalkComponent = ({
             </motion.button>
           </div>
         ) : (
-          <div className="flex h-full w-full max-w-[600px] flex-col items-center justify-center gap-10">
+          <div className="flex h-full w-full max-w-150 flex-col items-center justify-center gap-10">
             <motion.div
-              className="relative h-[250px] w-[250px] max-md:h-[210px] max-md:w-[210px] max-[480px]:h-[180px] max-[480px]:w-[180px]"
+              className="relative h-62.5 w-62.5 max-md:h-52.5 max-md:w-52.5 max-[480px]:h-45 max-[480px]:w-45"
               animate={circleControls}
               initial={{ scale: 1 }}
             >
@@ -617,7 +617,7 @@ const TalkComponent = ({
       </div>
 
       {started && (
-        <div className="fixed bottom-10 left-1/2 z-[1220] flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-[30px] max-md:gap-6 max-[480px]:bottom-6 max-[480px]:gap-5">
+        <div className="fixed bottom-10 left-1/2 z-1220 flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-7.5 max-md:gap-6 max-[480px]:bottom-6 max-[480px]:gap-5">
           <motion.button
             type="button"
             className={`${TALK_BTN} ${muted ? TALK_BTN_MUTED : TALK_BTN_DEFAULT}`}

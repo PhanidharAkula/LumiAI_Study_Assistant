@@ -93,7 +93,7 @@ const CHIP_TONES: Record<ChipTone, string> = {
   neutral: "border-line bg-cream/70 text-muted",
 };
 const chip = (tone: ChipTone) =>
-  `inline-flex items-center gap-1.5 rounded-full border border-solid px-2.5 py-[3px] font-mono text-[10px] font-medium uppercase tracking-[0.12em] whitespace-nowrap ${CHIP_TONES[tone]}`;
+  `inline-flex items-center gap-1.5 rounded-full border border-solid px-2.5 py-0.75 font-mono text-[10px] font-medium uppercase tracking-[0.12em] whitespace-nowrap ${CHIP_TONES[tone]}`;
 const TICKET_STATUS_TONE: Record<string, ChipTone> = {
   open: "pending",
   in_progress: "good",
@@ -178,8 +178,8 @@ function SettingToggle({
       }`}
     >
       <span
-        className={`absolute top-[4px] w-[18px] h-[18px] rounded-full [transition:left_0.2s,background-color_0.2s] ${
-          checked ? "left-[24px] bg-starlight" : "left-[4px] bg-muted"
+        className={`absolute top-1 w-4.5 h-4.5 rounded-full [transition:left_0.2s,background-color_0.2s] ${
+          checked ? "left-6 bg-starlight" : "left-1 bg-muted"
         }`}
       />
     </button>
@@ -200,7 +200,7 @@ function SectionHeader({
   toolbar?: ReactNode;
 }) {
   return (
-    <div className="sticky top-0 z-20 -mx-[22px] -mt-[22px] mb-5 flex flex-col gap-3 rounded-t-xl border-0 border-b border-solid border-line bg-vellum/95 px-[22px] py-4 backdrop-blur-[2px] max-md:-mx-4 max-md:-mt-4 max-md:px-4">
+    <div className="sticky top-0 z-20 -mx-5.5 -mt-5.5 mb-5 flex flex-col gap-3 rounded-t-xl border-0 border-b border-solid border-line bg-vellum/95 px-5.5 py-4 backdrop-blur-[2px] max-md:-mx-4 max-md:-mt-4 max-md:px-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex flex-col gap-1">
           <span className={UI.overline}>{code}</span>
@@ -769,7 +769,7 @@ export default function Admin() {
     <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-2 max-md:flex-col max-md:items-stretch">
         {/* Search */}
-        <div className="relative min-w-[180px] flex-1 max-md:min-w-0">
+        <div className="relative min-w-45 flex-1 max-md:min-w-0">
           <input
             type="text"
             className="w-full rounded-lg border border-solid border-ink/20 bg-white/60 py-2 pl-3.5 pr-9 text-[13px] font-[inherit] text-ink transition-colors placeholder:text-muted/60 focus:border-gold-deep focus:outline-none max-md:text-[14px] max-md:py-2.5 max-[480px]:text-[16px]"
@@ -958,10 +958,10 @@ export default function Admin() {
   );
 
   return (
-    <div className="min-h-[100dvh] w-full overflow-x-hidden px-[50px] pb-[100px] pt-0 max-[1024px]:px-[30px] max-md:px-5 max-md:pb-20 max-[480px]:px-[15px]">
+    <div className="min-h-dvh w-full overflow-x-hidden px-12.5 pb-25 pt-0 max-[1024px]:px-7.5 max-md:px-5 max-md:pb-20 max-[480px]:px-3.75">
       {/* Masthead - the control-room banner */}
       <motion.div
-        className="flex items-center justify-between gap-4 px-2.5 pb-5 pt-[30px] max-md:px-1 max-md:pt-5"
+        className="flex items-center justify-between gap-4 px-2.5 pb-5 pt-7.5 max-md:px-1 max-md:pt-5"
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -1061,7 +1061,7 @@ export default function Admin() {
                         className={`min-w-5 rounded-full px-1.5 py-0.5 text-center font-mono text-[10px] font-medium ${
                           active
                             ? "bg-cream/20 text-cream"
-                            : "bg-ink/[0.06] text-muted"
+                            : "bg-ink/6 text-muted"
                         }`}
                       >
                         {item.badge}
@@ -1075,7 +1075,7 @@ export default function Admin() {
             {/* Mobile band - horizontal segmented track, scrolls in its own
                 lane (never wraps/overlaps). Hidden scrollbar. */}
             <div className="hidden max-[1100px]:block">
-              <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <div className="inline-flex min-w-full gap-1 rounded-full border border-solid border-line bg-vellum p-1 shadow-plate">
                   {NAV.map((item) => {
                     const active = activeTab === item.id;
@@ -1097,7 +1097,7 @@ export default function Admin() {
                             className={`min-w-4 rounded-full px-1 text-center text-[10px] ${
                               active
                                 ? "bg-cream/20 text-cream"
-                                : "bg-ink/[0.06] text-muted"
+                                : "bg-ink/6 text-muted"
                             }`}
                           >
                             {item.badge}
@@ -1115,7 +1115,7 @@ export default function Admin() {
           <div className="min-w-0">
             <motion.section
               key={activeTab}
-              className={`${UI.plate} p-[22px] max-md:p-4`}
+              className={`${UI.plate} p-5.5 max-md:p-4`}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
@@ -1153,7 +1153,7 @@ export default function Admin() {
                       <Spinner label="Loading tickets…" />
                     </div>
                   ) : filteredTickets.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 p-[26px] text-center">
+                    <div className="flex flex-col items-center gap-2 p-6.5 text-center">
                       <Constellation
                         name="support tickets"
                         size={96}
@@ -1255,7 +1255,7 @@ export default function Admin() {
                     toolbar={usersToolbar || undefined}
                   />
                   {loading ? (
-                    <div className="flex justify-center py-[60px]">
+                    <div className="flex justify-center py-15">
                       <Spinner label="Reading the instruments…" />
                     </div>
                   ) : users.length === 0 ? (
@@ -1462,10 +1462,10 @@ export default function Admin() {
                                       }`}
                                     >
                                       <span
-                                        className={`absolute top-[4px] h-[18px] w-[18px] rounded-full [transition:left_0.2s,background-color_0.2s] ${
+                                        className={`absolute top-1 h-4.5 w-4.5 rounded-full [transition:left_0.2s,background-color_0.2s] ${
                                           u.is_admin
-                                            ? "left-[24px] bg-starlight"
-                                            : "left-[4px] bg-muted"
+                                            ? "left-6 bg-starlight"
+                                            : "left-1 bg-muted"
                                         }`}
                                       />
                                     </span>
@@ -1524,7 +1524,7 @@ export default function Admin() {
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[12.5px] text-muted [word-break:break-all]">
+                                <div className="text-[12.5px] text-muted break-all">
                                   {u.email}
                                 </div>
                               </div>
@@ -1606,10 +1606,10 @@ export default function Admin() {
                                   }`}
                                 >
                                   <span
-                                    className={`absolute top-[4px] h-[18px] w-[18px] rounded-full [transition:left_0.2s,background-color_0.2s] ${
+                                    className={`absolute top-1 h-4.5 w-4.5 rounded-full [transition:left_0.2s,background-color_0.2s] ${
                                       u.is_admin
-                                        ? "left-[24px] bg-starlight"
-                                        : "left-[4px] bg-muted"
+                                        ? "left-6 bg-starlight"
+                                        : "left-1 bg-muted"
                                     }`}
                                   />
                                 </span>

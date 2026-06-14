@@ -37,9 +37,9 @@ interface ChatMessageProps {
 // #e3b34f, numbers/literals #d98e73, attrs #c9b8e8, deletions #e8a08c.
 const PROSE = [
   // `min-w-0` lets this prose column shrink inside the flex message row, and
-  // `break-words` wraps long unbroken tokens (URLs, hashes) so they can't push
+  // `wrap-break-word` wraps long unbroken tokens (URLs, hashes) so they can't push
   // horizontal overflow at 390px; code blocks scroll inside their own bubble.
-  "relative min-w-0 max-w-full p-0 text-[15.5px] leading-[1.7] text-ink [overflow-wrap:anywhere]",
+  "relative min-w-0 max-w-full p-0 text-[15.5px] leading-[1.7] text-ink wrap-anywhere",
   // The last block's trailing margin is dropped so the AI "Copy" row sits the
   // same mt-2.5 below the text as the user-side copy button sits below its
   // bubble (otherwise the trailing p mb-4 made the Lumi gap larger).
@@ -47,25 +47,25 @@ const PROSE = [
   "[&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:font-semibold [&_h1]:leading-[1.3] [&_h1]:tracking-[-0.01em] [&_h1]:text-ink [&_h1]:text-[1.5em] [&_h1]:border-0 [&_h1]:border-b [&_h1]:border-solid [&_h1]:border-line [&_h1]:pb-[0.35em]",
   "[&_h2]:mt-6 [&_h2]:mb-4 [&_h2]:font-semibold [&_h2]:leading-[1.3] [&_h2]:tracking-[-0.01em] [&_h2]:text-ink [&_h2]:text-[1.25em] [&_h2]:border-0 [&_h2]:border-b [&_h2]:border-solid [&_h2]:border-line [&_h2]:pb-[0.35em]",
   "[&_h3]:mt-5 [&_h3]:mb-4 [&_h3]:font-semibold [&_h3]:leading-[1.3] [&_h3]:text-ink [&_h3]:text-[1.1em]",
-  "[&_h4]:mt-5 [&_h4]:mb-4 [&_h4]:font-semibold [&_h4]:leading-[1.25] [&_h4]:text-ink [&_h4]:text-[1.05em]",
+  "[&_h4]:mt-5 [&_h4]:mb-4 [&_h4]:font-semibold [&_h4]:leading-tight [&_h4]:text-ink [&_h4]:text-[1.05em]",
   // Preflight is off and the global reset sets no font-size, so without an
   // explicit size h5/h6 fall to the UA defaults (0.83em/0.67em) - i.e. SMALLER
   // than body. Pin them at/above body so the hierarchy never inverts.
-  "[&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:font-semibold [&_h5]:leading-[1.25] [&_h5]:text-ink [&_h5]:text-[1em] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:font-semibold [&_h6]:leading-[1.25] [&_h6]:text-ink [&_h6]:text-[0.95em]",
+  "[&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:font-semibold [&_h5]:leading-tight [&_h5]:text-ink [&_h5]:text-[1em] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:font-semibold [&_h6]:leading-tight [&_h6]:text-ink [&_h6]:text-[0.95em]",
   "[&_p]:mt-0 [&_p]:mb-4 [&_p]:text-ink",
-  "[&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-line [&_hr]:my-[18px]",
+  "[&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-line [&_hr]:my-4.5",
   "[&_ul]:pl-[2em] [&_ul]:mt-0 [&_ul]:mb-4 [&_ol]:pl-[2em] [&_ol]:mt-0 [&_ol]:mb-4 [&_li]:mt-[0.25em]",
   // GFM task lists (`- [ ]` / `- [x]`): remark-gfm emits an <li class="task-list-item">
   // with a disabled checkbox. Drop the bullet, hang the row off the list edge so
   // the box aligns with the text column, and tint the checkbox brand-verdi.
   "[&_li.task-list-item]:list-none [&_li.task-list-item]:-ml-[1.45em] [&_li.task-list-item]:flex [&_li.task-list-item]:items-baseline [&_li.task-list-item]:gap-2 [&_.task-list-item_input[type=checkbox]]:relative [&_.task-list-item_input[type=checkbox]]:top-[0.15em] [&_.task-list-item_input[type=checkbox]]:m-0 [&_.task-list-item_input[type=checkbox]]:h-[0.95em] [&_.task-list-item_input[type=checkbox]]:w-[0.95em] [&_.task-list-item_input[type=checkbox]]:shrink-0 [&_.task-list-item_input[type=checkbox]]:cursor-default [&_.task-list-item_input[type=checkbox]]:accent-verdi",
-  "[&_code]:bg-night/[0.06] [&_code]:rounded [&_code]:px-1.5 [&_code]:py-[2px] [&_code]:font-mono [&_code]:text-[13px] [&_:not(pre)>code]:[overflow-wrap:anywhere]",
+  "[&_code]:bg-night/6 [&_code]:rounded [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px] [&_:not(pre)>code]:wrap-anywhere",
   "[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-solid [&_pre]:border-line-night [&_pre]:bg-night [&_pre]:p-3.5 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-[1.65] [&_pre]:text-starlight",
   "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[13px]",
   "[&_blockquote]:my-4 [&_blockquote]:rounded-r-md [&_blockquote]:border-0 [&_blockquote]:border-l-2 [&_blockquote]:border-solid [&_blockquote]:border-gold/60 [&_blockquote]:bg-cream/60 [&_blockquote]:py-2.5 [&_blockquote]:pl-4 [&_blockquote]:pr-3.5 [&_blockquote]:italic [&_blockquote]:text-ink [&_blockquote_p:last-of-type]:mb-0",
   "[&_table]:w-full [&_table]:border-collapse",
-  "[&_th]:px-3 [&_th]:py-2.5 [&_th]:min-w-[120px] [&_th]:text-left [&_th]:text-ink [&_th]:font-semibold [&_th]:bg-sage/20 [&_th]:border-0 [&_th]:border-b [&_th]:border-r [&_th]:border-solid [&_th]:border-line [&_th:last-child]:border-r-0",
-  "[&_td]:px-3 [&_td]:py-2.5 [&_td]:min-w-[120px] [&_td]:border-0 [&_td]:border-b [&_td]:border-r [&_td]:border-solid [&_td]:border-line [&_td]:bg-white/40 [&_td:last-child]:border-r-0 [&_tr:last-child_td]:border-b-0",
+  "[&_th]:px-3 [&_th]:py-2.5 [&_th]:min-w-30 [&_th]:text-left [&_th]:text-ink [&_th]:font-semibold [&_th]:bg-sage/20 [&_th]:border-0 [&_th]:border-b [&_th]:border-r [&_th]:border-solid [&_th]:border-line [&_th:last-child]:border-r-0",
+  "[&_td]:px-3 [&_td]:py-2.5 [&_td]:min-w-30 [&_td]:border-0 [&_td]:border-b [&_td]:border-r [&_td]:border-solid [&_td]:border-line [&_td]:bg-white/40 [&_td:last-child]:border-r-0 [&_tr:last-child_td]:border-b-0",
   "[&_tr:nth-child(even)_td]:bg-vellum/60",
   // KaTeX math (rehype-katex). Display math is centered with vertical breathing
   // room and scrolls horizontally so a wide equation can't blow out the 390px
@@ -261,7 +261,7 @@ const ChatMessage = ({
       // Display user message exactly as entered, preserving line breaks
       return (
         <div className="group/uw flex w-full flex-col items-end">
-          <div className="box-border block max-w-full whitespace-pre-wrap [overflow-wrap:anywhere] rounded-xl bg-ink px-5 py-3.5 text-[15px] leading-[1.65] text-cream shadow-plate [&::-webkit-scrollbar]:hidden">
+          <div className="box-border block max-w-full whitespace-pre-wrap wrap-anywhere rounded-xl bg-ink px-5 py-3.5 text-[15px] leading-[1.65] text-cream shadow-plate [&::-webkit-scrollbar]:hidden">
             {message}
           </div>
           {/* Copy sits in its own normal-flow row under the bubble (mirrors the
@@ -280,7 +280,7 @@ const ChatMessage = ({
               {...keyPress}
             >
               {copySuccessUser ? (
-                <span className="flex items-center gap-[5px]">
+                <span className="flex items-center gap-1.25">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -391,12 +391,12 @@ const ChatMessage = ({
                     if (!inline && match) {
                       return (
                         <div className="relative my-4 overflow-hidden rounded-lg border border-solid border-line-night bg-night [&_pre]:my-0! [&_pre]:rounded-none! [&_pre]:border-0!">
-                          <div className="flex items-center justify-between border-0 border-b border-solid border-line-night bg-white/[0.04] px-3.5 py-2">
+                          <div className="flex items-center justify-between border-0 border-b border-solid border-line-night bg-white/4 px-3.5 py-2">
                             <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-starlight/60">
                               {match[1]}
                             </span>
                             <button
-                              className="flex cursor-pointer items-center justify-center rounded-md border border-solid border-transparent bg-transparent p-[5px] text-starlight/60 transition-colors duration-150 hover:border-line-night hover:bg-white/[0.06] hover:text-starlight"
+                              className="flex cursor-pointer items-center justify-center rounded-md border border-solid border-transparent bg-transparent p-1.25 text-starlight/60 transition-colors duration-150 hover:border-line-night hover:bg-white/6 hover:text-starlight"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setCopyingCode(match[1]);
@@ -506,7 +506,7 @@ const ChatMessage = ({
               </ReactMarkdown>
               {isStreaming && (
                 <span
-                  className="ml-0.5 inline-block h-[15px] w-[2px] animate-blink rounded-full bg-gold align-middle"
+                  className="ml-0.5 inline-block h-3.75 w-0.5 animate-blink rounded-full bg-gold align-middle"
                   aria-hidden="true"
                 ></span>
               )}
@@ -580,7 +580,7 @@ const ChatMessage = ({
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                       </svg>
-                      <span className="max-w-[200px] truncate font-medium">
+                      <span className="max-w-50 truncate font-medium">
                         {file.name}
                       </span>
                       <span className="text-[10px] text-muted">
@@ -613,7 +613,7 @@ const ChatMessage = ({
                   {files.map((file, index) => (
                     <div
                       key={index}
-                      className="inline-block max-w-[200px] overflow-hidden rounded-lg border border-solid border-gold-deep/40 bg-white/70"
+                      className="inline-block max-w-50 overflow-hidden rounded-lg border border-solid border-gold-deep/40 bg-white/70"
                     >
                       {file.base64 &&
                       file.type &&
@@ -621,7 +621,7 @@ const ChatMessage = ({
                         <img
                           src={file.base64}
                           alt={file.name}
-                          className="block h-auto max-h-[200px] w-full object-contain"
+                          className="block h-auto max-h-50 w-full object-contain"
                         />
                       ) : (
                         <div className="flex items-center gap-2 px-3 py-1.5 font-mono text-[11.5px] text-gold-deep">
@@ -679,7 +679,7 @@ const ChatMessage = ({
                   {...keyPress}
                 >
                   {copySuccessFull ? (
-                    <span className="flex items-center gap-[5px]">
+                    <span className="flex items-center gap-1.25">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="16"

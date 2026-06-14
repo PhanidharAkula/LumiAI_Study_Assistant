@@ -131,9 +131,9 @@ const AuthRedirect = () => {
   // flow above is unchanged - this only replaces the previously blank screen).
   if (error) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center p-5">
+      <div className="flex min-h-dvh items-center justify-center p-5">
         <motion.div
-          className={`${UI.plate} flex w-full max-w-[420px] flex-col items-center gap-3 px-8 py-9 text-center`}
+          className={`${UI.plate} flex w-full max-w-105 flex-col items-center gap-3 px-8 py-9 text-center`}
           initial="hidden"
           animate="visible"
           variants={stagger()}
@@ -162,7 +162,7 @@ const AuthRedirect = () => {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center p-5">
+    <div className="flex min-h-dvh items-center justify-center p-5">
       <Spinner label="Completing sign-in…" />
     </div>
   );

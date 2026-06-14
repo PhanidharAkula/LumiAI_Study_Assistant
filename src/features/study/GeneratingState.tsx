@@ -24,7 +24,7 @@ const GeneratingState = ({
   onCancel,
 }: GeneratingStateProps) => (
   <motion.div
-    className="m-auto flex w-full max-w-[560px] flex-col items-center justify-center gap-5 px-5 text-center"
+    className="m-auto flex w-full max-w-140 flex-col items-center justify-center gap-5 px-5 text-center"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
@@ -32,7 +32,7 @@ const GeneratingState = ({
     <Spinner label={label} />
     <p className="m-0 text-[14px] text-muted">{description}</p>
     {onCancel && (
-      <Button variant="ghost" className="mt-4 min-w-[120px]" onClick={onCancel}>
+      <Button variant="ghost" className="mt-4 min-w-30" onClick={onCancel}>
         Cancel
       </Button>
     )}

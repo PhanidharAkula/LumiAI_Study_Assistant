@@ -45,7 +45,7 @@ const FILE_ITEM =
 // gold ✦ tick rendered by the sibling span (peer-checked). The input element
 // itself is kept so refs/indeterminate keep working.
 const CHECKBOX =
-  "peer m-0 h-full w-full cursor-pointer appearance-none rounded-[4px] border border-solid border-ink/30 bg-white/70 transition-colors duration-150 hover:border-ink checked:border-ink checked:bg-ink indeterminate:border-ink";
+  "peer m-0 h-full w-full cursor-pointer appearance-none rounded-sm border border-solid border-ink/30 bg-white/70 transition-colors duration-150 hover:border-ink checked:border-ink checked:bg-ink indeterminate:border-ink";
 const CHECKBOX_TICK =
   "pointer-events-none absolute hidden text-[10px] leading-none text-gold peer-checked:block";
 
@@ -251,7 +251,7 @@ const TagSelector = ({
         <div className="flex items-start justify-between gap-4 border-0 border-b border-solid border-line px-6 py-4 max-[480px]:px-5">
           <div className="min-w-0">
             <p className={UI.overline}>Select sources</p>
-            <h2 className="mt-1.5 font-display text-[22px] font-semibold leading-[1.25] tracking-[-0.01em] text-ink max-[480px]:text-[20px]">
+            <h2 className="mt-1.5 font-display text-[22px] font-semibold leading-tight tracking-[-0.01em] text-ink max-[480px]:text-[20px]">
               Select Study Material
             </h2>
           </div>
@@ -291,13 +291,13 @@ const TagSelector = ({
 
         <div className="max-h-[50dvh] overflow-y-auto px-4 py-3 max-[480px]:px-3">
           {filteredClasses.length === 0 ? (
-            <div className="flex flex-col items-center gap-2.5 p-[30px] text-center">
+            <div className="flex flex-col items-center gap-2.5 p-7.5 text-center">
               <Constellation
                 name="uncharted"
                 size={64}
                 className="text-ink/30"
               />
-              <p className="m-0 font-display text-[16px] leading-[1.5] text-ink/75">
+              <p className="m-0 font-display text-[16px] leading-normal text-ink/75">
                 No classes found matching your search
               </p>
             </div>
@@ -324,7 +324,7 @@ const TagSelector = ({
                         isEmpty ? "cursor-not-allowed" : "cursor-pointer"
                       }`}
                     >
-                      <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+                      <span className="relative flex h-4.5 w-4.5 shrink-0 items-center justify-center">
                         <input
                           ref={(el) =>
                             (classCheckboxRefs.current[classItem.id] = el)
@@ -346,7 +346,7 @@ const TagSelector = ({
                           ✦
                         </span>
                         <span
-                          className="pointer-events-none absolute hidden h-[2px] w-[9px] rounded-full bg-ink peer-indeterminate:block"
+                          className="pointer-events-none absolute hidden h-0.5 w-2.25 rounded-full bg-ink peer-indeterminate:block"
                           aria-hidden="true"
                         ></span>
                       </span>
@@ -525,7 +525,7 @@ function FileItem({ file, classId, isSelected, onSelect }: FileItemProps) {
       data-classid={classId}
     >
       <div className="mr-2.5 flex items-center justify-center">
-        <span className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+        <span className="relative flex h-4.5 w-4.5 shrink-0 items-center justify-center">
           <input
             type="checkbox"
             checked={isSelected}

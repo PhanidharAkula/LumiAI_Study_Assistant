@@ -37,7 +37,7 @@ const MENU_BTN_DANGER =
   "flex w-full cursor-pointer items-center gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left text-vermilion transition-colors duration-150 hover:bg-vermilion-wash";
 const MENU_BTN_TEXT = "text-[14px] font-medium";
 const AI_BTN =
-  "flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-0 bg-transparent px-6 py-2.5 text-[14.5px] font-semibold text-ink transition-colors duration-200 hover:bg-cream/90 max-md:px-4 max-md:py-2 max-md:text-[13.5px] max-[480px]:px-3 max-[480px]:[&_svg]:h-[17px] max-[480px]:[&_svg]:w-[17px]";
+  "flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-0 bg-transparent px-6 py-2.5 text-[14.5px] font-semibold text-ink transition-colors duration-200 hover:bg-cream/90 max-md:px-4 max-md:py-2 max-md:text-[13.5px] max-[480px]:px-3 max-[480px]:[&_svg]:h-4.25 max-[480px]:[&_svg]:w-4.25";
 
 // A class row from Supabase (with its related files). Permissive - extra
 // columns from the DB are allowed via the index signature.
@@ -612,7 +612,7 @@ const Dashboard = ({ session }: Props) => {
     if (loading) {
       return (
         <motion.div
-          className="flex w-full flex-col items-center justify-center px-5 py-[80px]"
+          className="flex w-full flex-col items-center justify-center px-5 py-20"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -626,7 +626,7 @@ const Dashboard = ({ session }: Props) => {
       return (
         <motion.div
           key="empty-state"
-          className="flex h-[70dvh] w-full flex-col items-center justify-center gap-4 px-5 py-[60px] text-center"
+          className="flex h-[70dvh] w-full flex-col items-center justify-center gap-4 px-5 py-15 text-center"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 30 }}
@@ -636,11 +636,11 @@ const Dashboard = ({ session }: Props) => {
             <Constellation
               name="an uncharted sky"
               size={180}
-              className="max-[480px]:h-[140px] max-[480px]:w-[140px]"
+              className="max-[480px]:h-35 max-[480px]:w-35"
             />
           </div>
           <p className={UI.overline}>Fig. 1 - An uncharted sky</p>
-          <h2 className="max-w-[560px] font-display text-[30px] font-semibold leading-[1.25] tracking-[-0.01em] text-ink max-[480px]:text-[24px]">
+          <h2 className="max-w-140 font-display text-[30px] font-semibold leading-tight tracking-[-0.01em] text-ink max-[480px]:text-[24px]">
             Your sky is empty - chart your{" "}
             <em className="text-gold-deep [font-variation-settings:'SOFT'_60,'WONK'_1]">
               first class
@@ -663,7 +663,7 @@ const Dashboard = ({ session }: Props) => {
 
     return (
       <motion.div
-        className="grid min-h-[300px] grid-cols-[repeat(auto-fill,minmax(350px,1fr))] content-start items-start gap-6 p-5 max-[1024px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] max-[1024px]:gap-5 max-[480px]:grid-cols-1 max-[480px]:gap-4 max-[480px]:p-2.5"
+        className="grid min-h-75 grid-cols-[repeat(auto-fill,minmax(350px,1fr))] content-start items-start gap-6 p-5 max-[1024px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] max-[1024px]:gap-5 max-[480px]:grid-cols-1 max-[480px]:gap-4 max-[480px]:p-2.5"
         variants={stagger()}
         initial="hidden"
         animate="visible"
@@ -696,7 +696,7 @@ const Dashboard = ({ session }: Props) => {
             {/* Card-level icon action keys (Edit / Delete) - revealed on
                 hover on desktop, always visible on touch layouts. */}
             <div
-              className="absolute right-[15px] top-[15px] z-[5] flex gap-2 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-100"
+              className="absolute right-3.75 top-3.75 z-5 flex gap-2 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100 max-md:opacity-100"
               onClick={(e) => {
                 // Prevent clicking the action buttons from selecting the class
                 e.stopPropagation();
@@ -812,7 +812,7 @@ const Dashboard = ({ session }: Props) => {
             key; purely an additional affordance in the atlas grid). */}
         <motion.button
           type="button"
-          className="group/add relative flex min-h-[172px] cursor-pointer flex-col items-center justify-center gap-3 self-stretch rounded-xl border border-dashed border-ink/25 bg-transparent p-6 text-muted transition-[border-color,color,background-color] duration-300 hover:border-gold-deep hover:bg-vellum/50 hover:text-gold-deep max-md:min-h-[150px] max-md:p-5"
+          className="group/add relative flex min-h-43 cursor-pointer flex-col items-center justify-center gap-3 self-stretch rounded-xl border border-dashed border-ink/25 bg-transparent p-6 text-muted transition-[border-color,color,background-color] duration-300 hover:border-gold-deep hover:bg-vellum/50 hover:text-gold-deep max-md:min-h-37.5 max-md:p-5"
           onClick={() => setShowAddForm(true)}
           variants={fadeRise}
           {...plateLift}
@@ -846,10 +846,10 @@ const Dashboard = ({ session }: Props) => {
 
   return (
     <>
-      <div className="min-h-[100dvh] w-full overflow-hidden px-[50px] pt-0 pb-[100px] max-[1024px]:px-[30px] max-[1024px]:pb-[30px] max-md:px-5 max-md:pb-5 max-[480px]:px-[15px] max-[480px]:pb-20">
+      <div className="min-h-dvh w-full overflow-hidden px-12.5 pt-0 pb-25 max-[1024px]:px-7.5 max-[1024px]:pb-7.5 max-md:px-5 max-md:pb-5 max-[480px]:px-3.75 max-[480px]:pb-20">
         {initialLoading ? (
           <motion.div
-            className="fixed left-0 top-0 flex h-[100dvh] w-full flex-col items-center justify-center bg-cream/95 backdrop-blur-[2px]"
+            className="fixed left-0 top-0 flex h-dvh w-full flex-col items-center justify-center bg-cream/95 backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -890,7 +890,7 @@ const Dashboard = ({ session }: Props) => {
                 </motion.div>
               ) : (
                 <motion.div
-                  className="mx-auto w-full max-w-[1240px] min-h-[calc(100dvh-220px)]"
+                  className="mx-auto w-full max-w-310 min-h-[calc(100dvh-220px)]"
                   key="classes-container"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -898,7 +898,7 @@ const Dashboard = ({ session }: Props) => {
                   transition={spring.gentle}
                 >
                   {announcement && (
-                    <div className="mx-5 mt-[30px] flex items-start gap-3.5 rounded-xl border border-solid border-line bg-cream/80 px-5 py-4 shadow-plate max-md:mx-2.5">
+                    <div className="mx-5 mt-7.5 flex items-start gap-3.5 rounded-xl border border-solid border-line bg-cream/80 px-5 py-4 shadow-plate max-md:mx-2.5">
                       <span
                         className="mt-px text-[13px] text-gold"
                         aria-hidden="true"
@@ -987,7 +987,7 @@ const Dashboard = ({ session }: Props) => {
                         <AnimatePresence>
                           {showMenu && (
                             <motion.div
-                              className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[300px] flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2.5 shadow-float max-md:w-[280px]"
+                              className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-75 flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2.5 shadow-float max-md:w-70"
                               variants={menuVariants}
                               initial="hidden"
                               animate="visible"
@@ -1006,7 +1006,7 @@ const Dashboard = ({ session }: Props) => {
                                         user.email?.split("@")[0] ||
                                         "User"}
                                     </div>
-                                    <div className="max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-muted">
+                                    <div className="max-w-45 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-muted">
                                       {user.email}
                                     </div>
                                   </div>
@@ -1254,7 +1254,7 @@ const Dashboard = ({ session }: Props) => {
 
       {!selectedClass && hasLoaded && (
         <motion.div
-          className="pointer-events-none fixed bottom-0 left-0 z-[100] flex w-full justify-center px-4 pb-7 max-md:p-[15px] max-[480px]:p-3"
+          className="pointer-events-none fixed bottom-0 left-0 z-100 flex w-full justify-center px-4 pb-7 max-md:p-3.75 max-[480px]:p-3"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...spring.gentle, delay: 0.5 }}

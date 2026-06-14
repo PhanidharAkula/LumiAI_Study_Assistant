@@ -108,7 +108,7 @@ const difficultyBtn = (active: boolean) =>
       : "border-ink/25 bg-transparent text-ink hover:border-ink"
   }`;
 const NUMBER_BTN_BASE =
-  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-[15px] px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
+  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-3.75 px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
 const numberBtn = (active: boolean) =>
   `${NUMBER_BTN_BASE} ${
     active
@@ -118,9 +118,9 @@ const numberBtn = (active: boolean) =>
 
 /* ── Taking the quiz (night chart) ─────────────────────────────────────── */
 const QUESTION_CARD =
-  "relative rounded-xl border border-solid border-line-night bg-night-2 p-[25px] shadow-night max-md:p-4 max-md:rounded-[10px]";
+  "relative rounded-xl border border-solid border-line-night bg-night-2 p-6.25 shadow-night max-md:p-4 max-md:rounded-[10px]";
 const QUIZ_OPTION_BASE =
-  "flex items-center gap-3 p-[15px] rounded-[10px] border border-solid cursor-pointer transition-colors duration-200 [&_input]:h-[18px] [&_input]:w-[18px] [&_input]:shrink-0 [&_input]:cursor-pointer [&_input]:accent-gold [&_span]:flex-1 [&_span]:text-[15px]";
+  "flex items-center gap-3 p-3.75 rounded-[10px] border border-solid cursor-pointer transition-colors duration-200 [&_input]:h-4.5 [&_input]:w-4.5 [&_input]:shrink-0 [&_input]:cursor-pointer [&_input]:accent-gold [&_span]:flex-1 [&_span]:text-[15px]";
 const quizOption = (checked: boolean) =>
   `${QUIZ_OPTION_BASE} ${
     checked
@@ -128,15 +128,15 @@ const quizOption = (checked: boolean) =>
       : "border-line-night bg-transparent hover:border-starlight/40 [&_span]:text-starlight/85"
   }`;
 const QUIZ_TEXTAREA =
-  "w-full min-h-[100px] p-[15px] rounded-[10px] border border-solid border-line-night bg-night/40 text-[15px] font-[inherit] text-starlight resize-y transition-colors placeholder:text-starlight/40 focus:border-gold focus:outline-none max-md:p-2.5 max-md:text-[14px] max-md:min-h-20";
+  "w-full min-h-25 p-3.75 rounded-[10px] border border-solid border-line-night bg-night/40 text-[15px] font-[inherit] text-starlight resize-y transition-colors placeholder:text-starlight/40 focus:border-gold focus:outline-none max-md:p-2.5 max-md:text-[14px] max-md:min-h-20";
 
 // Sticky right-hand panel (taking + results). While taking, it stays hidden on
 // ≤768px (pre-existing quirk - the fixed bottom bar carries Submit/Quit there).
 const SIDEBAR =
-  "self-start sticky top-0 z-50 flex flex-col h-auto max-h-[calc(100dvh-40px)] box-border overflow-y-auto rounded-xl border border-solid border-line-night text-starlight shadow-night [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+  "self-start sticky top-0 z-50 flex flex-col h-auto max-h-[calc(100dvh-40px)] box-border overflow-y-auto rounded-xl border border-solid border-line-night text-starlight shadow-night scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
 const STAT_ITEM =
-  "flex flex-col items-center gap-1 rounded-lg border border-solid border-line-night bg-starlight/[0.04] p-3 max-md:p-2";
+  "flex flex-col items-center gap-1 rounded-lg border border-solid border-line-night bg-starlight/4 p-3 max-md:p-2";
 const STAT_LABEL =
   "text-center font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-starlight/50";
 const STAT_VALUE =
@@ -144,7 +144,7 @@ const STAT_VALUE =
 const RESULT_STAT_ITEM = STAT_ITEM;
 
 const DETAIL_ITEM =
-  "flex justify-between items-center py-2 px-3 rounded-lg border border-solid border-line-night bg-starlight/[0.03] max-md:py-1.5 max-md:px-2.5";
+  "flex justify-between items-center py-2 px-3 rounded-lg border border-solid border-line-night bg-starlight/3 max-md:py-1.5 max-md:px-2.5";
 const DETAIL_LABEL =
   "flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-starlight/55";
 const DETAIL_VALUE =
@@ -168,7 +168,7 @@ const QUESTION_NUMBER =
 const QUESTION_POINTS =
   "font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-muted";
 const reviewCard = (correct: boolean) =>
-  `relative rounded-xl border border-solid border-line border-l-4 bg-vellum p-[25px] shadow-plate max-md:p-4 max-md:rounded-[10px] ${
+  `relative rounded-xl border border-solid border-line border-l-4 bg-vellum p-6.25 shadow-plate max-md:p-4 max-md:rounded-[10px] ${
     correct ? "border-l-verdi" : "border-l-vermilion"
   }`;
 const reviewBadge = (correct: boolean) =>
@@ -177,7 +177,7 @@ const reviewBadge = (correct: boolean) =>
       ? "border-verdi/40 bg-sage/30 text-verdi"
       : "border-vermilion/40 bg-vermilion-wash text-vermilion"
   }`;
-const REVIEW_WASH = "rounded-lg bg-ink/[0.04] p-[15px]";
+const REVIEW_WASH = "rounded-lg bg-ink/4 p-3.75";
 
 /* ── History (ledger rows) ─────────────────────────────────────────────── */
 const HISTORY_ROW =
@@ -914,7 +914,7 @@ CRITICAL JSON FORMATTING RULES:
 
   return (
     <motion.div
-      className={`fixed inset-0 z-[1000] flex flex-col overflow-hidden transition-colors duration-700 ${
+      className={`fixed inset-0 z-1000 flex flex-col overflow-hidden transition-colors duration-700 ${
         isNight ? "bg-night" : "bg-cream/95 backdrop-blur-[2px]"
       }`}
       initial={{ opacity: 0 }}
@@ -925,7 +925,7 @@ CRITICAL JSON FORMATTING RULES:
       {isNight && <Starfield count={30} seed={9} />}
       {/* Header - atlas plate masthead */}
       <div
-        className={`py-5 px-[30px] flex items-center gap-5 relative z-[100] max-md:py-2.5 max-md:px-3.5 max-md:sticky max-md:top-0 max-[480px]:py-2.5 max-[480px]:px-3 ${
+        className={`py-5 px-7.5 flex items-center gap-5 relative z-100 max-md:py-2.5 max-md:px-3.5 max-md:sticky max-md:top-0 max-[480px]:py-2.5 max-[480px]:px-3 ${
           isNight
             ? "max-md:bg-night/95"
             : "max-md:bg-cream/95 max-md:backdrop-blur-[2px]"
@@ -1013,13 +1013,13 @@ CRITICAL JSON FORMATTING RULES:
                     className="block max-w-full max-h-full"
                   >
                     <path
-                      className="[fill:none] [stroke:rgb(29_27_22_/_0.12)] [stroke-width:3]"
+                      className="fill-none stroke-[rgb(29_27_22/0.12)] stroke-3"
                       d="M18 2.0845
                         a 15.9155 15.9155 0 0 1 0 31.831
                         a 15.9155 15.9155 0 0 1 0 -31.831"
                     />
                     <path
-                      className="[fill:none] [stroke:var(--color-gold)] [stroke-width:3] [stroke-linecap:round] [animation:progress_1s_ease-out_forwards]"
+                      className="fill-none stroke-gold stroke-3 [stroke-linecap:round] animate-[progress_1s_ease-out_forwards]"
                       strokeDasharray={`${item.score.percentage}, 100`}
                       d="M18 2.0845
                         a 15.9155 15.9155 0 0 1 0 31.831
@@ -1092,7 +1092,7 @@ CRITICAL JSON FORMATTING RULES:
           {quizState === "setup" && !generatingQuiz && (
             <motion.div
               key="setup"
-              className="w-full max-w-[1400px] m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-[700px] max-[1024px]:p-[15px] max-md:max-w-full max-md:p-3"
+              className="w-full max-w-350 m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-175 max-[1024px]:p-3.75 max-md:max-w-full max-md:p-3"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1100,14 +1100,14 @@ CRITICAL JSON FORMATTING RULES:
             >
               {/* Configuration Cards Grid */}
               <motion.div
-                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-[15px] items-stretch mb-5 flex-1 max-[1024px]:gap-5 max-md:flex max-md:flex-col max-md:gap-3"
+                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-3.75 items-stretch mb-5 flex-1 max-[1024px]:gap-5 max-md:flex max-md:flex-col max-md:gap-3"
                 variants={stagger()}
                 initial="hidden"
                 animate="visible"
               >
                 {/* Header Section - the expedition's title plate */}
                 <div
-                  className={`${UI.plate} shrink-0 text-center py-[30px] px-5 overflow-hidden col-[1/3] row-[1] flex flex-col items-center justify-center max-md:py-5 max-md:px-4 max-md:rounded-[10px]`}
+                  className={`${UI.plate} shrink-0 text-center py-7.5 px-5 overflow-hidden col-[1/3] row-1 flex flex-col items-center justify-center max-md:py-5 max-md:px-4 max-md:rounded-[10px]`}
                 >
                   <CornerTicks />
                   <motion.div
@@ -1140,7 +1140,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Difficulty Card */}
                 <motion.div
-                  className={`${CONFIG_CARD} col-[1] row-[2]`}
+                  className={`${CONFIG_CARD} col-1 row-2`}
                   variants={fadeRise}
                 >
                   <div className={CONFIG_CARD_HEADER}>
@@ -1180,7 +1180,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Number of Questions Card */}
                 <motion.div
-                  className={`${CONFIG_CARD} col-[2] row-[2]`}
+                  className={`${CONFIG_CARD} col-2 row-2`}
                   variants={fadeRise}
                 >
                   <div className={CONFIG_CARD_HEADER}>
@@ -1208,7 +1208,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Files Selection Card - shared with Flashcards. */}
                 <FileSelectionCard
-                  className="col-[3] row-[1/3]"
+                  className="col-3 row-[1/3]"
                   files={(classData?.files || []) as any}
                   selectedIds={selectedFiles}
                   onSelectionChange={setSelectedFiles}
@@ -1252,13 +1252,13 @@ CRITICAL JSON FORMATTING RULES:
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="grid grid-cols-[1fr_400px] gap-5 h-full w-full max-w-full m-0 py-5 px-[30px] items-start overflow-hidden box-border max-[1024px]:grid-cols-[1fr_320px] max-[1024px]:p-5 max-[1024px]:gap-[15px] max-md:flex max-md:flex-col max-md:h-auto max-md:p-0 max-md:gap-0">
+              <div className="grid grid-cols-[1fr_400px] gap-5 h-full w-full max-w-full m-0 py-5 px-7.5 items-start overflow-hidden box-border max-[1024px]:grid-cols-[1fr_320px] max-[1024px]:p-5 max-[1024px]:gap-3.75 max-md:flex max-md:flex-col max-md:h-auto max-md:p-0 max-md:gap-0">
                 {/* Left Side - Scrollable Questions */}
-                <div className="flex flex-col gap-5 pb-10 overflow-y-auto h-[calc(100dvh-132px)] pr-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-md:w-full max-md:h-auto max-md:p-3 max-md:pb-20 max-md:overflow-y-visible max-md:gap-3">
+                <div className="flex flex-col gap-5 pb-10 overflow-y-auto h-[calc(100dvh-132px)] pr-2.5 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-md:w-full max-md:h-auto max-md:p-3 max-md:pb-20 max-md:overflow-y-visible max-md:gap-3">
                   {currentQuiz.questions.map((question, index) => (
                     <div key={question.id} className={QUESTION_CARD}>
                       {/* Mono gold overline: QUESTION 04 · 2 PTS */}
-                      <div className="flex items-center gap-2 mb-[15px] max-md:mb-3">
+                      <div className="flex items-center gap-2 mb-3.75 max-md:mb-3">
                         <span className={UI.overlineNight}>
                           Question {String(index + 1).padStart(2, "0")}
                         </span>
@@ -1356,10 +1356,10 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Right Side - Sticky Sidebar (the expedition log) */}
                 <div
-                  className={`${SIDEBAR} bg-night-2 p-5 gap-[18px] max-[1024px]:p-4 max-[1024px]:gap-3.5 max-md:hidden`}
+                  className={`${SIDEBAR} bg-night-2 p-5 gap-4.5 max-[1024px]:p-4 max-[1024px]:gap-3.5 max-md:hidden`}
                 >
                   {/* Header */}
-                  <div className="text-center pb-[15px] border-0 border-b border-solid border-line-night">
+                  <div className="text-center pb-3.75 border-0 border-b border-solid border-line-night">
                     <h3 className={`mt-0 mx-0 mb-1.5 ${UI.overlineNight}`}>
                       Quiz Overview
                     </h3>
@@ -1385,7 +1385,7 @@ CRITICAL JSON FORMATTING RULES:
                     {/* Thin gold route with a star at its tip */}
                     <div className="relative w-full h-1 rounded-full bg-starlight/15">
                       <div
-                        className="relative h-full bg-gold [transition:width_0.3s_ease] rounded-full after:absolute after:right-[-5px] after:top-1/2 after:-translate-y-1/2 after:text-[10px] after:leading-none after:text-gold after:content-['✦']"
+                        className="relative h-full bg-gold [transition:width_0.3s_ease] rounded-full after:absolute after:-right-1.25 after:top-1/2 after:-translate-y-1/2 after:text-[10px] after:leading-none after:text-gold after:content-['✦']"
                         style={{
                           width: `${
                             (Object.keys(userAnswers).length /
@@ -1406,7 +1406,7 @@ CRITICAL JSON FORMATTING RULES:
                   </div>
 
                   {/* Stats Grid - instrument readouts */}
-                  <div className="grid grid-cols-2 gap-2.5 py-[15px] border-0 border-y border-solid border-line-night">
+                  <div className="grid grid-cols-2 gap-2.5 py-3.75 border-0 border-y border-solid border-line-night">
                     <div className={STAT_ITEM}>
                       <span className={STAT_LABEL}>Total Questions</span>
                       <span className={STAT_VALUE}>
@@ -1490,7 +1490,7 @@ CRITICAL JSON FORMATTING RULES:
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col gap-2.5 pt-[5px]">
+                  <div className="flex flex-col gap-2.5 pt-1.25">
                     <motion.button
                       whileHover={{
                         scale:
@@ -1556,7 +1556,7 @@ CRITICAL JSON FORMATTING RULES:
                 {/* Mobile-only action bar: the desktop sidebar that holds
                     Submit/Quit is display:none ≤768px, so surface them here in a
                     fixed bottom bar (otherwise a quiz can't be submitted on a phone). */}
-                <div className="hidden max-md:flex fixed bottom-0 left-0 right-0 z-[100] gap-2 p-3 bg-night-2/95 backdrop-blur-[2px] border-0 border-t border-solid border-line-night">
+                <div className="hidden max-md:flex fixed bottom-0 left-0 right-0 z-100 gap-2 p-3 bg-night-2/95 backdrop-blur-[2px] border-0 border-t border-solid border-line-night">
                   <motion.button
                     whileTap={{ scale: 0.98 }}
                     className={`${NIGHT_QUIT_BTN} flex-1 py-3 px-4 text-[15px] font-semibold`}
@@ -1589,9 +1589,9 @@ CRITICAL JSON FORMATTING RULES:
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="grid grid-cols-[1fr_400px] gap-5 h-full w-full max-w-full m-0 py-5 px-[30px] items-start overflow-hidden box-border max-[1024px]:grid-cols-[1fr_320px] max-[1024px]:p-5 max-[1024px]:gap-[15px] max-md:flex max-md:flex-col max-md:h-auto max-md:p-3 max-md:gap-3">
+              <div className="grid grid-cols-[1fr_400px] gap-5 h-full w-full max-w-full m-0 py-5 px-7.5 items-start overflow-hidden box-border max-[1024px]:grid-cols-[1fr_320px] max-[1024px]:p-5 max-[1024px]:gap-3.75 max-md:flex max-md:flex-col max-md:h-auto max-md:p-3 max-md:gap-3">
                 {/* Left Side - Scrollable Review */}
-                <div className="flex flex-col gap-5 pb-[60px] overflow-y-auto h-[calc(100dvh-132px)] pr-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-md:w-full max-md:h-auto max-md:p-0 max-md:gap-2.5 max-md:overflow-y-visible max-[480px]:p-3">
+                <div className="flex flex-col gap-5 pb-15 overflow-y-auto h-[calc(100dvh-132px)] pr-2.5 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-md:w-full max-md:h-auto max-md:p-0 max-md:gap-2.5 max-md:overflow-y-visible max-[480px]:p-3">
                   {currentQuiz?.questions?.map((question, index) => {
                     const result = quizScore.results[question.id];
                     return (
@@ -1599,7 +1599,7 @@ CRITICAL JSON FORMATTING RULES:
                         key={question.id}
                         className={reviewCard(result.isCorrect)}
                       >
-                        <div className="flex justify-between items-center mb-[15px] flex-wrap gap-2.5">
+                        <div className="flex justify-between items-center mb-3.75 flex-wrap gap-2.5">
                           <span className={QUESTION_NUMBER}>
                             Question {index + 1}
                           </span>
@@ -1611,7 +1611,7 @@ CRITICAL JSON FORMATTING RULES:
                             {question.points} points
                           </span>
                         </div>
-                        <h4 className="mt-0 mx-0 mb-[15px] text-[18px] font-medium leading-[1.6] text-ink">
+                        <h4 className="mt-0 mx-0 mb-3.75 text-[18px] font-medium leading-[1.6] text-ink">
                           {question.question}
                         </h4>
 
@@ -1619,7 +1619,7 @@ CRITICAL JSON FORMATTING RULES:
                           question.type === "true-false") &&
                           question.options && (
                             <div
-                              className={`my-[15px] ${REVIEW_WASH} [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink`}
+                              className={`my-3.75 ${REVIEW_WASH} [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink`}
                             >
                               <p>
                                 <strong className="font-semibold text-ink">
@@ -1642,7 +1642,7 @@ CRITICAL JSON FORMATTING RULES:
 
                         {question.type === "short-answer" && (
                           <div
-                            className={`my-[15px] ${REVIEW_WASH} [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink`}
+                            className={`my-3.75 ${REVIEW_WASH} [&_p]:my-2 [&_p]:mx-0 [&_p]:text-[14px] [&_p]:text-ink`}
                           >
                             <p>
                               <strong className="font-semibold text-ink">
@@ -1662,7 +1662,7 @@ CRITICAL JSON FORMATTING RULES:
                         )}
 
                         <div
-                          className={`mt-[15px] ${REVIEW_WASH} text-[14px] text-ink leading-[1.6]`}
+                          className={`mt-3.75 ${REVIEW_WASH} text-[14px] text-ink leading-[1.6]`}
                         >
                           <strong className="font-semibold text-gold-deep">
                             Explanation:
@@ -1676,7 +1676,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Right Side - Sticky Results Panel: "your constellation" */}
                 <div
-                  className={`${SIDEBAR} bg-night p-0 max-md:static max-md:w-full max-md:order-first max-md:rounded-[10px] max-[480px]:top-[55px]`}
+                  className={`${SIDEBAR} bg-night p-0 max-md:static max-md:w-full max-md:order-first max-md:rounded-[10px] max-[480px]:top-13.75`}
                 >
                   {/* Hero - the expedition charted as a sky of stars */}
                   <div className="relative overflow-hidden px-5 pt-7 pb-5 text-center max-[1024px]:px-4 max-[1024px]:pt-6 max-md:px-4 max-md:pt-6 max-md:pb-4">
@@ -1820,7 +1820,7 @@ CRITICAL JSON FORMATTING RULES:
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`${UI.btnGold} w-full px-[18px] py-3 text-[13px] max-md:flex-1`}
+                      className={`${UI.btnGold} w-full px-4.5 py-3 text-[13px] max-md:flex-1`}
                       onClick={handleDone}
                     >
                       <svg
@@ -1839,7 +1839,7 @@ CRITICAL JSON FORMATTING RULES:
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`${NIGHT_GHOST_BTN} w-full px-[18px] py-3 text-[13px] font-semibold max-md:flex-1`}
+                      className={`${NIGHT_GHOST_BTN} w-full px-4.5 py-3 text-[13px] font-semibold max-md:flex-1`}
                       onClick={handleRetakeWithSameSettings}
                     >
                       <svg

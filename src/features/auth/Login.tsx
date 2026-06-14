@@ -101,7 +101,7 @@ const Login = () => {
 
   return (
     <motion.div
-      className="relative flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden px-6 py-[60px] max-md:py-10 max-[360px]:px-3"
+      className="relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden px-6 py-15 max-md:py-10 max-[360px]:px-3"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -115,13 +115,13 @@ const Login = () => {
           name="observatory entrance"
           size={520}
           twinkle
-          className="absolute -right-28 -top-20 text-ink/[0.13]"
+          className="absolute -right-28 -top-20 text-ink/13"
         />
         <Constellation
           name="lumi at night"
           size={380}
           twinkle
-          className="absolute -bottom-24 -left-20 text-ink/[0.10]"
+          className="absolute -bottom-24 -left-20 text-ink/10"
         />
       </div>
 
@@ -133,7 +133,7 @@ const Login = () => {
       />
 
       <motion.div
-        className={`${UI.plate} z-10 flex w-full max-w-[440px] flex-col items-center px-10 py-12 text-center max-[480px]:px-6 max-[480px]:py-9`}
+        className={`${UI.plate} z-10 flex w-full max-w-110 flex-col items-center px-10 py-12 text-center max-[480px]:px-6 max-[480px]:py-9`}
         variants={itemVariants}
       >
         <CornerTicks />
@@ -157,7 +157,7 @@ const Login = () => {
         </motion.h1>
 
         <motion.p
-          className="mt-3 max-w-[320px] text-[14.5px] leading-[1.65] text-muted"
+          className="mt-3 max-w-80 text-[14.5px] leading-[1.65] text-muted"
           variants={itemVariants}
         >
           Sign in to keep charting - your classes, conversations, and
@@ -176,7 +176,7 @@ const Login = () => {
         {/* bg-white is a deliberate exception to the no-white-fills rule: the
             Google brand affordance reads best on a true white field. */}
         <motion.button
-          className={`${btnClass("ghost")} mt-7 w-full gap-3 bg-white! py-[15px]!`}
+          className={`${btnClass("ghost")} mt-7 w-full gap-3 bg-white! py-3.75!`}
           variants={itemVariants}
           {...pressLift}
           onClick={handleGoogleSignIn}

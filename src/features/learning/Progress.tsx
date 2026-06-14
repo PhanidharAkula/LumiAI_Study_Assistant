@@ -113,7 +113,7 @@ const Progress = () => {
   }, []);
 
   return (
-    <div className="relative min-h-[100dvh] w-full px-5 pt-[84px] pb-[60px] max-[600px]:px-3.5 max-[600px]:pt-[72px] max-[600px]:pb-10">
+    <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the charts. */}
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -123,17 +123,17 @@ const Progress = () => {
           name="your sky so far"
           size={440}
           twinkle
-          className="absolute -right-28 -top-16 text-ink/[0.10]"
+          className="absolute -right-28 -top-16 text-ink/10"
         />
       </div>
 
       <BackButton
-        className="absolute left-6 top-6 z-[2] max-[600px]:left-4 max-[600px]:top-4"
+        className="absolute left-6 top-6 z-2 max-[600px]:left-4 max-[600px]:top-4"
         onClick={() => navigate("/dashboard")}
         label="Back to dashboard"
       />
 
-      <div className="relative z-[1] mx-auto max-w-[640px]">
+      <div className="relative z-1 mx-auto max-w-160">
         <p className={`${UI.overline} cursor-default text-center`}>
           Fig. 1 - Your sky so far
         </p>
@@ -145,7 +145,7 @@ const Progress = () => {
         </h1>
 
         {loading ? (
-          <div className="flex justify-center py-[60px]">
+          <div className="flex justify-center py-15">
             <Spinner label="Loading your progress…" />
           </div>
         ) : !data || !data.hasActivity ? (
@@ -162,7 +162,7 @@ const Progress = () => {
               className="text-ink/45"
             />
             <p className={`mt-1 ${UI.overline}`}>Nothing charted yet</p>
-            <p className="max-w-[420px] font-display italic text-[17px] leading-[1.6] text-muted">
+            <p className="max-w-105 font-display italic text-[17px] leading-[1.6] text-muted">
               Chat with Lumi, take a quiz, or review some flashcards. Your
               streak and progress will start showing up here.
             </p>
@@ -183,7 +183,7 @@ const Progress = () => {
               variants={fadeRise}
             >
               <CornerTicks />
-              <div className="relative mx-auto h-[216px] w-[216px] max-[600px]:h-[180px] max-[600px]:w-[180px]">
+              <div className="relative mx-auto h-54 w-54 max-[600px]:h-45 max-[600px]:w-45">
                 <svg
                   viewBox="0 0 216 216"
                   className="h-full w-full text-ink/50"
@@ -225,7 +225,7 @@ const Progress = () => {
                   </div>
                 </div>
               </div>
-              <p className="mt-4 font-display italic text-[17px] leading-[1.5] text-ink/85">
+              <p className="mt-4 font-display italic text-[17px] leading-normal text-ink/85">
                 {streakLine(data.currentStreak)}
               </p>
               {data.longestStreak > 0 && (
@@ -294,7 +294,7 @@ const Progress = () => {
                       variants={fadeRiseSoft}
                     >
                       <div className="mb-3 flex items-baseline justify-between gap-3">
-                        <span className="break-words text-[15px] font-semibold">
+                        <span className="wrap-break-word text-[15px] font-semibold">
                           {c.name}
                         </span>
                         <span className="shrink-0 font-display text-[22px] font-semibold leading-none">

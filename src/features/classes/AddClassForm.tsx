@@ -192,7 +192,7 @@ const AddClassForm = ({
           <Button
             type="submit"
             disabled={isSubmitting || !name.trim()}
-            className="min-w-[160px] max-[480px]:min-w-0 max-[480px]:px-5"
+            className="min-w-40 max-[480px]:min-w-0 max-[480px]:px-5"
           >
             {isSubmitting
               ? isEditing

@@ -151,7 +151,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
 
   return (
     <motion.div
-      className="relative flex min-h-[100dvh] w-full flex-col items-center overflow-hidden px-10 pb-14 pt-7 max-md:px-6 max-md:pt-5 max-[360px]:px-3"
+      className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden px-10 pb-14 pt-7 max-md:px-6 max-md:pt-5 max-[360px]:px-3"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -165,19 +165,19 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
           name="The Luminarium"
           size={620}
           twinkle
-          className="absolute -right-36 -top-24 text-ink/[0.15] max-md:-right-52"
+          className="absolute -right-36 -top-24 text-ink/15 max-md:-right-52"
         />
         <Constellation
           name="studywithlumi"
           size={460}
           twinkle
-          className="absolute -bottom-32 -left-28 text-ink/[0.12] max-md:-left-44"
+          className="absolute -bottom-32 -left-28 text-ink/12 max-md:-left-44"
         />
       </div>
 
       {/* Masthead */}
       <motion.header
-        className="relative z-10 flex w-full max-w-[1200px] items-center justify-between"
+        className="relative z-10 flex w-full max-w-300 items-center justify-between"
         variants={itemVariants}
       >
         <div className="flex items-center gap-2.5">
@@ -220,7 +220,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
             size={104}
             orbit
             breathe
-            className="max-md:h-[84px] max-md:w-[84px]"
+            className="max-md:h-21 max-md:w-21"
           />
         </div>
       </motion.div>
@@ -233,7 +233,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
       </motion.p>
 
       <motion.h1
-        className="relative z-10 mt-4 max-w-[840px] text-center font-display text-[clamp(40px,7vw,76px)] font-semibold leading-[1.06] tracking-[-0.02em] text-ink max-md:mt-3"
+        className="relative z-10 mt-4 max-w-210 text-center font-display text-[clamp(40px,7vw,76px)] font-semibold leading-[1.06] tracking-[-0.02em] text-ink max-md:mt-3"
         variants={itemVariants}
       >
         Every class becomes{" "}
@@ -244,7 +244,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
       </motion.h1>
 
       <motion.p
-        className="relative z-10 mt-5 max-w-[560px] text-center text-[17px] leading-[1.7] text-muted max-md:max-w-[85%] max-md:text-[15px] max-[480px]:max-w-full"
+        className="relative z-10 mt-5 max-w-140 text-center text-[17px] leading-[1.7] text-muted max-md:max-w-[85%] max-md:text-[15px] max-[480px]:max-w-full"
         variants={itemVariants}
       >
         Upload your study materials and Lumi turns them into conversations,
@@ -283,7 +283,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
 
       {/* Feature plates */}
       <motion.div
-        className="relative z-10 mt-24 grid w-full max-w-[1140px] grid-cols-3 gap-6 max-[1024px]:gap-5 max-[900px]:max-w-[700px] max-[900px]:grid-cols-2 max-md:mt-14 max-md:max-w-[420px] max-md:grid-cols-1 max-md:gap-4"
+        className="relative z-10 mt-24 grid w-full max-w-285 grid-cols-3 gap-6 max-[1024px]:gap-5 max-[900px]:max-w-175 max-[900px]:grid-cols-2 max-md:mt-14 max-md:max-w-105 max-md:grid-cols-1 max-md:gap-4"
         initial="hidden"
         animate="visible"
         variants={featuresContainerVariants}
@@ -292,7 +292,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
           <motion.div
             className={`${UI.plate} ${UI.plateHover} flex flex-col items-start gap-3 px-7 py-8 max-[1024px]:px-6 max-[1024px]:py-7 ${
               i === 2
-                ? "max-[900px]:col-span-full max-[900px]:max-w-[340px] max-[900px]:justify-self-center max-md:max-w-none"
+                ? "max-[900px]:col-span-full max-[900px]:max-w-85 max-[900px]:justify-self-center max-md:max-w-none"
                 : ""
             }`}
             key={i}
@@ -316,7 +316,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
 
       {/* Colophon */}
       <motion.footer
-        className="relative z-10 mt-20 flex w-full max-w-[1140px] flex-col items-center gap-4 max-md:mt-12"
+        className="relative z-10 mt-20 flex w-full max-w-285 flex-col items-center gap-4 max-md:mt-12"
         variants={itemVariants}
       >
         <div className={UI.rule} />

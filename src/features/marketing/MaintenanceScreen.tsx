@@ -8,7 +8,7 @@ import { fadeRise, stagger } from "@shared/motion";
 // the Lumi star resting in its orbit.
 export default function MaintenanceScreen() {
   return (
-    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center gap-5 overflow-hidden bg-night px-6 text-center">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center gap-5 overflow-hidden bg-night px-6 text-center">
       <Starfield count={70} seed={23} />
       <div
         className="pointer-events-none absolute inset-0"
@@ -44,7 +44,7 @@ export default function MaintenanceScreen() {
         </motion.h1>
 
         <motion.p
-          className="m-0 max-w-[420px] text-[15.5px] leading-[1.7] text-starlight/65"
+          className="m-0 max-w-105 text-[15.5px] leading-[1.7] text-starlight/65"
           variants={fadeRise}
         >
           Lumi is down for a little maintenance - polishing lenses, re-inking

@@ -1782,7 +1782,7 @@ const ChatComponent = ({
   if (initialLoading) {
     return (
       <motion.div
-        className="fixed inset-0 z-[1000] flex flex-col overflow-hidden atlas-sky pt-[30px] max-md:p-2.5"
+        className="fixed inset-0 z-1000 flex flex-col overflow-hidden atlas-sky pt-7.5 max-md:p-2.5"
         variants={scrimFade}
         initial="hidden"
         animate="visible"
@@ -1797,7 +1797,7 @@ const ChatComponent = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[1000] flex flex-col overflow-hidden atlas-sky pt-[68px] max-[1024px]:pt-[64px] max-md:px-2.5 max-md:pb-2.5 max-md:pt-[60px]"
+      className="fixed inset-0 z-1000 flex flex-col overflow-hidden atlas-sky pt-17 max-[1024px]:pt-16 max-md:px-2.5 max-md:pb-2.5 max-md:pt-15"
       variants={scrimFade}
       initial="hidden"
       animate="visible"
@@ -1806,12 +1806,12 @@ const ChatComponent = ({
     >
       {/* The desk's header rail - instrument keys over a veiled hairline band. */}
       <motion.div
-        className="fixed left-0 top-0 z-[110] flex w-full items-center gap-[15px] border-0 atlas-sky px-7 py-3.5 max-[1024px]:px-[18px] max-[1024px]:py-3 max-md:right-0 max-md:z-[130] max-md:p-3"
+        className="fixed left-0 top-0 z-110 flex w-full items-center gap-3.75 border-0 atlas-sky px-7 py-3.5 max-[1024px]:px-4.5 max-[1024px]:py-3 max-md:right-0 max-md:z-130 max-md:p-3"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="flex gap-[15px]">
+        <div className="flex gap-3.75">
           <div className="relative">
             <IconButton
               variant="key"
@@ -1842,7 +1842,7 @@ const ChatComponent = ({
             <AnimatePresence>
               {showHistory && (
                 <motion.div
-                  className="absolute top-full mt-2 left-0 w-[350px] max-w-[calc(100vw-24px)] max-h-[70dvh] z-[100] flex flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:w-[min(90vw,300px)]"
+                  className="absolute top-full mt-2 left-0 w-87.5 max-w-[calc(100vw-24px)] max-h-[70dvh] z-100 flex flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:w-[min(90vw,300px)]"
                   style={{ transformOrigin: "top left" }}
                   initial={{ opacity: 0, y: -20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1853,7 +1853,7 @@ const ChatComponent = ({
                   <div className="border-0 border-b border-solid border-line px-5 pb-3 pt-4">
                     <h3 className={`m-0 ${UI.overline}`}>Chat History</h3>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto py-1.5 px-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex-1 min-h-0 overflow-y-auto py-1.5 px-3 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {historyLoading ? (
                       <div className="flex flex-col items-center justify-center p-5">
                         <Spinner label="Loading history" />
@@ -1898,11 +1898,11 @@ const ChatComponent = ({
                                 <p className="mt-0 mx-0 mb-0.5 truncate font-display text-[14.5px] font-semibold leading-[1.3] text-ink">
                                   {conv.title || "New Conversation"}
                                 </p>
-                                <p className="mt-0 mx-0 mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap pr-[88px] text-[12.5px] leading-[1.35] text-muted">
+                                <p className="mt-0 mx-0 mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap pr-22 text-[12.5px] leading-[1.35] text-muted">
                                   {conv.displayQuestion}
                                 </p>
                               </div>
-                              <div className="flex items-center justify-between gap-2 pr-[88px]">
+                              <div className="flex items-center justify-between gap-2 pr-22">
                                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/80">
                                   {new Date(
                                     conv.updated_at || conv.created_at
@@ -2049,7 +2049,7 @@ const ChatComponent = ({
         >
           {documents.length > 0 && (
             <motion.div
-              className="w-full border-0 border-b border-solid border-line px-5 py-[15px]"
+              className="w-full border-0 border-b border-solid border-line px-5 py-3.75"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
@@ -2063,7 +2063,7 @@ const ChatComponent = ({
                 </span>
               </div>
 
-              <div className="flex gap-2.5 overflow-x-auto pb-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex gap-2.5 overflow-x-auto pb-2.5 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {documents.map((doc) => (
                   <div
                     key={doc.id}
@@ -2107,14 +2107,14 @@ const ChatComponent = ({
           {/* Scroll happens on the FULL width (ref here) so hovering anywhere
               scrolls; messages stay centered via the inner 820px column. */}
           <motion.div
-            className="w-full flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-5 max-[1024px]:pb-3.5 max-md:pb-20"
+            className="w-full flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-5 max-[1024px]:pb-3.5 max-md:pb-20"
             ref={chatContainerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
           >
             {/* Centered content column - messages live here at max 820px. */}
-            <div className="mx-auto flex min-h-full w-full max-w-[820px] flex-col px-5 max-[1024px]:max-w-none max-[1024px]:px-3.5 max-md:px-3">
+            <div className="mx-auto flex min-h-full w-full max-w-205 flex-col px-5 max-[1024px]:max-w-none max-[1024px]:px-3.5 max-md:px-3">
               {messages.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center p-10 text-center">
                   <div className="mb-6 text-ink/40">
@@ -2149,13 +2149,13 @@ const ChatComponent = ({
               SAME sky as the chat surface, aligned by viewport coords - a
               seamless, borderless blend that still hides messages scrolling
               under the fixed mobile dock (the sky is opaque). */}
-          <div className="atlas-sky relative mx-auto w-full max-w-[820px] max-[1024px]:max-w-none max-md:fixed max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:z-[120] max-md:py-2 max-md:px-3">
+          <div className="atlas-sky relative mx-auto w-full max-w-205 max-[1024px]:max-w-none max-md:fixed max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:z-120 max-md:py-2 max-md:px-3">
             {/* Floating "jump to latest" - only while unpinned; sits just above
                 the dock (centered) and never overlaps it. */}
             <AnimatePresence>
               {showJumpButton && (
                 <motion.div
-                  className="pointer-events-none absolute -top-12 left-1/2 z-[121] -translate-x-1/2 max-md:-top-11"
+                  className="pointer-events-none absolute -top-12 left-1/2 z-121 -translate-x-1/2 max-md:-top-11"
                   initial={{ opacity: 0, y: 8, scale: 0.85 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.85 }}

@@ -239,8 +239,8 @@ const ContextTags = ({
                 </svg>
               </span>
               <div className="flex flex-col">
-                <span className="font-medium leading-[1.25]">{file.name}</span>
-                <span className="text-[9px] uppercase leading-[1.25] tracking-[0.08em] opacity-60">
+                <span className="font-medium leading-tight">{file.name}</span>
+                <span className="text-[9px] uppercase leading-tight tracking-[0.08em] opacity-60">
                   {file.className}
                 </span>
               </div>
@@ -317,8 +317,8 @@ const ContextTags = ({
                 )}
               </span>
               <div className="flex flex-col">
-                <span className="font-medium leading-[1.25]">{file.name}</span>
-                <span className="text-[9px] uppercase leading-[1.25] tracking-[0.08em] opacity-80">
+                <span className="font-medium leading-tight">{file.name}</span>
+                <span className="text-[9px] uppercase leading-tight tracking-[0.08em] opacity-80">
                   Uploaded
                 </span>
               </div>

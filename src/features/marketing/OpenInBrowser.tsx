@@ -45,13 +45,13 @@ const OpenInBrowser = () => {
 
   return (
     <motion.div
-      className="flex min-h-[100dvh] w-full items-center justify-center px-6 py-10"
+      className="flex min-h-dvh w-full items-center justify-center px-6 py-10"
       initial="hidden"
       animate="visible"
       variants={stagger(0.1, 0.1)}
     >
       <motion.div
-        className={`${UI.plate} flex w-full max-w-[440px] flex-col items-center gap-4 px-9 py-10 text-center max-[480px]:px-6 max-[480px]:py-8`}
+        className={`${UI.plate} flex w-full max-w-110 flex-col items-center gap-4 px-9 py-10 text-center max-[480px]:px-6 max-[480px]:py-8`}
         variants={fadeRise}
       >
         <CornerTicks />
@@ -83,7 +83,7 @@ const OpenInBrowser = () => {
         </motion.p>
 
         <motion.div
-          className="w-full rounded-lg border border-solid border-line bg-cream/80 px-[18px] py-[14px] text-[14px] font-medium leading-[1.55] text-ink"
+          className="w-full rounded-lg border border-solid border-line bg-cream/80 px-4.5 py-3.5 text-[14px] font-medium leading-[1.55] text-ink"
           variants={fadeRise}
         >
           {instruction}

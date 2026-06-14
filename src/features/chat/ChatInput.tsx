@@ -265,7 +265,7 @@ const ChatInput = ({
         <textarea
           ref={textareaRef}
           rows={1}
-          className="peer max-h-[150px] min-h-[24px] min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-[15.5px] leading-[1.5] text-ink outline-none placeholder:text-muted/55 max-md:px-2 max-md:py-1.5 max-md:text-[15px]"
+          className="peer max-h-37.5 min-h-6 min-w-0 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-2.5 py-2 text-[15.5px] leading-normal text-ink outline-none placeholder:text-muted/55 max-md:px-2 max-md:py-1.5 max-md:text-[15px]"
           value={message}
           onChange={handleChange}
           onKeyDown={handleKeyPress}

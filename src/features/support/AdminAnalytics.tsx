@@ -105,24 +105,24 @@ export default function AdminAnalytics({ users }: Props) {
       {/* Signups over time - engraved column chart */}
       <motion.div
         variants={fadeRise}
-        className={`${UI.plate} p-[22px] max-md:p-4`}
+        className={`${UI.plate} p-5.5 max-md:p-4`}
       >
         <h3 className={`m-0 mb-4 ${UI.overline}`}>
           New signups · last 30 days
         </h3>
-        <div className="flex items-end gap-[2px] h-[120px]">
+        <div className="flex items-end gap-0.5 h-30">
           {signupDays.map((d, i) => (
             <div
               key={d.start}
               title={`${fmtDay(d.start)}: ${d.count} signup${
                 d.count === 1 ? "" : "s"
               }`}
-              className={`flex-1 rounded-t-[2px] ${
+              className={`flex-1 rounded-t-xs ${
                 i === signupDays.length - 1
                   ? "bg-gold border-0 border-t border-solid border-gold-deep/70"
                   : d.count > 0
                     ? "bg-ink/25 border-0 border-t border-solid border-ink/60"
-                    : "bg-ink/[0.07]"
+                    : "bg-ink/7"
               }`}
               style={{
                 height: `${Math.max(4, (d.count / maxSignups) * 100)}%`,
@@ -145,13 +145,13 @@ export default function AdminAnalytics({ users }: Props) {
       {/* Users by region - hairline distribution bars */}
       <motion.div
         variants={fadeRise}
-        className={`${UI.plate} p-[22px] max-md:p-4`}
+        className={`${UI.plate} p-5.5 max-md:p-4`}
       >
         <h3 className={`m-0 mb-4 ${UI.overline}`}>Users by region</h3>
         <div className="flex flex-col gap-2.5">
           {regionRows.map(([region, count]) => (
             <div key={region} className="flex items-center gap-3">
-              <span className="w-[90px] shrink-0 text-[13px] text-ink overflow-hidden text-ellipsis whitespace-nowrap">
+              <span className="w-22.5 shrink-0 text-[13px] text-ink overflow-hidden text-ellipsis whitespace-nowrap">
                 {region}
               </span>
               <div className="flex-1 h-2.5 rounded-full border border-solid border-line bg-cream/60 overflow-hidden">

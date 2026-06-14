@@ -112,7 +112,7 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
             className="text-ink/30 max-md:h-24 max-md:w-24"
           />
           <p className={`mt-4 ${UI.overlineMuted}`}>No preview available</p>
-          <p className="mt-2 max-w-[420px] break-words font-display text-[19px] font-semibold leading-[1.3] text-ink max-md:max-w-[280px] max-md:text-[17px]">
+          <p className="mt-2 max-w-105 wrap-break-word font-display text-[19px] font-semibold leading-[1.3] text-ink max-md:max-w-70 max-md:text-[17px]">
             {file.name}
           </p>
           <p className="mt-1.5 text-[13px] text-muted">
@@ -154,14 +154,14 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-night/70 backdrop-blur-[3px]"
+      className="fixed inset-0 z-1000 flex items-center justify-center bg-night/70 backdrop-blur-[3px]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
     >
       <motion.div
-        className="relative flex h-[85dvh] w-[90%] max-w-[1000px] flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:h-[90dvh] max-md:w-[95%]"
+        className="relative flex h-[85dvh] w-[90%] max-w-250 flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:h-[90dvh] max-md:w-[95%]"
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}

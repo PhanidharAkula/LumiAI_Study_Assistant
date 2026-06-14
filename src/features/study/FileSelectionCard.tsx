@@ -17,7 +17,7 @@ const fileRow = (checked: boolean) =>
   }`;
 
 const fileCheckbox = (checked: boolean) =>
-  `flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border border-solid transition-colors duration-200 ${
+  `flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-sm border border-solid transition-colors duration-200 ${
     checked
       ? "border-ink bg-ink text-cream"
       : "border-ink/35 bg-transparent text-transparent"
@@ -84,7 +84,7 @@ const FileSelectionCard = ({
       </motion.button>
     </div>
 
-    <div className="grid grid-cols-2 gap-2.5 auto-rows-min max-h-full overflow-y-auto p-[5px] flex-1 content-start [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-[1024px]:gap-3 max-md:grid-cols-1 max-md:gap-2">
+    <div className="grid grid-cols-2 gap-2.5 auto-rows-min max-h-full overflow-y-auto p-1.25 flex-1 content-start scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-[1024px]:gap-3 max-md:grid-cols-1 max-md:gap-2">
       {files.length > 0 ? (
         files.map((file) => (
           <label
@@ -130,7 +130,7 @@ const FileSelectionCard = ({
           </label>
         ))
       ) : (
-        <div className="col-[1/-1] flex flex-col items-center justify-center py-[60px] px-5 text-center gap-3">
+        <div className="col-span-full flex flex-col items-center justify-center py-15 px-5 text-center gap-3">
           <Constellation name="sources" size={72} className="text-ink/35" />
           <p className="m-0 font-display text-[17px] font-semibold text-ink">
             {emptyTitle}

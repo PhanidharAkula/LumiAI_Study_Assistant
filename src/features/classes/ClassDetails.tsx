@@ -546,7 +546,7 @@ const ClassDetails = ({
 
   return (
     <motion.div
-      className="h-full w-full pt-[30px]"
+      className="h-full w-full pt-7.5"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -635,7 +635,7 @@ const ClassDetails = ({
                 <AnimatePresence>
                   {showMenu && (
                     <motion.div
-                      className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-[260px] flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2 shadow-float"
+                      className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-65 flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2 shadow-float"
                       variants={menuVariants}
                       initial="hidden"
                       animate="visible"
@@ -656,7 +656,7 @@ const ClassDetails = ({
           </motion.div>
 
           <motion.div
-            className="flex flex-col items-center justify-center gap-5 px-2.5 py-[30px] max-md:px-1"
+            className="flex flex-col items-center justify-center gap-5 px-2.5 py-7.5 max-md:px-1"
             variants={stagger()}
             initial="hidden"
             animate="visible"
@@ -673,7 +673,7 @@ const ClassDetails = ({
               style={{ width: "100%" }}
             >
               <motion.div
-                className={`group/drop mx-auto my-5 flex min-h-[190px] w-[60%] flex-col items-center justify-center gap-4 rounded-xl border border-dashed p-[30px] transition-[border-color,background-color] duration-300 max-[1024px]:w-[80%] max-[1024px]:p-[25px] max-md:w-full max-md:min-h-[160px] max-md:p-5 ${
+                className={`group/drop mx-auto my-5 flex min-h-47.5 w-[60%] flex-col items-center justify-center gap-4 rounded-xl border border-dashed p-7.5 transition-[border-color,background-color] duration-300 max-[1024px]:w-[80%] max-[1024px]:p-6.25 max-md:w-full max-md:min-h-40 max-md:p-5 ${
                   dragActive
                     ? "border-gold-deep bg-gold/10"
                     : "border-ink/30 bg-vellum/50 hover:border-ink/60 hover:bg-vellum/80"
@@ -694,17 +694,17 @@ const ClassDetails = ({
                 />
 
                 {uploading ? (
-                  <div className="flex w-full max-w-[280px] flex-col items-center gap-3.5">
+                  <div className="flex w-full max-w-70 flex-col items-center gap-3.5">
                     <Spinner />
                     <p className="text-[15px] font-semibold text-ink">
                       Uploading files...
                     </p>
                     {/* Thin gold thread sweeping along a hairline track. */}
                     <div
-                      className="h-[2px] w-full overflow-hidden rounded-full bg-line"
+                      className="h-0.5 w-full overflow-hidden rounded-full bg-line"
                       aria-hidden="true"
                     >
-                      <div className="h-full w-full animate-shimmer bg-linear-to-r from-transparent via-gold to-transparent bg-[length:200%_100%]" />
+                      <div className="h-full w-full animate-shimmer bg-linear-to-r from-transparent via-gold to-transparent bg-size-[200%_100%]" />
                     </div>
                   </div>
                 ) : (
@@ -753,7 +753,7 @@ const ClassDetails = ({
 
             {loading ? (
               <motion.div
-                className="flex w-full flex-col items-center justify-center py-[60px]"
+                className="flex w-full flex-col items-center justify-center py-15"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -762,7 +762,7 @@ const ClassDetails = ({
               </motion.div>
             ) : files.length === 0 ? (
               <motion.div
-                className="flex flex-col items-center justify-center gap-3 p-[30px] text-center"
+                className="flex flex-col items-center justify-center gap-3 p-7.5 text-center"
                 variants={fadeRise}
               >
                 {/* The class's constellation, waiting to be charted. */}
@@ -770,11 +770,11 @@ const ClassDetails = ({
                   <Constellation
                     name={classData.name}
                     size={150}
-                    className="max-md:h-[118px] max-md:w-[118px]"
+                    className="max-md:h-29.5 max-md:w-29.5"
                   />
                 </div>
                 <p className={UI.overlineMuted}>Empty plate</p>
-                <p className="m-0 max-w-[360px] font-display text-[21px] font-medium leading-[1.45] text-ink/85 max-md:text-[19px]">
+                <p className="m-0 max-w-90 font-display text-[21px] font-medium leading-[1.45] text-ink/85 max-md:text-[19px]">
                   Nothing charted yet - add your{" "}
                   <em className="text-gold-deep">first document</em>.
                 </p>

@@ -27,9 +27,9 @@ import {
 } from "@shared/hooks/overlay";
 
 const PLATE_SIZES = {
-  sm: "max-w-[440px]",
-  md: "max-w-[560px]",
-  lg: "max-w-[760px]",
+  sm: "max-w-110",
+  md: "max-w-140",
+  lg: "max-w-190",
 } as const;
 
 interface ModalProps {
@@ -87,7 +87,7 @@ const Modal = ({
     <AnimatePresence>
       {open && (
         <motion.div
-          className={`fixed inset-0 z-[999990] flex bg-night/55 backdrop-blur-[3px] ${
+          className={`fixed inset-0 z-999990 flex bg-night/55 backdrop-blur-[3px] ${
             asSheet ? "items-end" : "items-center justify-center px-5 py-6"
           }`}
           variants={scrimFade}
@@ -119,7 +119,7 @@ const Modal = ({
                 <div className="min-w-0">
                   {overline && <p className={UI.overline}>{overline}</p>}
                   {title && (
-                    <h2 className="mt-1.5 font-display text-[24px] font-semibold leading-[1.25] tracking-[-0.01em] text-ink max-[480px]:text-[21px]">
+                    <h2 className="mt-1.5 font-display text-[24px] font-semibold leading-tight tracking-[-0.01em] text-ink max-[480px]:text-[21px]">
                       {title}
                     </h2>
                   )}

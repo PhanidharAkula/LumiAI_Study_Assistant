@@ -54,7 +54,7 @@ const StatusSeal = ({ status }: { status: string }) => {
   const label = STATUS_LABEL[status] ?? status;
   return (
     <span
-      className={`inline-flex shrink-0 cursor-default items-center gap-1 whitespace-nowrap rounded-full border border-solid px-2.5 py-[3px] font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] ${
+      className={`inline-flex shrink-0 cursor-default items-center gap-1 whitespace-nowrap rounded-full border border-solid px-2.5 py-0.75 font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] ${
         STATUS_CHIP[status] ?? STATUS_CHIP.open
       }`}
     >
@@ -139,7 +139,7 @@ const Support = ({ session }: { session: Session | null }) => {
   };
 
   return (
-    <div className="relative min-h-[100dvh] w-full px-5 pt-[84px] pb-[60px] max-[600px]:px-3.5 max-[600px]:pt-[72px] max-[600px]:pb-10">
+    <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the desk. */}
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -149,18 +149,18 @@ const Support = ({ session }: { session: Session | null }) => {
           name="correspondence desk"
           size={440}
           twinkle
-          className="absolute -right-28 -top-16 text-ink/[0.10]"
+          className="absolute -right-28 -top-16 text-ink/10"
         />
       </div>
 
       <BackButton
-        className="absolute left-6 top-6 z-[2] max-[600px]:left-4 max-[600px]:top-4"
+        className="absolute left-6 top-6 z-2 max-[600px]:left-4 max-[600px]:top-4"
         onClick={() => navigate("/dashboard")}
         label="Back to dashboard"
       />
 
       <motion.div
-        className="relative z-[1] mx-auto max-w-[640px]"
+        className="relative z-1 mx-auto max-w-160"
         variants={stagger()}
         initial="hidden"
         animate="visible"
@@ -181,7 +181,7 @@ const Support = ({ session }: { session: Session | null }) => {
           </em>
         </motion.h1>
         <motion.p
-          className="mx-auto mb-6 max-w-[480px] cursor-default text-center text-[15px] leading-[1.65] text-muted [&_strong]:font-semibold [&_strong]:text-ink"
+          className="mx-auto mb-6 max-w-120 cursor-default text-center text-[15px] leading-[1.65] text-muted [&_strong]:font-semibold [&_strong]:text-ink"
           variants={fadeRise}
         >
           Have a question or run into a snag? Send us a message
@@ -262,7 +262,7 @@ const Support = ({ session }: { session: Session | null }) => {
           </label>
           <textarea
             id="support-message"
-            className={`${UI.input} min-h-[130px] resize-y leading-[1.5]`}
+            className={`${UI.input} min-h-32.5 resize-y leading-normal`}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Tell us what's going on…"
@@ -272,7 +272,7 @@ const Support = ({ session }: { session: Session | null }) => {
 
           <Button
             type="submit"
-            className="mt-[18px] self-end"
+            className="mt-4.5 self-end"
             disabled={submitting || !subject.trim() || !message.trim()}
           >
             {submitting ? "Sending…" : "Send dispatch"}
@@ -317,7 +317,7 @@ const Support = ({ session }: { session: Session | null }) => {
                   layout
                 >
                   <div className="mb-2 flex items-start justify-between gap-3">
-                    <span className="cursor-default break-words text-[15px] font-semibold leading-snug">
+                    <span className="cursor-default wrap-break-word text-[15px] font-semibold leading-snug">
                       {t.subject}
                     </span>
                     <StatusSeal status={t.status} />
@@ -327,7 +327,7 @@ const Support = ({ session }: { session: Session | null }) => {
                     <span aria-hidden="true"> · </span>
                     <span>{formatDate(t.created_at)}</span>
                   </div>
-                  <p className="cursor-default whitespace-pre-wrap break-words text-[14.5px] leading-[1.6] text-ink/75">
+                  <p className="cursor-default whitespace-pre-wrap wrap-break-word text-[14.5px] leading-[1.6] text-ink/75">
                     {t.message}
                   </p>
                 </motion.div>

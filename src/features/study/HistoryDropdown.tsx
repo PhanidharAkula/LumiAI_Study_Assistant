@@ -125,7 +125,7 @@ function HistoryDropdown<T>({
       {/* Outside-click scrim */}
       {open && (
         <div
-          className="fixed inset-0 z-[999] bg-transparent"
+          className="fixed inset-0 z-999 bg-transparent"
           onClick={onClose}
         />
       )}
@@ -133,7 +133,7 @@ function HistoryDropdown<T>({
       <AnimatePresence>
         {open && (
           <motion.div
-            className="absolute top-[calc(100%+10px)] right-0 z-[1000] flex max-h-[80dvh] w-[420px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-[1024px]:w-[380px] max-md:w-[min(90vw,340px)]"
+            className="absolute top-[calc(100%+10px)] right-0 z-1000 flex max-h-[80dvh] w-105 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-[1024px]:w-95 max-md:w-[min(90vw,340px)]"
             style={{ transformOrigin: "top right" }}
             onClick={(e) => e.stopPropagation()}
             variants={dropIn}
@@ -149,7 +149,7 @@ function HistoryDropdown<T>({
             </div>
 
             <motion.div
-              className="flex max-h-[calc(80dvh-100px)] flex-col gap-2 overflow-y-auto p-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="flex max-h-[calc(80dvh-100px)] flex-col gap-2 overflow-y-auto p-3 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               variants={stagger(0.05, 0.04)}
             >
               {items.length > 0 ? (
@@ -167,7 +167,7 @@ function HistoryDropdown<T>({
                   </motion.div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center gap-3 px-[30px] py-[50px] text-center">
+                <div className="flex flex-col items-center justify-center gap-3 px-7.5 py-12.5 text-center">
                   <Constellation
                     name={emptySeed}
                     size={72}

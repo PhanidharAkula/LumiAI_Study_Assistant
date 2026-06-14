@@ -20,7 +20,7 @@ interface ConfirmDialogProps {
 
 // Width treatment for paired dialog buttons (atlas UI.btn* supplies the rest).
 const BTN_PAIR_W =
-  "min-w-[120px] max-md:min-w-[100px] max-[480px]:min-w-0 max-[480px]:flex-1 max-[480px]:px-5";
+  "min-w-30 max-md:min-w-25 max-[480px]:min-w-0 max-[480px]:flex-1 max-[480px]:px-5";
 
 const ConfirmDialog = ({
   isOpen,
@@ -221,7 +221,7 @@ const ConfirmDialog = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="accdel-dialog-overlay pointer-events-auto fixed inset-0 isolate z-[999999] flex h-full w-full items-center justify-center bg-night/60 backdrop-blur-[3px]"
+          className="accdel-dialog-overlay pointer-events-auto fixed inset-0 isolate z-999999 flex h-full w-full items-center justify-center bg-night/60 backdrop-blur-[3px]"
           variants={scrimFade}
           initial="hidden"
           animate="visible"
@@ -229,7 +229,7 @@ const ConfirmDialog = ({
           onClick={onClose}
         >
           <motion.div
-            className="relative flex w-[90%] max-w-[440px] flex-col items-center rounded-xl border border-solid border-line bg-vellum px-8 py-9 shadow-float max-md:w-full max-[480px]:w-[calc(100%-24px)] max-[480px]:max-w-[min(420px,calc(100%-24px))] max-[480px]:px-5 max-[480px]:py-7"
+            className="relative flex w-[90%] max-w-110 flex-col items-center rounded-xl border border-solid border-line bg-vellum px-8 py-9 shadow-float max-md:w-full max-[480px]:w-[calc(100%-24px)] max-[480px]:max-w-[min(420px,calc(100%-24px))] max-[480px]:px-5 max-[480px]:py-7"
             variants={modalPop}
             initial="hidden"
             animate="visible"
@@ -238,7 +238,7 @@ const ConfirmDialog = ({
           >
             <CornerTicks />
             <div
-              className={`mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-solid max-md:h-[60px] max-md:w-[60px] max-[480px]:h-14 max-[480px]:w-14 ${getIconClass()}`}
+              className={`mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-solid max-md:h-15 max-md:w-15 max-[480px]:h-14 max-[480px]:w-14 ${getIconClass()}`}
             >
               {renderIcon()}
             </div>
@@ -269,7 +269,7 @@ const ConfirmDialog = ({
 
               <Button
                 variant={danger ? "danger" : "primary"}
-                className={isSingle ? "min-w-[160px]" : BTN_PAIR_W}
+                className={isSingle ? "min-w-40" : BTN_PAIR_W}
                 onClick={onConfirm}
               >
                 {confirmText}

@@ -33,7 +33,7 @@ interface SelectProps {
   disabled?: boolean;
 }
 
-// Roughly the tallest the panel grows before it scrolls (max-h-[260px] + gap).
+// Roughly the tallest the panel grows before it scrolls (max-h-65 + gap).
 const PANEL_MAX = 280;
 
 const Select = ({
@@ -117,7 +117,7 @@ const Select = ({
         createPortal(
           <>
             <div
-              className="fixed inset-0 z-[900]"
+              className="fixed inset-0 z-900"
               onClick={() => setOpen(false)}
               aria-hidden="true"
             />
@@ -132,7 +132,7 @@ const Select = ({
                   ? { bottom: window.innerHeight - rect.top + 6 }
                   : { top: rect.bottom + 6 }),
               }}
-              className="z-[901] max-h-[260px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-lg border border-solid border-line bg-vellum p-1 shadow-float"
+              className="z-901 max-h-65 max-w-[calc(100vw-24px)] overflow-y-auto rounded-lg border border-solid border-line bg-vellum p-1 shadow-float"
               initial={{ opacity: 0, y: flipUp ? 6 : -6, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1, transition: spring.plate }}
             >
