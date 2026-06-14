@@ -1,4 +1,5 @@
 import {
+  memo,
   useState,
   useRef,
   useEffect,
@@ -351,4 +352,7 @@ const ChatInput = ({
   );
 };
 
-export default ChatInput;
+// Memoized: during streaming the parent re-renders ~33fps; without this the
+// framer Stop button re-rendered every frame and its hover gesture stuttered.
+// The parent passes stable (useCallback) handlers so the memo actually holds.
+export default memo(ChatInput);

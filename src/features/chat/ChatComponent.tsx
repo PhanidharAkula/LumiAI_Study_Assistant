@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
@@ -1662,6 +1662,25 @@ const ChatComponent = ({
     }
   };
 
+  // Stable callback identities (latest-ref pattern) so memo(ChatInput) can skip
+  // the ~33fps re-renders during streaming - those were re-rendering the framer
+  // Stop button every frame and stuttering its hover. The refs always hold the
+  // latest handler, so no stale closures.
+  const sendRef = useRef(handleSendMessage);
+  sendRef.current = handleSendMessage;
+  const stopRef = useRef(handleStopGeneration);
+  stopRef.current = handleStopGeneration;
+  const onSendStable = useCallback(
+    (m: string, f: any[]) => sendRef.current(m, f),
+    []
+  );
+  const onStopStable = useCallback(() => stopRef.current(), []);
+  const onShowTagStable = useCallback(() => setShowTagSelector(true), []);
+  const onUploadStable = useCallback(
+    (files: any[]) => setUploadedLocalFiles((prev) => [...prev, ...files]),
+    []
+  );
+
   const handleTagSelection = ({
     selectedClasses: newClasses,
     selectedFiles: newFiles,
@@ -2297,16 +2316,13 @@ const ChatComponent = ({
             )}
 
             <ChatInput
-              onSendMessage={handleSendMessage}
+              onSendMessage={onSendStable}
               loading={loading}
-              onShowTagSelector={() => setShowTagSelector(true)}
-              onStopGeneration={handleStopGeneration}
+              onShowTagSelector={onShowTagStable}
+              onStopGeneration={onStopStable}
               isGenerating={!!abortController}
               uploadedFiles={uploadedLocalFiles}
-              onUploadFiles={(files) => {
-                // Add uploaded files to the unified context display
-                setUploadedLocalFiles((prev) => [...prev, ...files]);
-              }}
+              onUploadFiles={onUploadStable}
             />
           </div>
         </motion.div>
