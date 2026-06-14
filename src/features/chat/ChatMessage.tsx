@@ -97,6 +97,93 @@ const escapeCurrency = (md: string): string =>
     return isMath ? m : "\\$" + s + "\\$";
   });
 
+// Convert LaTeX math to a readable plain-text approximation for COPYING, so a
+// formula like `\frac{\sigma^2}{n}` copies as `σ²/n` instead of raw KaTeX
+// source. Best-effort: Greek letters, common operators, super/subscripts,
+// fractions, roots and accents map to Unicode; anything unrecognized degrades
+// to its bare name.
+const TEX_GREEK: Record<string, string> = {
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε",
+  zeta: "ζ", eta: "η", theta: "θ", vartheta: "ϑ", iota: "ι", kappa: "κ",
+  lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", pi: "π", varpi: "ϖ", rho: "ρ",
+  sigma: "σ", varsigma: "ς", tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ",
+  chi: "χ", psi: "ψ", omega: "ω", Gamma: "Γ", Delta: "Δ", Theta: "Θ",
+  Lambda: "Λ", Xi: "Ξ", Pi: "Π", Sigma: "Σ", Upsilon: "Υ", Phi: "Φ", Psi: "Ψ",
+  Omega: "Ω",
+};
+const TEX_SYM: Record<string, string> = {
+  times: "×", cdot: "·", div: "÷", pm: "±", mp: "∓", leq: "≤", le: "≤",
+  geq: "≥", ge: "≥", neq: "≠", ne: "≠", approx: "≈", equiv: "≡", sim: "~",
+  propto: "∝", infty: "∞", partial: "∂", nabla: "∇", sum: "∑", prod: "∏",
+  int: "∫", forall: "∀", exists: "∃", in: "∈", notin: "∉", subset: "⊂",
+  supset: "⊃", subseteq: "⊆", cup: "∪", cap: "∩", emptyset: "∅",
+  rightarrow: "→", to: "→", leftarrow: "←", Rightarrow: "⇒",
+  leftrightarrow: "↔", langle: "⟨", rangle: "⟩", ldots: "...", cdots: "...",
+  dots: "...", angle: "∠", prime: "′", ast: "*", star: "⋆", circ: "∘",
+  bullet: "•",
+};
+const TEX_SUP: Record<string, string> = {
+  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶",
+  "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽",
+  ")": "⁾", n: "ⁿ", i: "ⁱ",
+};
+const TEX_SUB: Record<string, string> = {
+  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆",
+  "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋", "=": "₌", "(": "₍",
+  ")": "₎", a: "ₐ", e: "ₑ", i: "ᵢ", j: "ⱼ", o: "ₒ", x: "ₓ", n: "ₙ", m: "ₘ",
+  t: "ₜ",
+};
+const texScript = (
+  str: string,
+  map: Record<string, string>
+): string | null => {
+  let o = "";
+  for (const c of str) {
+    if (!(c in map)) return null;
+    o += map[c];
+  }
+  return o;
+};
+const latexToReadable = (tex: string): string => {
+  let s = tex;
+  // Strip styling wrappers (keep the content).
+  s = s.replace(
+    /\\(?:text|mathrm|mathbf|mathit|mathsf|mathtt|mathcal|mathbb|operatorname)\s*\{([^{}]*)\}/g,
+    "$1"
+  );
+  // Accents -> combining marks (computed so no combining char floats in source).
+  s = s.replace(/\\bar\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0304));
+  s = s.replace(/\\hat\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0302));
+  s = s.replace(/\\vec\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x20d7));
+  s = s.replace(/\\tilde\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0303));
+  s = s.replace(/\\dot\s*\{([^{}]*)\}/g, (_m, x) => x + String.fromCharCode(0x0307));
+  // Greek + symbol commands -> Unicode (before frac/scripts so wrappers see it).
+  s = s.replace(/\\([A-Za-z]+)/g, (m, n) => TEX_GREEK[n] ?? TEX_SYM[n] ?? m);
+  // Fractions -> a/b (parenthesize a multi-term numerator/denominator).
+  for (let i = 0; i < 4; i++) {
+    s = s.replace(/\\(?:d|t)?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_m, a, b) => {
+      const w = (x: string) => {
+        x = x.trim();
+        return /[+\-=\s]/.test(x) && x.length > 1 ? `(${x})` : x;
+      };
+      return `${w(a)}/${w(b)}`;
+    });
+  }
+  s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, (_m, x) => `√(${x})`);
+  s = s.replace(/\^\{([^{}]*)\}/g, (_m, x) => texScript(x, TEX_SUP) ?? `^(${x})`);
+  s = s.replace(/\^(\\?\w)/g, (_m, x) => texScript(x, TEX_SUP) ?? `^${x}`);
+  s = s.replace(/_\{([^{}]*)\}/g, (_m, x) => texScript(x, TEX_SUB) ?? `_(${x})`);
+  s = s.replace(/_(\\?\w)/g, (_m, x) => texScript(x, TEX_SUB) ?? `_${x}`);
+  s = s.replace(/\\left\s*/g, "").replace(/\\right\s*/g, "");
+  s = s.replace(/\\\\/g, "; "); // row break in a matrix/aligned block
+  s = s.replace(/\\[,;:!> ]/g, " "); // spacing commands
+  s = s.replace(/[{}]/g, "");
+  s = s.replace(/\\([%$&#_])/g, "$1"); // escaped literals
+  s = s.replace(/\\([A-Za-z]+)/g, "$1"); // unknown command -> its bare name
+  s = s.replace(/\\/g, "");
+  return s.replace(/[ \t]+/g, " ").trim();
+};
+
 // Small ghost key - copy actions on parchment. The lift comes from framer
 // (`keyPress`); CSS animates color/border only (motion doctrine §7).
 const COPY_BTN =
@@ -205,10 +292,10 @@ const ChatMessage = ({
       str.replace(/\$([^$\n]+?)\$/g, (m, inner) => {
         const s = String(inner);
         if (/^\s|\s$/.test(s)) return m; // padded -> currency-ish, keep
-        if (/[\^_\\{}]/.test(s)) return s; // has math symbols
-        if (/^[^\d]/.test(s)) return s; // starts non-digit
-        if (/^\d[A-Za-z]/.test(s)) return s; // digit then letter, e.g. 3x
-        if (/[A-Za-z]/.test(s)) return s; // digit-led but contains a letter, e.g. 5+x
+        if (/[\^_\\{}]/.test(s)) return latexToReadable(s); // math symbols
+        if (/^[^\d]/.test(s)) return latexToReadable(s); // starts non-digit
+        if (/^\d[A-Za-z]/.test(s)) return latexToReadable(s); // digit then letter
+        if (/[A-Za-z]/.test(s)) return latexToReadable(s); // digit-led + letter
         return m; // pure number ($5) -> currency, keep
       });
     // Tables -> aligned columns. Only a real block (a |-bearing header line
@@ -258,7 +345,9 @@ const ChatMessage = ({
     }
     // Non-table math (table cells were already unwrapped above).
     t = unwrapInlineMath(
-      tableOut.join("\n").replace(/\$\$([\s\S]*?)\$\$/g, "$1")
+      tableOut
+        .join("\n")
+        .replace(/\$\$([\s\S]*?)\$\$/g, (_m, x) => latexToReadable(x))
     );
     // Restore protected code verbatim (the NUL sentinel can't collide with text).
     t = t.replace(
