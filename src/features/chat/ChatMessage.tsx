@@ -93,7 +93,10 @@ const escapeCurrency = (md: string): string =>
       (/[\^_\\{}]/.test(s) || // math symbols
         /^[^\d]/.test(s) || // starts non-digit
         /^\d[A-Za-z]/.test(s) || // digit then letter (3x)
-        /[A-Za-z]/.test(s)); // digit-led but has a letter (5x)
+        /[A-Za-z]/.test(s) || // digit-led but has a letter (5x)
+        /^\d[\d.,]*$/.test(s)); // a clean PAIRED number ($72$, $8.49$) is the
+    //   model's math formatting of a value, not currency (currency is unpaired
+    //   "$5" or padded "$5 and $10").
     return isMath ? m : "\\$" + s + "\\$";
   });
 
@@ -296,7 +299,10 @@ const ChatMessage = ({
         if (/^[^\d]/.test(s)) return latexToReadable(s); // starts non-digit
         if (/^\d[A-Za-z]/.test(s)) return latexToReadable(s); // digit then letter
         if (/[A-Za-z]/.test(s)) return latexToReadable(s); // digit-led + letter
-        return m; // pure number ($5) -> currency, keep
+        // A clean PAIRED number ($72$, $8.49$) is the model's math formatting,
+        // not currency (currency is unpaired "$5" or padded "$5 and $10").
+        if (/^\d[\d.,]*$/.test(s)) return latexToReadable(s);
+        return m; // else -> currency, keep
       });
     // Tables -> aligned columns. Only a real block (a |-bearing header line
     // immediately followed by a separator row) is converted, so prose that
