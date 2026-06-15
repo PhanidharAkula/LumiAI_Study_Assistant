@@ -807,7 +807,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                   </span>
                 </div>
                 <div className={UI.rule} />
-                <AnimatePresence mode="wait">
+                <AnimatePresence>
                   {files.map((file) => (
                     <motion.div
                       key={file.id}

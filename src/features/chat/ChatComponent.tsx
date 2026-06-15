@@ -10,6 +10,7 @@ import TagSelector from "./TagSelector";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { scrimFade, spring } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 import {
@@ -346,6 +347,15 @@ const ChatComponent = ({
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<any[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  // The first chat load feeds the one global loader ("Opening the chat") - the
+  // same loader as the route/chunk - so opening chat doesn't swap to a separate
+  // spinner. Later conversation switches keep the inline loader below (their
+  // first-load flag is already off by then).
+  const [chatFirstLoad, setChatFirstLoad] = useState(true);
+  useEffect(() => {
+    if (!initialLoading) setChatFirstLoad(false);
+  }, [initialLoading]);
+  useLoadingSignal(initialLoading && chatFirstLoad, "Opening the chat");
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);

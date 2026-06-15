@@ -1221,7 +1221,7 @@ const Dashboard = ({ session }: Props) => {
       {/* Add chat component with AnimatePresence for smooth transitions */}
       <AnimatePresence>
         {chatOpen && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSignal label="Opening the chat" />}>
             <ChatComponent
               isOpen={chatOpen}
               onClose={handleCloseChat}
