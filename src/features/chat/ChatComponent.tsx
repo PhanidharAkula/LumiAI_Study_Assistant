@@ -1894,7 +1894,10 @@ const ChatComponent = ({
     <motion.div
       className="fixed inset-0 z-1000 flex flex-col overflow-hidden atlas-sky pt-17 max-[1024px]:pt-16 max-md:px-2.5 max-md:pb-2.5 max-md:pt-15"
       variants={scrimFade}
-      initial="hidden"
+      // No entrance fade: the global loader covered the load and shares the same
+      // atlas-sky background, so the chat just appears in place. A fade-in here
+      // would briefly reveal the dashboard behind it. (Exit still animates.)
+      initial={false}
       animate="visible"
       exit="exit"
       tabIndex={-1}
