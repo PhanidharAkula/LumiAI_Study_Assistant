@@ -584,14 +584,14 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                 <span aria-hidden="true" className="text-ink/30">
                   ·
                 </span>
-                <span className="text-muted">
+                {/* <span className="text-muted">
                   Created{" "}
                   {new Date(classData.created_at).toLocaleDateString(undefined, {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
                   })}
-                </span>
+                </span> */}
               </p>
               <p className="m-0 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
                 {classData.name}

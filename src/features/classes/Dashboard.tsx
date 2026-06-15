@@ -665,7 +665,7 @@ const Dashboard = ({ session }: Props) => {
       >
         {/* Atlas plate header - names this leaf of the chart. */}
         <motion.div className="col-span-full min-w-0" variants={fadeRise}>
-          <p className={`${UI.overline} mb-2`}>Atlas · Your classes</p>
+          <p className={`${UI.overline} mb-2`}>Atlas</p>
           <h1 className="font-display text-[34px] font-semibold leading-[1.12] tracking-[-0.015em] text-ink max-md:text-[27px]">
             Your sky{" "}
             <em className="text-gold-deep [font-variation-settings:'SOFT'_60,'WONK'_1]">
