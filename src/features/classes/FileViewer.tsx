@@ -135,7 +135,7 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
               Couldn't load a preview for this file.
             </div>
           ) : (
-            <pre className="m-0 whitespace-pre-wrap break-words p-4 font-mono text-[13px] leading-[1.6] text-ink">
+            <pre className="m-0 whitespace-pre-wrap wrap-break-word p-4 font-mono text-[13px] leading-[1.6] text-ink">
               {textContent}
             </pre>
           )}
