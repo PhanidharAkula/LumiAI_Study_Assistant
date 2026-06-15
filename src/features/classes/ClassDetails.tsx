@@ -6,7 +6,8 @@ import FileViewer from "./FileViewer";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
-import { LoadingSignal } from "@shared/lib/loadingSignal";
+import { LoadingSignal, useLoadingSignal } from "@shared/lib/loadingSignal";
+import { loaderLabel } from "@shared/lib/loaderLabel";
 import { Constellation, UI, starPath } from "@shared/components/atlas";
 import { BackButton, IconButton, Spinner } from "@shared/components/controls";
 import {
@@ -68,6 +69,9 @@ const ClassDetails = ({ classData, onBack }: Props) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [files, setFiles] = useState<FileRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Only the first file fetch (opening the class) drives the full-screen loader;
+  // re-fetches after an upload keep the inline spinner instead.
+  const [firstLoad, setFirstLoad] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [viewingFile, setViewingFile] = useState<FileRow | null>(null);
@@ -128,6 +132,13 @@ const ClassDetails = ({ classData, onBack }: Props) => {
   // Escape closes the study-instruments menu (stacked - dialogs above win).
   useEscapeToClose(showMenu, () => setShowMenu(false));
 
+  // Opening a class (first file fetch) shows the full-screen loader, named from
+  // the URL: "Opening the class", or the overlay's label on a deep-link.
+  useLoadingSignal(
+    loading && firstLoad,
+    loaderLabel("/dashboard", searchParams.toString())
+  );
+
   const fetchFiles = async () => {
     if (!classData?.id) return;
 
@@ -150,6 +161,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       });
     } finally {
       setLoading(false);
+      setFirstLoad(false);
     }
   };
 
