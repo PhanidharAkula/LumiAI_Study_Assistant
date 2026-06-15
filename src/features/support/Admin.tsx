@@ -64,7 +64,7 @@ const TICKET_CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const USERS_PER_PAGE = 10;
+const USERS_PER_PAGE = 5;
 
 // ── Observatory chrome - shared class groups ───────────────────────────────
 // One canonical filter pill (used by the Users region/date/admin filters AND
