@@ -105,20 +105,46 @@ const nextMessageId = (prefix: string): string =>
   `${prefix}-${Date.now()}-${(messageIdSeq += 1)}`;
 
 // Rotating labels for the thinking bubble so a wait never reads as frozen. The
-// label cycles every ~1.4s through one phase while tagged files are being read,
-// then through the other while the model composes - until the first token lands.
+// label rotates every ~1.4s through one phase while tagged files are being read,
+// then the other while the model composes - until the first token lands. Phrases
+// are picked at random (never the same one twice in a row) so the wait varies.
 const READING_PHRASES = [
   "Reading through your materials",
   "Skimming the key pages",
   "Pulling out the important parts",
   "Connecting the details",
+  "Scanning your notes",
+  "Tracing the main ideas",
+  "Gathering the relevant bits",
+  "Cross-referencing your sources",
+  "Combing through the pages",
+  "Picking out what matters",
+  "Following the thread",
+  "Lining up the evidence",
 ];
 const THINKING_PHRASES = [
   "Thinking",
   "Working through it",
   "Putting it together",
   "Organizing the answer",
+  "Reasoning it out",
+  "Mapping it out",
+  "Drafting a response",
+  "Structuring the explanation",
+  "Weighing the details",
+  "Joining the dots",
+  "Composing the answer",
+  "Shaping the response",
 ];
+
+// A random phrase from `arr`, avoiding `exclude` so the label never repeats
+// back-to-back.
+const randomPhrase = (arr: string[], exclude?: string): string => {
+  if (arr.length <= 1) return arr[0];
+  let pick = arr[Math.floor(Math.random() * arr.length)];
+  while (pick === exclude) pick = arr[Math.floor(Math.random() * arr.length)];
+  return pick;
+};
 
 // Drop short meta-preface lines an assistant sometimes opens with ("Sure,
 // here's...", "Alright,"). Module-scope helper for the streaming send path.
@@ -1127,10 +1153,9 @@ const ChatComponent = ({
       let statusPhase: "reading" | "thinking" = hasTaggedContext
         ? "reading"
         : "thinking";
-      let statusIdx = 0;
-      const firstLabel = (
+      const firstLabel = randomPhrase(
         statusPhase === "reading" ? READING_PHRASES : THINKING_PHRASES
-      )[0];
+      );
       setMessages((prev) => [
         ...prev,
         {
@@ -1143,13 +1168,13 @@ const ChatComponent = ({
       ]);
 
       statusTimer = setInterval(() => {
-        statusIdx += 1;
         const arr =
           statusPhase === "reading" ? READING_PHRASES : THINKING_PHRASES;
-        const label = arr[Math.min(statusIdx, arr.length - 1)];
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === aiMessageId ? { ...m, statusLabel: label } : m
+            m.id === aiMessageId
+              ? { ...m, statusLabel: randomPhrase(arr, m.statusLabel) }
+              : m
           )
         );
       }, 1400);
@@ -1165,13 +1190,15 @@ const ChatComponent = ({
       // Reading done: persist the resolved context onto the user message and
       // move the rotating label into its "thinking" phase for the rest of the wait.
       statusPhase = "thinking";
-      statusIdx = 0;
       setMessages((prev) =>
         prev.map((m) => {
           if (m.id === userMessageId)
             return { ...m, contextContent: messageContext };
           if (m.id === aiMessageId)
-            return { ...m, statusLabel: THINKING_PHRASES[0] };
+            return {
+              ...m,
+              statusLabel: randomPhrase(THINKING_PHRASES, m.statusLabel),
+            };
           return m;
         })
       );
@@ -1290,7 +1317,7 @@ const ChatComponent = ({
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === aiMessageId
-                  ? { ...msg, content: "", statusLabel: THINKING_PHRASES[0] }
+                  ? { ...msg, content: "", statusLabel: randomPhrase(THINKING_PHRASES) }
                   : msg
               )
             );
