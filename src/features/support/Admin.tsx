@@ -680,7 +680,8 @@ export default function Admin() {
     badge?: number;
     icon: ReactNode;
   }[] = [
-    {
+    // Analytics tab disabled for now - re-enable by uncommenting this entry.
+    /* {
       id: "analytics",
       label: "Analytics",
       icon: (
@@ -700,7 +701,7 @@ export default function Admin() {
           <line x1="6" y1="20" x2="6" y2="14" />
         </svg>
       ),
-    },
+    }, */
     {
       id: "tickets",
       label: "Tickets",
