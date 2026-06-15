@@ -113,6 +113,9 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    server: { port: 5173, host: true },
+    // host:true exposes on the LAN; allowedHosts:true lets a tunnel (cloudflared)
+    // proxy in over HTTPS for real-device testing - Supabase rejects http:// LAN-IP
+    // OAuth redirects, so the phone needs an https origin. Dev-only (server block).
+    server: { port: 5173, host: true, allowedHosts: true },
   };
 });
