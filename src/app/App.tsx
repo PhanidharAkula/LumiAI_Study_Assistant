@@ -25,6 +25,18 @@ const Review = lazy(() => import("@features/learning/Review"));
 const Progress = lazy(() => import("@features/learning/Progress"));
 const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
 
+// Per-route loader text, so the global loader names the screen it's fetching
+// during the route-chunk phase. Each screen's data phase sets a matching label
+// of its own via useLoadingSignal; public routes fall back to "Charting".
+const ROUTE_LABELS: Record<string, string> = {
+  "/dashboard": "Charting your sky",
+  "/admin": "Reading the instruments",
+  "/support": "Opening the desk",
+  "/review": "Gathering your cards",
+  "/progress": "Charting your progress",
+  "/auth/callback": "Signing you in",
+};
+
 // Reset scroll to the top on every route change (keyed on pathname, so
 // in-page query-param navigation - e.g. the dashboard's ?chat / ?classId - is
 // left alone). Without this, SPA navigation keeps the previous page's scroll.
@@ -126,6 +138,10 @@ function App() {
   // reachable so OAuth verification (run in a real browser) is unaffected.
   const inAppBrowser = isInAppBrowser();
 
+  // Name the screen the global loader is fetching during the route-chunk phase.
+  const location = useLocation();
+  const routeLabel = ROUTE_LABELS[location.pathname] ?? "Charting";
+
   return (
     // reducedMotion="user": framer transform/layout animations collapse to
     // simple fades for prefers-reduced-motion users (the CSS ambient loops
@@ -135,7 +151,7 @@ function App() {
       {loading ? null : showMaintenance ? (
         <MaintenanceScreen />
       ) : (
-      <Suspense fallback={<LoadingSignal />}>
+      <Suspense fallback={<LoadingSignal label={routeLabel} />}>
         <ScrollToTop />
         <Routes>
           <Route

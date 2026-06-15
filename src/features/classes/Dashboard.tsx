@@ -9,7 +9,7 @@ import ClassDetails from "./ClassDetails";
 import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { getDueCount } from "@shared/services/reviewService";
-import { useLoadingSignal } from "@shared/lib/loadingSignal";
+import { useLoadingSignal, LoadingSignal } from "@shared/lib/loadingSignal";
 import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import {
   Button,
@@ -1203,7 +1203,7 @@ const Dashboard = ({ session }: Props) => {
       {/* Add chat component with AnimatePresence for smooth transitions */}
       <AnimatePresence>
         {chatOpen && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSignal label="Opening the chat" />}>
             <ChatComponent
               isOpen={chatOpen}
               onClose={handleCloseChat}
@@ -1217,7 +1217,7 @@ const Dashboard = ({ session }: Props) => {
 
       <AnimatePresence>
         {talkOpen && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSignal label="Tuning in" />}>
             <TalkComponent isOpen={talkOpen} onClose={handleCloseTalk} />
           </Suspense>
         )}
