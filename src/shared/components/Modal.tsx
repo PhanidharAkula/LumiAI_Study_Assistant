@@ -44,6 +44,9 @@ interface ModalProps {
   title?: string;
   /** Slide up as a bottom sheet on phones instead of the centered pop. */
   sheetOnMobile?: boolean;
+  /** Anchor near the top on phones - keeps forms above the on-screen keyboard
+   *  (the keyboard rises from the bottom, so a bottom sheet gets buried). */
+  alignTopOnMobile?: boolean;
   /** Hide the standard ✕ key (dialogs that must resolve via actions). */
   hideClose?: boolean;
   /** Chart-plate corner ticks (default on). */
@@ -60,12 +63,14 @@ const Modal = ({
   overline,
   title,
   sheetOnMobile = false,
+  alignTopOnMobile = false,
   hideClose = false,
   ticks = true,
   className = "",
 }: ModalProps) => {
   const isPhone = useMediaQuery("(max-width: 767px)");
   const asSheet = sheetOnMobile && isPhone;
+  const topOnMobile = alignTopOnMobile && isPhone;
   const plateRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
@@ -88,7 +93,11 @@ const Modal = ({
       {open && (
         <motion.div
           className={`fixed inset-0 z-999990 flex bg-night/55 backdrop-blur-[3px] ${
-            asSheet ? "items-end" : "items-center justify-center px-5 py-6"
+            asSheet
+              ? "items-end"
+              : topOnMobile
+                ? "items-start justify-center px-5 pt-[max(20px,env(safe-area-inset-top))] pb-5"
+                : "items-center justify-center px-5 py-6"
           }`}
           variants={scrimFade}
           initial="hidden"

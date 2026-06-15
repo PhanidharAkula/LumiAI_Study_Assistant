@@ -142,7 +142,7 @@ const AddClassForm = ({
         if (!isSubmitting) onCancel();
       }}
       size="sm"
-      sheetOnMobile
+      alignTopOnMobile
       hideClose
       overline={isEditing ? "Rename entry" : "New expedition"}
       title={isEditing ? "Rename class" : "Chart a new class"}

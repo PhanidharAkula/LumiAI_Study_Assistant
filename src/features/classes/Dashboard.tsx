@@ -883,7 +883,7 @@ const Dashboard = ({ session }: Props) => {
                 </motion.div>
               ) : (
                 <motion.div
-                  className="mx-auto w-full max-w-310 min-h-[calc(100dvh-220px)]"
+                  className="mx-auto w-full max-w-310 min-h-[calc(100dvh-220px)] max-md:pb-32"
                   key="classes-container"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
