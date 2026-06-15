@@ -195,6 +195,10 @@
   summary,
   [role="button"] {
     cursor: pointer;
+    /* Kill the translucent black tap flash mobile WebKit paints on touch
+       (intermittent "black flicker" on tap) - the app supplies its own
+       press/hover/active feedback. */
+    -webkit-tap-highlight-color: transparent;
   }
 
   ::selection {
