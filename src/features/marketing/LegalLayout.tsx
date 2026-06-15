@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UI } from "@shared/components/atlas";
 import { BackButton } from "@shared/components/controls";
 
@@ -19,13 +19,17 @@ const PROSE = [
 
 const LegalLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Return to whichever page opened this one (passed via Link state); fall back
+  // to home for a direct visit - e.g. a pasted URL or Google OAuth review.
+  const from = (location.state as { from?: string } | null)?.from ?? "/";
   return (
     <div className="flex min-h-dvh w-full justify-center px-5 pb-24 pt-12">
       <div className="w-full max-w-190 cursor-default">
         <BackButton
           className="mb-8"
-          onClick={() => navigate("/")}
-          label="Back to home"
+          onClick={() => navigate(from)}
+          label={from === "/login" ? "Back to sign in" : "Back to home"}
         />
 
         <p className={`${UI.overline} mb-3`}>Lumi AI · Records</p>

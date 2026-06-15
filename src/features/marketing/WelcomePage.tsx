@@ -323,6 +323,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
         <div className="flex items-center gap-5 text-[12px]">
           <Link
             to="/privacy"
+            state={{ from: "/" }}
             className="font-mono uppercase tracking-[0.16em] text-muted no-underline transition-colors hover:text-gold-deep"
           >
             Privacy
@@ -332,6 +333,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
           </span>
           <Link
             to="/terms"
+            state={{ from: "/" }}
             className="font-mono uppercase tracking-[0.16em] text-muted no-underline transition-colors hover:text-gold-deep"
           >
             Terms

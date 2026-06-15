@@ -200,6 +200,7 @@ const Login = () => {
       >
         <Link
           to="/privacy"
+          state={{ from: "/login" }}
           className="font-mono uppercase tracking-[0.16em] text-muted no-underline transition-colors hover:text-gold-deep"
         >
           Privacy
@@ -209,6 +210,7 @@ const Login = () => {
         </span>
         <Link
           to="/terms"
+          state={{ from: "/login" }}
           className="font-mono uppercase tracking-[0.16em] text-muted no-underline transition-colors hover:text-gold-deep"
         >
           Terms
