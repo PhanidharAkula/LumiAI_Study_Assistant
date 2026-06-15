@@ -14,7 +14,7 @@
 import { useGlobalLoading } from "@shared/lib/loadingSignal";
 
 const GlobalLoader = () => {
-  const loading = useGlobalLoading();
+  const { loading, label } = useGlobalLoading();
   return (
     <div
       aria-hidden={!loading}
@@ -26,7 +26,7 @@ const GlobalLoader = () => {
         className={`spinner ${loading ? "" : "[animation-play-state:paused]"}`}
       />
       <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-muted">
-        Charting&hellip;
+        {label}&hellip;
       </p>
     </div>
   );

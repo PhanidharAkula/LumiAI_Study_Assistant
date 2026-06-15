@@ -125,7 +125,7 @@ const Progress = () => {
 
   // Feed the shared app loader on initial load (and retry); render nothing
   // underneath so the one persistent loader covers it (no second spinner).
-  useLoadingSignal(loading);
+  useLoadingSignal(loading, "Charting your progress");
 
   if (loading) return null;
 

@@ -141,7 +141,7 @@ const Support = ({ session }: { session: Session | null }) => {
 
   // Cover the page with the shared centered loader while requests load, instead
   // of a spinner low in the page.
-  useLoadingSignal(loadingTickets);
+  useLoadingSignal(loadingTickets, "Opening the desk");
 
   if (loadingTickets) return null;
 

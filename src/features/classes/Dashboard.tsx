@@ -154,7 +154,7 @@ const Dashboard = ({ session }: Props) => {
 
   // Feed the shared app loader during the first classes fetch, so a refresh
   // shows one continuous loader instead of a second spinner here.
-  useLoadingSignal(initialLoading);
+  useLoadingSignal(initialLoading, "Charting your sky");
   const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);

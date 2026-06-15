@@ -983,7 +983,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       {/* Quiz Component */}
       <AnimatePresence>
         {showQuiz && (
-          <Suspense fallback={<LoadingSignal />}>
+          <Suspense fallback={<LoadingSignal label="Plotting the quiz" />}>
             <QuizComponent
               isOpen={showQuiz}
               onClose={() => {
@@ -1002,7 +1002,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       {/* Flashcards Component */}
       <AnimatePresence>
         {showFlashcards && (
-          <Suspense fallback={<LoadingSignal />}>
+          <Suspense fallback={<LoadingSignal label="Dealing the deck" />}>
             <FlashcardsComponent
               isOpen={showFlashcards}
               onClose={() => {

@@ -106,7 +106,7 @@ const Review = () => {
 
   // Feed the shared app loader on initial load (and retry); render nothing
   // underneath so the one persistent loader covers it (no second spinner).
-  useLoadingSignal(loading);
+  useLoadingSignal(loading, "Gathering your cards");
 
   if (loading) return null;
 
