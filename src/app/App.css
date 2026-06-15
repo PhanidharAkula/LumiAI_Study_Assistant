@@ -63,13 +63,13 @@ body.accdel-hide-bg > *:not(.accdel-dialog-overlay) {
   border-color: #8a6516;
   color: #8a6516;
 }
-/* Mobile: shrink the back key to match the close key. The close button is an
-   IconButton md (40px → 36px under Tailwind's max-md), so mirror that 36px here
-   at the same 768px breakpoint - the back button otherwise stayed desktop-sized. */
+/* Mobile: size the back key for touch - a comfy 44px tap target, matching the
+   close key (IconButton md is also bumped to 44px under max-md). The 46px desktop
+   disc felt large on phones, but the earlier 36px was too small to hit reliably. */
 @media (max-width: 767.98px) {
   .back-button {
-    height: 36px;
-    width: 36px;
+    height: 44px;
+    width: 44px;
   }
 }
 
