@@ -10,6 +10,7 @@ import {
   IconButton,
   Spinner,
 } from "@shared/components/controls";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import Select from "@shared/components/Select";
 import { fadeRiseSoft, stagger } from "@shared/motion";
 import AdminAnalytics from "./AdminAnalytics";
@@ -230,6 +231,10 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  // Feed the one persistent loader during the admin check ("Reading the
+  // instruments", matching the route label) instead of a separate spinner below
+  // the masthead - so it stays in place from the route chunk, no position jump.
+  useLoadingSignal(isAdmin === null, "Reading the instruments");
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(
     null
   ); // { userId, userName, userEmail }
@@ -1016,12 +1021,7 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Initial boot - reading the instruments */}
-      {isAdmin === null && (
-        <div className="flex h-[60dvh] items-center justify-center">
-          <Spinner label="Reading the instruments…" />
-        </div>
-      )}
+      {/* Initial boot covered by the global loader (useLoadingSignal above). */}
 
       {/* Control room - compact left rail + content plate */}
       {isAdmin === true && (

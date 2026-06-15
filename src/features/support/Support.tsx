@@ -8,7 +8,7 @@ import {
   type SupportTicket,
 } from "@shared/services/supportService";
 import { Constellation, CornerTicks, UI } from "@shared/components/atlas";
-import { BackButton, Button, Spinner } from "@shared/components/controls";
+import { BackButton, Button } from "@shared/components/controls";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import Select from "@shared/components/Select";
 import { fadeRise, fadeRiseSoft, stagger } from "@shared/motion";
@@ -304,11 +304,7 @@ const Support = ({ session }: { session: Session | null }) => {
             </span>
           )}
         </motion.div>
-        {loadingTickets ? (
-          <div className="flex justify-center p-5">
-            <Spinner label="Loading your requests…" />
-          </div>
-        ) : tickets.length === 0 ? (
+        {tickets.length === 0 ? (
           <p className="cursor-default p-5 text-center font-display italic text-[16px] leading-[1.6] text-muted">
             No requests yet. Anything you send will show up here.
           </p>
