@@ -347,10 +347,21 @@ const ChatComponent = ({
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<any[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
-  // Chat's loading is covered ONLY by the one global loader ("Opening the
-  // chat") - there's no separate in-chat spinner, so it can never double up with
-  // the global one (on open, refresh, or conversation switch).
-  useLoadingSignal(initialLoading, "Opening the chat");
+  // Chat's loading is covered ONLY by the one global loader ("Opening the chat")
+  // - no separate in-chat spinner, so it can never double up. initialLoading
+  // toggles more than once while opening (conversation list, then the class /
+  // conversation), so debounce the hide: hold the loader across the brief gap
+  // between those loads instead of flickering off and back on.
+  const [chatLoading, setChatLoading] = useState(true);
+  useEffect(() => {
+    if (initialLoading) {
+      setChatLoading(true);
+      return;
+    }
+    const id = setTimeout(() => setChatLoading(false), 120);
+    return () => clearTimeout(id);
+  }, [initialLoading]);
+  useLoadingSignal(chatLoading, "Opening the chat");
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -1876,8 +1887,8 @@ const ChatComponent = ({
   if (!isOpen) return null;
 
   // Covered entirely by the global loader (useLoadingSignal above) - render
-  // nothing here, so there's only ever the one loader.
-  if (initialLoading) return null;
+  // nothing while loading, so there's only ever the one loader.
+  if (chatLoading) return null;
 
   return (
     <motion.div
