@@ -917,7 +917,10 @@ const Dashboard = ({ session }: Props) => {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ ...spring.gentle, delay: 0.1 }}
-                    className="flex items-center justify-between gap-4 px-5 pt-9 pb-2.5 max-md:px-2.5 max-md:pt-6 max-md:pb-2.5"
+                    // relative z-20 lifts the whole header bar (and its profile
+                    // dropdown) above the cards grid, which is a later sibling at
+                    // z-auto - otherwise the menu opens *behind* the first card row.
+                    className="relative z-20 flex items-center justify-between gap-4 px-5 pt-9 pb-2.5 max-md:px-2.5 max-md:pt-6 max-md:pb-2.5"
                   >
                     <div className="flex items-center gap-2.5">
                       <LumiStar size={28} />
