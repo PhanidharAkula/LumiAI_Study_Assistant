@@ -4,12 +4,18 @@ import { motion } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { detectRegion } from "@shared/utils/region";
 import { UI } from "@shared/components/atlas";
-import { Spinner } from "@shared/components/controls";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { fadeRise, stagger } from "@shared/motion";
 
 const AuthRedirect = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // While exchanging the OAuth session, keep the one persistent loader up
+  // ("Signing you in") instead of rendering a second centered spinner - so it
+  // stays in the same place right through to the dashboard's "Charting your sky"
+  // (the spinner swap was what made it jump/reload between the two labels).
+  useLoadingSignal(!error, "Signing you in");
 
   // Persist the browser-detected region. A direct profiles update is blocked by
   // RLS, so we go through the set_my_region() SECURITY DEFINER RPC, which only
@@ -126,9 +132,9 @@ const AuthRedirect = () => {
     handleAuthRedirect();
   }, [navigate]);
 
-  // Surface a styled error plate on failure; otherwise show a deliberate
-  // "completing sign-in" wait while the session is exchanged/polled (the auth
-  // flow above is unchanged - this only replaces the previously blank screen).
+  // Surface a styled error plate on failure; otherwise render nothing and let
+  // the persistent global loader (above) cover the wait, so it stays in place
+  // through to the dashboard instead of swapping spinners.
   if (error) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-5">
@@ -161,11 +167,7 @@ const AuthRedirect = () => {
     );
   }
 
-  return (
-    <div className="flex min-h-dvh items-center justify-center p-5">
-      <Spinner label="Completing sign-in…" />
-    </div>
-  );
+  return null;
 };
 
 export default AuthRedirect;
