@@ -44,14 +44,17 @@ const Review = () => {
   const [hasDecks, setHasDecks] = useState(true);
   const [reviewed, setReviewed] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const { cards, hasDecks: decks } = await getReviewQueue();
+      const { cards, hasDecks: decks, error } = await getReviewQueue();
       if (!active) return;
       setQueue(cards);
       setHasDecks(decks);
+      setLoadError(error);
       setLoading(false);
     })();
     return () => {
@@ -59,12 +62,32 @@ const Review = () => {
     };
   }, []);
 
+  const loadQueue = async () => {
+    setLoading(true);
+    setLoadError(false);
+    const { cards, hasDecks: decks, error } = await getReviewQueue();
+    setQueue(cards);
+    setHasDecks(decks);
+    setLoadError(error);
+    setIndex(0);
+    setReviewed(0);
+    setLoading(false);
+  };
+
   const current = queue[index];
 
   const handleRate = async (rating: SrsRating) => {
     if (!current || saving) return;
     setSaving(true);
-    const { srs } = await recordReview(current, rating);
+    setSaveError(false);
+    const { srs, error } = await recordReview(current, rating);
+    if (error) {
+      // Keep the card so the rating can be retried - don't advance and silently
+      // lose the scheduling update.
+      setSaveError(true);
+      setSaving(false);
+      return;
+    }
     setReviewed((n) => n + 1);
     if (rating === "again") {
       // Re-queue this card (with its updated state) to the end of the session.
@@ -112,6 +135,35 @@ const Review = () => {
           <div className="flex justify-center py-15">
             <Spinner label="Loading your cards…" />
           </div>
+        ) : loadError ? (
+          <motion.div
+            className={EMPTY}
+            variants={stagger()}
+            initial="hidden"
+            animate="visible"
+          >
+            <CornerTicks />
+            <motion.div variants={fadeRise}>
+              <LumiStar size={44} className="text-ink/40" />
+            </motion.div>
+            <motion.p className={`mt-1 ${UI.overline}`} variants={fadeRise}>
+              Couldn't load your cards
+            </motion.p>
+            <motion.p
+              className="max-w-105 text-[14.5px] leading-[1.65] text-muted"
+              variants={fadeRise}
+            >
+              Something went wrong loading your review queue. Please try again.
+            </motion.p>
+            <motion.div className="flex gap-2.5" variants={fadeRise}>
+              <Button className="mt-2" onClick={loadQueue}>
+                Try again
+              </Button>
+              <Button variant="ghost" className="mt-2" onClick={goDashboard}>
+                Back to dashboard
+              </Button>
+            </motion.div>
+          </motion.div>
         ) : !hasDecks ? (
           <motion.div
             className={EMPTY}
@@ -260,6 +312,11 @@ const Review = () => {
                   </motion.button>
                 ))}
               </div>
+            )}
+            {flipped && saveError && (
+              <p className="mt-3 text-center text-[12.5px] text-vermilion">
+                Couldn't save your rating. Check your connection and try again.
+              </p>
             )}
           </>
         )}

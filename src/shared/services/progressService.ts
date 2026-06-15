@@ -74,7 +74,7 @@ function computeStreaks(dateKeys: string[]): { current: number; longest: number 
   return { current, longest: Math.max(longest, current) };
 }
 
-export const getProgress = async (): Promise<Progress> => {
+export const getProgress = async (): Promise<Progress | null> => {
   const empty: Progress = {
     hasActivity: false,
     currentStreak: 0,
@@ -129,6 +129,10 @@ export const getProgress = async (): Promise<Progress> => {
     const { current, longest } = computeStreaks(activityDates);
 
     // ---- Review counts ----
+    // Distinct cards whose most recent review falls in the trailing 7 days (the
+    // SRS row stores only last_reviewed_at, so this is "cards reviewed this
+    // week", counted once per card, not a raw review tally). totalCardsStudied
+    // is distinct cards ever reviewed.
     const weekAgo = Date.now() - 7 * MS_PER_DAY;
     let cardsReviewedThisWeek = 0;
     let totalCardsStudied = 0;
@@ -146,24 +150,39 @@ export const getProgress = async (): Promise<Progress> => {
     const avgQuizScore =
       pcts.length > 0 ? Math.round(pcts.reduce((s, p) => s + p, 0) / pcts.length) : null;
 
-    // ---- Per-class mastery ----
+    // ---- Per-class mastery (latest deck per class) ----
+    // A class can accumulate several generated decks over time; summing them all
+    // would inflate the denominator, so regenerating a class's cards would drop
+    // its mastery even though nothing was forgotten. Measure mastery against the
+    // most recent deck per class - the cards the student is actually working from.
     const classNameById = new Map<string, string>();
     for (const c of classes ?? []) classNameById.set(c.id, c.name);
 
-    const deckClass = new Map<string, string>(); // deck_id -> class_id
-    const totalByClass = new Map<string, number>();
+    const latestDeckByClass = new Map<
+      string,
+      { deckId: string; total: number; createdAt: number }
+    >();
     for (const d of deckRows) {
       if (!d.class_id) continue;
-      deckClass.set(d.id, d.class_id);
-      totalByClass.set(
-        d.class_id,
-        (totalByClass.get(d.class_id) ?? 0) + (d.num_cards ?? 0)
-      );
+      const createdAt = d.created_at ? new Date(d.created_at).getTime() : 0;
+      const cur = latestDeckByClass.get(d.class_id);
+      if (!cur || createdAt > cur.createdAt) {
+        latestDeckByClass.set(d.class_id, {
+          deckId: d.id,
+          total: d.num_cards ?? 0,
+          createdAt,
+        });
+      }
     }
+
+    // Tally mastery only against each class's latest deck.
+    const latestDeckToClass = new Map<string, string>();
+    for (const [classId, info] of latestDeckByClass)
+      latestDeckToClass.set(info.deckId, classId);
 
     const masteredByClass = new Map<string, number>();
     for (const r of srsRows) {
-      const classId = deckClass.get(r.deck_id);
+      const classId = latestDeckToClass.get(r.deck_id);
       if (!classId) continue;
       if (Number(r.interval_days) >= MASTERED_INTERVAL_DAYS) {
         masteredByClass.set(classId, (masteredByClass.get(classId) ?? 0) + 1);
@@ -171,15 +190,15 @@ export const getProgress = async (): Promise<Progress> => {
     }
 
     const classMastery: ClassMastery[] = [];
-    for (const [classId, total] of totalByClass.entries()) {
-      if (total <= 0) continue;
+    for (const [classId, info] of latestDeckByClass) {
+      if (info.total <= 0) continue;
       const mastered = masteredByClass.get(classId) ?? 0;
       classMastery.push({
         id: classId,
         name: classNameById.get(classId) ?? "Class",
         mastered,
-        total,
-        mastery: Math.min(100, Math.round((mastered / total) * 100)),
+        total: info.total,
+        mastery: Math.min(100, Math.round((mastered / info.total) * 100)),
       });
     }
     classMastery.sort((a, b) => b.mastery - a.mastery);
@@ -199,6 +218,6 @@ export const getProgress = async (): Promise<Progress> => {
     };
   } catch (err) {
     console.error("getProgress error:", err);
-    return empty;
+    return null;
   }
 };

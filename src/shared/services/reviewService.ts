@@ -118,12 +118,13 @@ export const getDueCount = async (): Promise<number> => {
 export const getReviewQueue = async (): Promise<{
   cards: ReviewCard[];
   hasDecks: boolean;
+  error: boolean;
 }> => {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { cards: [], hasDecks: false };
+    if (!user) return { cards: [], hasDecks: false, error: false };
 
     const [{ data: decks }, { data: srs }, { data: classes }] =
       await Promise.all([
@@ -138,7 +139,7 @@ export const getReviewQueue = async (): Promise<{
         supabase.from("classes").select("id, name").eq("user_id", user.id),
       ]);
 
-    if (!decks || decks.length === 0) return { cards: [], hasDecks: false };
+    if (!decks || decks.length === 0) return { cards: [], hasDecks: false, error: false };
 
     const classNameById = new Map<string, string>();
     for (const c of classes ?? []) classNameById.set(c.id, c.name);
@@ -183,10 +184,10 @@ export const getReviewQueue = async (): Promise<{
       ...fresh.slice(0, NEW_CARDS_PER_SESSION),
     ];
 
-    return { cards: queue, hasDecks: true };
+    return { cards: queue, hasDecks: true, error: false };
   } catch (err) {
     console.error("getReviewQueue error:", err);
-    return { cards: [], hasDecks: true };
+    return { cards: [], hasDecks: true, error: true };
   }
 };
 

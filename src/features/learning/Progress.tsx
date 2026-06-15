@@ -97,20 +97,30 @@ const Progress = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       const p = await getProgress();
-      if (active) {
-        setData(p);
-        setLoading(false);
-      }
+      if (!active) return;
+      if (p === null) setError(true);
+      else setData(p);
+      setLoading(false);
     })();
     return () => {
       active = false;
     };
   }, []);
+
+  const retry = async () => {
+    setLoading(true);
+    setError(false);
+    const p = await getProgress();
+    if (p === null) setError(true);
+    else setData(p);
+    setLoading(false);
+  };
 
   return (
     <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
@@ -148,6 +158,30 @@ const Progress = () => {
           <div className="flex justify-center py-15">
             <Spinner label="Loading your progress…" />
           </div>
+        ) : error ? (
+          <motion.div
+            className={`${UI.plate} flex cursor-default flex-col items-center gap-3 px-7 py-12 text-center`}
+            variants={fadeRise}
+            initial="hidden"
+            animate="visible"
+          >
+            <CornerTicks />
+            <Constellation
+              name="your sky so far"
+              size={120}
+              className="text-ink/45"
+            />
+            <p className={`mt-1 ${UI.overline}`}>Couldn't load your progress</p>
+            <p className="max-w-105 font-display italic text-[17px] leading-[1.6] text-muted">
+              Something went wrong. Please try again in a moment.
+            </p>
+            <div className="mt-2 flex gap-2.5">
+              <Button onClick={retry}>Try again</Button>
+              <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                Back to dashboard
+              </Button>
+            </div>
+          </motion.div>
         ) : !data || !data.hasActivity ? (
           <motion.div
             className={`${UI.plate} flex cursor-default flex-col items-center gap-3 px-7 py-12 text-center`}
@@ -242,7 +276,7 @@ const Progress = () => {
                 <div className={STAT_HEAD}>
                   <GlyphCards />
                   <div className={`${UI.overlineMuted} leading-[1.6]`}>
-                    Cards reviewed this week
+                    Reviewed this week
                   </div>
                 </div>
                 <div className={STAT_NUM}>{data.cardsReviewedThisWeek}</div>
