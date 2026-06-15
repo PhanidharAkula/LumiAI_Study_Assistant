@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { fetchStreamingResponse } from "@shared/services/aiService";
@@ -132,7 +133,11 @@ const COMPLETED_STAT_LABEL =
 const COMPLETED_STAT_VALUE =
   "font-display text-[32px] font-semibold leading-tight max-[480px]:text-[24px]";
 
-const FlashcardsComponent = ({ isOpen, onClose, classData }: Props) => {
+const FlashcardsComponent = ({
+  isOpen,
+  onClose,
+  classData,
+}: Props) => {
   // Flashcard configuration
   const [numCards, setNumCards] = useState(10);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -576,7 +581,12 @@ CRITICAL JSON FORMATTING RULES:
     unknownCards.includes(c.id)
   ).length;
 
-  return (
+  // Portal to <body>: the overlay is position:fixed, but on a deep-link refresh
+  // the Dashboard/ClassDetails wrappers are mid entrance-animation, and an
+  // ancestor transform makes itself the containing block for fixed descendants -
+  // which would constrain/shift this overlay until that transform clears. Out of
+  // the tree, it stays viewport-anchored and full-screen on refresh and click.
+  return createPortal(
     <motion.div
       className="fixed inset-0 bg-cream/95 backdrop-blur-[2px] z-1000 flex flex-col overflow-hidden"
       initial={{ opacity: 0 }}
@@ -1247,7 +1257,8 @@ CRITICAL JSON FORMATTING RULES:
         cancelText="Cancel"
         danger={true}
       />
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 

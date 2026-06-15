@@ -5,6 +5,7 @@ import {
   useRef,
   type MouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { fetchStreamingResponse } from "@shared/services/aiService";
@@ -312,7 +313,11 @@ const normalizeAnswer = (s: unknown): string =>
     .replace(/\s+/g, " ")
     .trim();
 
-const QuizComponent = ({ isOpen, onClose, classData }: Props) => {
+const QuizComponent = ({
+  isOpen,
+  onClose,
+  classData,
+}: Props) => {
   // Quiz configuration
   const [difficulty, setDifficulty] = useState<string>("medium");
   const [numQuestions, setNumQuestions] = useState<number>(10);
@@ -906,7 +911,12 @@ CRITICAL JSON FORMATTING RULES:
   const allAnswered =
     !!currentQuiz && answeredCount === currentQuiz.questions.length;
 
-  return (
+  // Portal to <body>: the overlay is position:fixed, but on a deep-link refresh
+  // the Dashboard/ClassDetails wrappers are mid entrance-animation, and an
+  // ancestor transform makes itself the containing block for fixed descendants -
+  // which would constrain/shift this overlay until that transform clears. Out of
+  // the tree, it stays viewport-anchored and full-screen on refresh and click.
+  return createPortal(
     <motion.div
       className={`fixed inset-0 z-1000 flex flex-col overflow-hidden transition-colors duration-700 ${
         isNight ? "bg-night" : "bg-cream/95 backdrop-blur-[2px]"
@@ -1838,7 +1848,8 @@ CRITICAL JSON FORMATTING RULES:
         cancelText="Cancel"
         danger={true}
       />
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 

@@ -11,7 +11,8 @@ import {
   UI,
   starPath,
 } from "@shared/components/atlas";
-import { BackButton, Button, Spinner } from "@shared/components/controls";
+import { BackButton, Button } from "@shared/components/controls";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { fadeRise, fadeRiseSoft, stagger } from "@shared/motion";
 
 const streakLine = (n: number) => {
@@ -122,6 +123,12 @@ const Progress = () => {
     setLoading(false);
   };
 
+  // Feed the shared app loader on initial load (and retry); render nothing
+  // underneath so the one persistent loader covers it (no second spinner).
+  useLoadingSignal(loading);
+
+  if (loading) return null;
+
   return (
     <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the charts. */}
@@ -154,11 +161,7 @@ const Progress = () => {
           </em>
         </h1>
 
-        {loading ? (
-          <div className="flex justify-center py-15">
-            <Spinner label="Loading your progress…" />
-          </div>
-        ) : error ? (
+        {error ? (
           <motion.div
             className={`${UI.plate} flex cursor-default flex-col items-center gap-3 px-7 py-12 text-center`}
             variants={fadeRise}

@@ -44,14 +44,14 @@ const PROSE = [
   // same mt-2.5 below the text as the user-side copy button sits below its
   // bubble (otherwise the trailing p mb-4 made the Lumi gap larger).
   "[&>*:last-child]:mb-0",
-  "[&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:font-semibold [&_h1]:leading-[1.3] [&_h1]:tracking-[-0.01em] [&_h1]:text-ink [&_h1]:text-[1.5em] [&_h1]:border-0 [&_h1]:border-b [&_h1]:border-solid [&_h1]:border-line [&_h1]:pb-[0.35em]",
-  "[&_h2]:mt-6 [&_h2]:mb-4 [&_h2]:font-semibold [&_h2]:leading-[1.3] [&_h2]:tracking-[-0.01em] [&_h2]:text-ink [&_h2]:text-[1.25em] [&_h2]:border-0 [&_h2]:border-b [&_h2]:border-solid [&_h2]:border-line [&_h2]:pb-[0.35em]",
-  "[&_h3]:mt-5 [&_h3]:mb-4 [&_h3]:font-semibold [&_h3]:leading-[1.3] [&_h3]:text-ink [&_h3]:text-[1.1em]",
-  "[&_h4]:mt-5 [&_h4]:mb-4 [&_h4]:font-semibold [&_h4]:leading-tight [&_h4]:text-ink [&_h4]:text-[1.05em]",
+  "[&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:font-display [&_h1]:font-semibold [&_h1]:leading-[1.3] [&_h1]:tracking-[-0.01em] [&_h1]:text-ink [&_h1]:text-[1.5em] [&_h1]:border-0 [&_h1]:border-b [&_h1]:border-solid [&_h1]:border-line [&_h1]:pb-[0.35em]",
+  "[&_h2]:mt-6 [&_h2]:mb-4 [&_h2]:font-display [&_h2]:font-semibold [&_h2]:leading-[1.3] [&_h2]:tracking-[-0.01em] [&_h2]:text-ink [&_h2]:text-[1.25em] [&_h2]:border-0 [&_h2]:border-b [&_h2]:border-solid [&_h2]:border-line [&_h2]:pb-[0.35em]",
+  "[&_h3]:mt-5 [&_h3]:mb-4 [&_h3]:font-display [&_h3]:font-semibold [&_h3]:leading-[1.3] [&_h3]:text-ink [&_h3]:text-[1.1em]",
+  "[&_h4]:mt-5 [&_h4]:mb-4 [&_h4]:font-display [&_h4]:font-semibold [&_h4]:leading-tight [&_h4]:text-ink [&_h4]:text-[1.05em]",
   // Preflight is off and the global reset sets no font-size, so without an
   // explicit size h5/h6 fall to the UA defaults (0.83em/0.67em) - i.e. SMALLER
   // than body. Pin them at/above body so the hierarchy never inverts.
-  "[&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:font-semibold [&_h5]:leading-tight [&_h5]:text-ink [&_h5]:text-[1em] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:font-semibold [&_h6]:leading-tight [&_h6]:text-ink [&_h6]:text-[0.95em]",
+  "[&_h5]:mt-6 [&_h5]:mb-4 [&_h5]:font-display [&_h5]:font-semibold [&_h5]:leading-tight [&_h5]:text-ink [&_h5]:text-[1em] [&_h6]:mt-6 [&_h6]:mb-4 [&_h6]:font-display [&_h6]:font-semibold [&_h6]:leading-tight [&_h6]:text-ink [&_h6]:text-[0.95em]",
   "[&_p]:mt-0 [&_p]:mb-4 [&_p]:text-ink",
   "[&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-line [&_hr]:my-4.5",
   "[&_ul]:pl-[2em] [&_ul]:mt-0 [&_ul]:mb-4 [&_ol]:pl-[2em] [&_ol]:mt-0 [&_ol]:mb-4 [&_li]:mt-[0.25em]",

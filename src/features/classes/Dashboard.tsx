@@ -9,6 +9,7 @@ import ClassDetails from "./ClassDetails";
 import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { getDueCount } from "@shared/services/reviewService";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import {
   Button,
@@ -150,6 +151,10 @@ const Dashboard = ({ session }: Props) => {
       active = false;
     };
   }, []);
+
+  // Feed the shared app loader during the first classes fetch, so a refresh
+  // shows one continuous loader instead of a second spinner here.
+  useLoadingSignal(initialLoading);
   const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);
@@ -837,16 +842,7 @@ const Dashboard = ({ session }: Props) => {
   return (
     <>
       <div className="min-h-dvh w-full overflow-hidden px-12.5 pt-0 pb-25 max-[1024px]:px-7.5 max-[1024px]:pb-7.5 max-md:px-5 max-md:pb-5 max-[480px]:px-3.75 max-[480px]:pb-20">
-        {initialLoading ? (
-          <motion.div
-            className="fixed left-0 top-0 flex h-dvh w-full flex-col items-center justify-center bg-cream/95 backdrop-blur-[2px]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Spinner label="Loading..." />
-          </motion.div>
-        ) : (
+        {initialLoading ? null : (
           <motion.div
             className="w-full overflow-y-auto"
             initial={{ opacity: 0 }}

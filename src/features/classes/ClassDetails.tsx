@@ -6,6 +6,7 @@ import FileViewer from "./FileViewer";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
+import { LoadingSignal } from "@shared/lib/loadingSignal";
 import { Constellation, UI, starPath } from "@shared/components/atlas";
 import { BackButton, IconButton, Spinner } from "@shared/components/controls";
 import {
@@ -574,12 +575,26 @@ const ClassDetails = ({ classData, onBack }: Props) => {
             </motion.div>
 
             <motion.div className="m-0 min-w-0 flex-1" variants={fadeRise}>
-              <p className={`${UI.overline} mb-1`}>Class record</p>
-              <p className="mb-1 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
-                {classData.name}
+              {/* Eyebrow: record label + created date on one quiet line, so the
+                  class name below can stand alone as the hero (2 lines, not 3). */}
+              <p
+                className={`${UI.overline} mb-1.5 flex flex-wrap items-center gap-x-2`}
+              >
+                <span>Class record</span>
+                <span aria-hidden="true" className="text-ink/30">
+                  ·
+                </span>
+                <span className="text-muted">
+                  Created{" "}
+                  {new Date(classData.created_at).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
               </p>
-              <p className={UI.overlineMuted}>
-                Created on {new Date(classData.created_at).toLocaleDateString()}
+              <p className="m-0 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
+                {classData.name}
               </p>
             </motion.div>
 
@@ -968,7 +983,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       {/* Quiz Component */}
       <AnimatePresence>
         {showQuiz && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSignal />}>
             <QuizComponent
               isOpen={showQuiz}
               onClose={() => {
@@ -987,7 +1002,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       {/* Flashcards Component */}
       <AnimatePresence>
         {showFlashcards && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSignal />}>
             <FlashcardsComponent
               isOpen={showFlashcards}
               onClose={() => {

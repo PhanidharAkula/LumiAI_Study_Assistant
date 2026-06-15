@@ -9,6 +9,7 @@ import {
 } from "@shared/services/supportService";
 import { Constellation, CornerTicks, UI } from "@shared/components/atlas";
 import { BackButton, Button, Spinner } from "@shared/components/controls";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import Select from "@shared/components/Select";
 import { fadeRise, fadeRiseSoft, stagger } from "@shared/motion";
 
@@ -137,6 +138,12 @@ const Support = ({ session }: { session: Session | null }) => {
     setCategory("general");
     setSuccess("Thanks! We got your message and will reply by email.");
   };
+
+  // Cover the page with the shared centered loader while requests load, instead
+  // of a spinner low in the page.
+  useLoadingSignal(loadingTickets);
+
+  if (loadingTickets) return null;
 
   return (
     <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">

@@ -8,7 +8,8 @@ import {
   type SrsRating,
 } from "@shared/services/reviewService";
 import { CornerTicks, LumiStar, Starfield, UI } from "@shared/components/atlas";
-import { BackButton, Button, Spinner } from "@shared/components/controls";
+import { BackButton, Button } from "@shared/components/controls";
+import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { fadeRise, pressLift, stagger } from "@shared/motion";
 
 const RATINGS = [
@@ -103,6 +104,12 @@ const Review = () => {
   const inSession =
     !loading && hasDecks && queue.length > 0 && index < queue.length;
 
+  // Feed the shared app loader on initial load (and retry); render nothing
+  // underneath so the one persistent loader covers it (no second spinner).
+  useLoadingSignal(loading);
+
+  if (loading) return null;
+
   return (
     <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       <BackButton
@@ -131,11 +138,7 @@ const Review = () => {
           )}
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-15">
-            <Spinner label="Loading your cards…" />
-          </div>
-        ) : loadError ? (
+        {loadError ? (
           <motion.div
             className={EMPTY}
             variants={stagger()}

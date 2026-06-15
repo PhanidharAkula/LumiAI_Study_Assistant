@@ -5,6 +5,8 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@shared/lib/supabaseClient";
 import { isInAppBrowser } from "@shared/lib/inAppBrowser";
 import ProtectedRoute from "@shared/components/ProtectedRoute";
+import GlobalLoader from "@shared/components/GlobalLoader";
+import { useLoadingSignal, LoadingSignal } from "@shared/lib/loadingSignal";
 import MaintenanceScreen from "@features/marketing/MaintenanceScreen";
 import "./App.css";
 
@@ -22,15 +24,6 @@ const Support = lazy(() => import("@features/support/Support"));
 const Review = lazy(() => import("@features/learning/Review"));
 const Progress = lazy(() => import("@features/learning/Progress"));
 const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
-
-const PageLoader = () => (
-  <div className="flex h-screen flex-col items-center justify-center gap-1">
-    <div className="spinner" />
-    <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-muted">
-      Charting&hellip;
-    </p>
-  </div>
-);
 
 // Reset scroll to the top on every route change (keyed on pathname, so
 // in-page query-param navigation - e.g. the dashboard's ?chat / ?classId - is
@@ -116,17 +109,15 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Show a loading state while checking authentication
-  if (loading) {
-    return <PageLoader />;
-  }
+  // One persistent loader (GlobalLoader, below) spans the whole startup - auth,
+  // then the route chunk, then page data - via the shared signal, so it never
+  // remounts and its spinner never restarts. Feed it while auth is resolving.
+  useLoadingSignal(loading);
 
   // Maintenance mode: a signed-in non-admin sees the maintenance screen on every
   // route. Admins bypass it (so they can reach /admin and turn it back off);
   // signed-out visitors aren't gated (they can't read the setting anyway).
-  if (session && maintenance && !isAdminUser) {
-    return <MaintenanceScreen />;
-  }
+  const showMaintenance = !loading && session && maintenance && !isAdminUser;
 
   // Google OAuth is blocked inside embedded in-app browsers (LinkedIn,
   // Instagram, etc.). When detected, the sign-in entry points show a screen
@@ -140,7 +131,11 @@ function App() {
     // simple fades for prefers-reduced-motion users (the CSS ambient loops
     // are disabled in index.css under the same media query).
     <MotionConfig reducedMotion="user">
-      <Suspense fallback={<PageLoader />}>
+      <GlobalLoader />
+      {loading ? null : showMaintenance ? (
+        <MaintenanceScreen />
+      ) : (
+      <Suspense fallback={<LoadingSignal />}>
         <ScrollToTop />
         <Routes>
           <Route
@@ -217,6 +212,7 @@ function App() {
           />
         </Routes>
       </Suspense>
+      )}
     </MotionConfig>
   );
 }
