@@ -1087,7 +1087,7 @@ export default function Admin() {
                         type="button"
                         aria-current={active ? "page" : undefined}
                         onClick={() => setActiveTab(item.id)}
-                        className={`flex shrink-0 appearance-none items-center gap-1.5 whitespace-nowrap rounded-full border-0 px-3.5 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] transition-[color,background-color] duration-200 ${
+                        className={`flex shrink-0 appearance-none items-center gap-1.5 whitespace-nowrap rounded-full border border-solid border-ink px-3.5 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] transition-[color,background-color] duration-200 ${
                           active
                             ? "bg-ink text-cream"
                             : "bg-transparent text-muted hover:text-ink"
