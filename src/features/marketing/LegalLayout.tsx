@@ -15,6 +15,9 @@ const PROSE = [
   "[&_li]:mb-2",
   "[&_a]:text-gold-deep [&_a]:underline [&_a]:decoration-gold/40 [&_a]:underline-offset-2 [&_a]:cursor-pointer hover:[&_a]:decoration-gold-deep",
   "[&_strong]:font-semibold",
+  // Small phones (iPhone SE etc.): ease the display h1 down so it doesn't crowd
+  // the narrow column - matches the Support page's 36 -> 28 step.
+  "max-[600px]:[&_h1]:text-[28px]",
 ].join(" ");
 
 const LegalLayout = ({ children }: { children: ReactNode }) => {
@@ -24,7 +27,7 @@ const LegalLayout = ({ children }: { children: ReactNode }) => {
   // to home for a direct visit - e.g. a pasted URL or Google OAuth review.
   const from = (location.state as { from?: string } | null)?.from ?? "/";
   return (
-    <div className="flex min-h-dvh w-full justify-center px-5 pb-24 pt-12">
+    <div className="flex min-h-dvh w-full justify-center px-5 pb-24 pt-12 max-[480px]:px-4">
       <div className="w-full max-w-190 cursor-default">
         <BackButton
           className="mb-8"
