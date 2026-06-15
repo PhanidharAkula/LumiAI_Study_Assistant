@@ -315,13 +315,13 @@ const TagSelector = ({
                   <div
                     className={`flex select-none items-center justify-between gap-2 px-3.5 py-2.5 ${
                       isEmpty
-                        ? "cursor-not-allowed opacity-55"
+                        ? "cursor-default opacity-55"
                         : "cursor-pointer"
                     }`}
                   >
                     <div
                       className={`flex flex-1 items-center gap-2.5 py-1 ${
-                        isEmpty ? "cursor-not-allowed" : "cursor-pointer"
+                        isEmpty ? "cursor-default" : "cursor-pointer"
                       }`}
                     >
                       <span className="relative flex h-4.5 w-4.5 shrink-0 items-center justify-center">
@@ -331,7 +331,7 @@ const TagSelector = ({
                           }
                           type="checkbox"
                           className={`${CHECKBOX} ${
-                            isEmpty ? "disabled:cursor-not-allowed" : ""
+                            isEmpty ? "disabled:cursor-default" : ""
                           }`}
                           checked={selectedClasses.includes(classItem.id)}
                           onChange={() => handleClassToggle(classItem.id)}
@@ -352,7 +352,7 @@ const TagSelector = ({
                       </span>
                       <label
                         className={`flex items-center gap-2 text-[14.5px] font-medium text-ink ${
-                          isEmpty ? "cursor-not-allowed" : "cursor-pointer"
+                          isEmpty ? "cursor-default" : "cursor-pointer"
                         }`}
                         onClick={
                           isEmpty

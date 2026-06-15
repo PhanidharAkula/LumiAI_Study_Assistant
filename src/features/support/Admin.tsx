@@ -64,7 +64,7 @@ const TICKET_CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const USERS_PER_PAGE = 5;
+const USERS_PER_PAGE = 20;
 
 // ── Observatory chrome - shared class groups ───────────────────────────────
 // One canonical filter pill (used by the Users region/date/admin filters AND
@@ -1433,7 +1433,7 @@ export default function Admin() {
                                         ? `Revoke admin access for ${u.full_name || u.email}`
                                         : `Make ${u.full_name || u.email} an admin`
                                     }
-                                    className="ml-auto inline-flex cursor-pointer items-center border-0 bg-transparent p-0 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="ml-auto inline-flex cursor-pointer items-center border-0 bg-transparent p-0 disabled:cursor-default disabled:opacity-50"
                                     disabled={
                                       u.id === currentUserId ||
                                       savingAdminId === u.id
@@ -1574,7 +1574,7 @@ export default function Admin() {
                                     ? `Revoke admin access for ${u.full_name || u.email}`
                                     : `Make ${u.full_name || u.email} an admin`
                                 }
-                                className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 disabled:cursor-default disabled:opacity-50"
                                 disabled={
                                   u.id === currentUserId ||
                                   savingAdminId === u.id

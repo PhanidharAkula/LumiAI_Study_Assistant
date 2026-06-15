@@ -24,7 +24,7 @@ const fileCheckbox = (checked: boolean) =>
   }`;
 
 const FILE_TOOL_BTN =
-  "cursor-pointer rounded-full border border-solid border-ink/25 bg-transparent px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink transition-colors duration-200 hover:border-ink hover:bg-cream/70 disabled:opacity-50 disabled:cursor-not-allowed";
+  "cursor-pointer rounded-full border border-solid border-ink/25 bg-transparent px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink transition-colors duration-200 hover:border-ink hover:bg-cream/70 disabled:opacity-50 disabled:cursor-default";
 
 interface FileSelectionCardProps {
   /** Files to offer (callers pre-filter if they only support some types). */

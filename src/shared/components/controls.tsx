@@ -118,7 +118,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <motion.button
         ref={ref}
         type="button"
-        className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-solid p-0 transition-[color,background-color,border-color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${ICON_SIZES[size]} ${ICON_VARIANTS[variant]} ${className}`}
+        className={`flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-solid p-0 transition-[color,background-color,border-color,box-shadow] duration-200 disabled:cursor-default disabled:opacity-40 ${ICON_SIZES[size]} ${ICON_VARIANTS[variant]} ${className}`}
         aria-label={label}
         {...keyPress}
         {...rest}

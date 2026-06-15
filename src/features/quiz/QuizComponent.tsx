@@ -107,7 +107,7 @@ const CONFIG_CARD_HEADER = "mb-4 flex items-center gap-3";
 const CONFIG_H3 = `m-0 ${UI.overline}`;
 
 const CHOICE_PILL_BASE =
-  "flex items-center gap-3 rounded-full border border-solid px-4 py-3 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-3.5 max-md:flex-row max-md:justify-start";
+  "flex items-center gap-3 rounded-full border border-solid px-4 py-3 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-default max-md:py-2.5 max-md:px-3.5 max-md:flex-row max-md:justify-start";
 const difficultyBtn = (active: boolean) =>
   `${CHOICE_PILL_BASE} ${
     active
@@ -115,7 +115,7 @@ const difficultyBtn = (active: boolean) =>
       : "border-ink/25 bg-transparent text-ink hover:border-ink"
   }`;
 const NUMBER_BTN_BASE =
-  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-3.75 px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-not-allowed max-md:py-2.5 max-md:px-1.5";
+  "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border border-solid py-3.75 px-2.5 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-200 disabled:opacity-50 disabled:cursor-default max-md:py-2.5 max-md:px-1.5";
 const numberBtn = (active: boolean) =>
   `${NUMBER_BTN_BASE} ${
     active

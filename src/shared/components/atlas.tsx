@@ -317,7 +317,7 @@ export function CornerTicks({
    re-add `transition-all` or `hover:-translate-*` here; the two systems
    fighting over `transform` is exactly the conflict the doctrine bans. */
 const BTN_CORE =
-  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-solid transition-[color,background-color,border-color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-solid transition-[color,background-color,border-color,box-shadow] duration-200 disabled:cursor-default disabled:opacity-50";
 
 const BTN_COLORS = {
   primary: "border-ink bg-ink font-semibold text-cream hover:bg-night",
