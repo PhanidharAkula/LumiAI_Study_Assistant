@@ -10,6 +10,7 @@ import AddClassForm from "./AddClassForm";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { getDueCount } from "@shared/services/reviewService";
 import { useLoadingSignal, LoadingSignal } from "@shared/lib/loadingSignal";
+import { loaderLabel } from "@shared/lib/loaderLabel";
 import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import {
   Button,
@@ -137,7 +138,7 @@ const Dashboard = ({ session }: Props) => {
   // user back to the dashboard. The conversation is in-memory, so it reopens to
   // the Begin screen (ready to start again), not mid-conversation.
   const [talkOpen, setTalkOpen] = useState(
-    () => sessionStorage.getItem("lumiTalkOpen") === "true"
+    () => new URLSearchParams(window.location.search).get("talk") === "true"
   );
   const [accountDeleteSuccess, setAccountDeleteSuccess] = useState(false);
 
@@ -154,17 +155,9 @@ const Dashboard = ({ session }: Props) => {
 
   // Feed the shared app loader during the first classes fetch, so a refresh
   // shows one continuous loader instead of a second spinner here.
-  // Match the loader text to the open overlay (deep-link) so it doesn't flash
-  // "Charting your sky" before the tool's own label.
-  const destLabel =
-    params.get("flashcards") === "true"
-      ? "Dealing the deck"
-      : params.get("quiz") === "true"
-        ? "Plotting the quiz"
-        : params.get("chat") === "true"
-          ? "Opening the chat"
-          : "Charting your sky";
-  useLoadingSignal(initialLoading, destLabel);
+  // Match the loader text to the URL (open overlay / class) so it doesn't flash
+  // a generic label before the destination's own.
+  useLoadingSignal(initialLoading, loaderLabel(location.pathname, location.search));
   const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);
@@ -575,12 +568,18 @@ const Dashboard = ({ session }: Props) => {
 
   const handleTalkWithAI = () => {
     setTalkOpen(true);
-    sessionStorage.setItem("lumiTalkOpen", "true");
+    // Reflect Talk in the URL so the loader can name it ("Tuning in") and it's
+    // deep-linkable, like chat.
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set("talk", "true");
+    navigate(`?${searchParams.toString()}`, { replace: true });
   };
 
   const handleCloseTalk = () => {
     setTalkOpen(false);
-    sessionStorage.removeItem("lumiTalkOpen");
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.delete("talk");
+    navigate(`?${searchParams.toString()}`, { replace: true });
   };
 
   const handleCloseChat = () => {

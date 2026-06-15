@@ -7,6 +7,7 @@ import { isInAppBrowser } from "@shared/lib/inAppBrowser";
 import ProtectedRoute from "@shared/components/ProtectedRoute";
 import GlobalLoader from "@shared/components/GlobalLoader";
 import { useLoadingSignal, LoadingSignal } from "@shared/lib/loadingSignal";
+import { loaderLabel } from "@shared/lib/loaderLabel";
 import MaintenanceScreen from "@features/marketing/MaintenanceScreen";
 import "./App.css";
 
@@ -24,30 +25,6 @@ const Support = lazy(() => import("@features/support/Support"));
 const Review = lazy(() => import("@features/learning/Review"));
 const Progress = lazy(() => import("@features/learning/Progress"));
 const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
-
-const ROUTE_LABELS: Record<string, string> = {
-  "/admin": "Reading the instruments",
-  "/support": "Opening the desk",
-  "/review": "Gathering your cards",
-  "/progress": "Charting your progress",
-  "/auth/callback": "Signing you in",
-};
-
-// The loader text for a destination, derived from the URL so EVERY load phase
-// (auth, route chunk, page data) shows the same label - no flashing from a
-// generic "Charting" through "Charting your sky" before the real one. On
-// /dashboard the open overlay (chat/flashcards/quiz, carried in the query) wins,
-// so a deep-link names the tool rather than the dashboard.
-const loaderLabel = (pathname: string, search: string): string => {
-  if (pathname === "/dashboard") {
-    const p = new URLSearchParams(search);
-    if (p.get("flashcards") === "true") return "Dealing the deck";
-    if (p.get("quiz") === "true") return "Plotting the quiz";
-    if (p.get("chat") === "true") return "Opening the chat";
-    return "Charting your sky";
-  }
-  return ROUTE_LABELS[pathname] ?? "Charting";
-};
 
 // Reset scroll to the top on every route change (keyed on pathname, so
 // in-page query-param navigation - e.g. the dashboard's ?chat / ?classId - is
