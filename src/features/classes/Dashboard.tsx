@@ -154,7 +154,17 @@ const Dashboard = ({ session }: Props) => {
 
   // Feed the shared app loader during the first classes fetch, so a refresh
   // shows one continuous loader instead of a second spinner here.
-  useLoadingSignal(initialLoading, "Charting your sky");
+  // Match the loader text to the open overlay (deep-link) so it doesn't flash
+  // "Charting your sky" before the tool's own label.
+  const destLabel =
+    params.get("flashcards") === "true"
+      ? "Dealing the deck"
+      : params.get("quiz") === "true"
+        ? "Plotting the quiz"
+        : params.get("chat") === "true"
+          ? "Opening the chat"
+          : "Charting your sky";
+  useLoadingSignal(initialLoading, destLabel);
   const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);

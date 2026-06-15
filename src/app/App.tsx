@@ -25,16 +25,28 @@ const Review = lazy(() => import("@features/learning/Review"));
 const Progress = lazy(() => import("@features/learning/Progress"));
 const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
 
-// Per-route loader text, so the global loader names the screen it's fetching
-// during the route-chunk phase. Each screen's data phase sets a matching label
-// of its own via useLoadingSignal; public routes fall back to "Charting".
 const ROUTE_LABELS: Record<string, string> = {
-  "/dashboard": "Charting your sky",
   "/admin": "Reading the instruments",
   "/support": "Opening the desk",
   "/review": "Gathering your cards",
   "/progress": "Charting your progress",
   "/auth/callback": "Signing you in",
+};
+
+// The loader text for a destination, derived from the URL so EVERY load phase
+// (auth, route chunk, page data) shows the same label - no flashing from a
+// generic "Charting" through "Charting your sky" before the real one. On
+// /dashboard the open overlay (chat/flashcards/quiz, carried in the query) wins,
+// so a deep-link names the tool rather than the dashboard.
+const loaderLabel = (pathname: string, search: string): string => {
+  if (pathname === "/dashboard") {
+    const p = new URLSearchParams(search);
+    if (p.get("flashcards") === "true") return "Dealing the deck";
+    if (p.get("quiz") === "true") return "Plotting the quiz";
+    if (p.get("chat") === "true") return "Opening the chat";
+    return "Charting your sky";
+  }
+  return ROUTE_LABELS[pathname] ?? "Charting";
 };
 
 // Reset scroll to the top on every route change (keyed on pathname, so
@@ -121,10 +133,15 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Name the screen the loader is fetching, from the URL, so every phase shows
+  // the same label instead of flashing through generic precursors first.
+  const location = useLocation();
+  const routeLabel = loaderLabel(location.pathname, location.search);
+
   // One persistent loader (GlobalLoader, below) spans the whole startup - auth,
   // then the route chunk, then page data - via the shared signal, so it never
-  // remounts and its spinner never restarts. Feed it while auth is resolving.
-  useLoadingSignal(loading);
+  // remounts and its spinner never restarts. Feed it (named) while auth resolves.
+  useLoadingSignal(loading, routeLabel);
 
   // Maintenance mode: a signed-in non-admin sees the maintenance screen on every
   // route. Admins bypass it (so they can reach /admin and turn it back off);
@@ -137,10 +154,6 @@ function App() {
   // them hit a dead-end "disallowed_useragent" error. Legal pages stay
   // reachable so OAuth verification (run in a real browser) is unaffected.
   const inAppBrowser = isInAppBrowser();
-
-  // Name the screen the global loader is fetching during the route-chunk phase.
-  const location = useLocation();
-  const routeLabel = ROUTE_LABELS[location.pathname] ?? "Charting";
 
   return (
     // reducedMotion="user": framer transform/layout animations collapse to
