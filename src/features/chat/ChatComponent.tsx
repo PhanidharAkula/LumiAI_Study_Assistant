@@ -347,15 +347,10 @@ const ChatComponent = ({
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<any[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
-  // The first chat load feeds the one global loader ("Opening the chat") - the
-  // same loader as the route/chunk - so opening chat doesn't swap to a separate
-  // spinner. Later conversation switches keep the inline loader below (their
-  // first-load flag is already off by then).
-  const [chatFirstLoad, setChatFirstLoad] = useState(true);
-  useEffect(() => {
-    if (!initialLoading) setChatFirstLoad(false);
-  }, [initialLoading]);
-  useLoadingSignal(initialLoading && chatFirstLoad, "Opening the chat");
+  // Chat's loading is covered ONLY by the one global loader ("Opening the
+  // chat") - there's no separate in-chat spinner, so it can never double up with
+  // the global one (on open, refresh, or conversation switch).
+  useLoadingSignal(initialLoading, "Opening the chat");
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -1880,26 +1875,9 @@ const ChatComponent = ({
 
   if (!isOpen) return null;
 
-  if (initialLoading) {
-    // First load is covered by the global loader (useLoadingSignal above), so
-    // render nothing here - otherwise this second full-screen loader peeks
-    // through at the Suspense -> mount handoff (the "double render"). Conversation
-    // switches (not the first load) still show the inline loader below.
-    if (chatFirstLoad) return null;
-    return (
-      <motion.div
-        className="fixed inset-0 z-1000 flex flex-col overflow-hidden atlas-sky pt-7.5 max-md:p-2.5"
-        variants={scrimFade}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-      >
-        <div className="flex h-full flex-col items-center justify-center">
-          <Spinner label="Loading chat" />
-        </div>
-      </motion.div>
-    );
-  }
+  // Covered entirely by the global loader (useLoadingSignal above) - render
+  // nothing here, so there's only ever the one loader.
+  if (initialLoading) return null;
 
   return (
     <motion.div
