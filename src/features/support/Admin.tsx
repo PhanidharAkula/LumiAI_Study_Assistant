@@ -1072,43 +1072,40 @@ export default function Admin() {
               })}
             </div>
 
-            {/* Mobile band - horizontal segmented track, scrolls in its own
-                lane (never wraps/overlaps). Hidden scrollbar. */}
+            {/* Mobile band - the section buttons wrap to the next line and stay
+                centered (no horizontal scroll), with an even gap on both axes.
+                Transparent: active tab is a bg-ink pill, inactive are outlined. */}
             <div className="hidden max-[1100px]:block">
-              <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                {/* Transparent on mobile - the section buttons float on the
-                    page (no vellum pill); the active tab keeps its bg-ink pill. */}
-                <div className="inline-flex min-w-full gap-1 p-1">
-                  {NAV.map((item) => {
-                    const active = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        aria-current={active ? "page" : undefined}
-                        onClick={() => setActiveTab(item.id)}
-                        className={`flex shrink-0 appearance-none items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-solid border-ink px-3.5 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] transition-[color,background-color] duration-200 ${
-                          active
-                            ? "bg-ink text-cream"
-                            : "bg-transparent text-muted hover:text-ink"
-                        }`}
-                      >
-                        {item.label}
-                        {item.badge !== undefined && (
-                          <span
-                            className={`min-w-4 rounded-full px-1 text-center text-[10px] ${
-                              active
-                                ? "bg-cream/20 text-cream"
-                                : "bg-ink/6 text-muted"
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex flex-wrap justify-center gap-2 pb-1">
+                {NAV.map((item) => {
+                  const active = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`flex shrink-0 appearance-none items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-solid border-ink px-3.5 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] transition-[color,background-color] duration-200 ${
+                        active
+                          ? "bg-ink text-cream"
+                          : "bg-transparent text-muted hover:text-ink"
+                      }`}
+                    >
+                      {item.label}
+                      {item.badge !== undefined && (
+                        <span
+                          className={`min-w-4 rounded-full px-1 text-center text-[10px] ${
+                            active
+                              ? "bg-cream/20 text-cream"
+                              : "bg-ink/6 text-muted"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </nav>
