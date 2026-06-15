@@ -63,6 +63,15 @@ body.accdel-hide-bg > *:not(.accdel-dialog-overlay) {
   border-color: #8a6516;
   color: #8a6516;
 }
+/* Mobile: shrink the back key to match the close key. The close button is an
+   IconButton md (40px → 36px under Tailwind's max-md), so mirror that 36px here
+   at the same 768px breakpoint - the back button otherwise stayed desktop-sized. */
+@media (max-width: 767.98px) {
+  .back-button {
+    height: 36px;
+    width: 36px;
+  }
+}
 
 /* Night-surface variant (active quiz, talk, flashcard backs): raised midnight
    disc, starlight ink, gold on hover. Applied by <BackButton night>. */
