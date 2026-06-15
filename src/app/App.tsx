@@ -31,22 +31,11 @@ const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
 // left alone). Without this, SPA navigation keeps the previous page's scroll.
 function ScrollToTop(): null {
   const { pathname } = useLocation();
-  // Reset scroll on every route change. Direct scrollTop assignment is instant
-  // and universal - it sidesteps both the global `scroll-behavior: smooth` AND
-  // iOS WebKit's spotty support for scrollTo({behavior:"instant"}), which was
-  // leaving lazy routes (privacy/terms, opened from a scrolled login on the SE)
-  // at the previous scroll position. Run before paint, then again next frame so
-  // a lazily-mounted (Suspense) route can't re-introduce the old position.
+  // useLayoutEffect runs before paint, and behavior:"instant" bypasses the
+  // global `scroll-behavior: smooth` - so the new route paints at the top
+  // immediately instead of rendering then animating up.
   useLayoutEffect(() => {
-    const toTop = () => {
-      const el = document.scrollingElement || document.documentElement;
-      el.scrollTop = 0;
-      if (document.body) document.body.scrollTop = 0;
-      window.scrollTo(0, 0);
-    };
-    toTop();
-    const raf = requestAnimationFrame(toTop);
-    return () => cancelAnimationFrame(raf);
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname]);
   return null;
 }

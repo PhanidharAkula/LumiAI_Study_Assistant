@@ -71,7 +71,7 @@ const ICON_SIZES = {
   /** Dense contexts: history-row actions, inline list controls. */
   sm: "h-9 w-9",
   /** Default instrument key: headers, send/attach, modal close. */
-  md: "h-10 w-10 max-md:h-11 max-md:w-11",
+  md: "h-10 w-10 max-md:h-9 max-md:w-9",
   /** Hero controls (flashcard prev/flip/next). */
   lg: "h-12 w-12 max-md:h-10 max-md:w-10",
 } as const;
