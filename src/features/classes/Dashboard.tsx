@@ -68,6 +68,9 @@ interface Props {
 const Dashboard = ({ session }: Props) => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  // Covers the class<->dashboard view swap with the loader - the AnimatePresence
+  // exit otherwise leaves a gap going in and an empty flash coming back.
+  const [swapping, setSwapping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   // Rename-in-place from a dashboard card (a Modal over the grid, like create).
@@ -158,6 +161,10 @@ const Dashboard = ({ session }: Props) => {
   // Match the loader text to the URL (open overlay / class) so it doesn't flash
   // a generic label before the destination's own.
   useLoadingSignal(initialLoading, loaderLabel(location.pathname, location.search));
+  // Loader while swapping between the dashboard grid and a class (cleared when
+  // the AnimatePresence exit finishes); ClassDetails' own file-load loader then
+  // takes over seamlessly going in.
+  useLoadingSignal(swapping, loaderLabel(location.pathname, location.search));
   const [accountDeleteError, setAccountDeleteError] = useState(false);
   const [accountDeletionEnabled, setAccountDeletionEnabled] = useState(true);
   const [deletionDisabledNotice, setDeletionDisabledNotice] = useState(false);
@@ -416,6 +423,7 @@ const Dashboard = ({ session }: Props) => {
   };
 
   const handleSelectClass = (classItem: ClassItem) => {
+    setSwapping(true);
     setSelectedClass({ ...classItem, isLoading: true });
     setShowAddForm(false);
     navigate(`?classId=${classItem.id}`, { replace: true });
@@ -531,6 +539,7 @@ const Dashboard = ({ session }: Props) => {
   };
 
   const handleBackToClasses = () => {
+    setSwapping(true);
     skipUrlSelectRef.current = true;
     setSelectedClass(null);
     navigate(location.pathname, { replace: true });
@@ -858,7 +867,7 @@ const Dashboard = ({ session }: Props) => {
             animate={{ opacity: 1 }}
             transition={{ duration: DUR.slow }}
           >
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" onExitComplete={() => setSwapping(false)}>
               {selectedClass ? (
                 <motion.div
                   key="class-details"
@@ -1212,7 +1221,7 @@ const Dashboard = ({ session }: Props) => {
       {/* Add chat component with AnimatePresence for smooth transitions */}
       <AnimatePresence>
         {chatOpen && (
-          <Suspense fallback={<LoadingSignal label="Opening the chat" />}>
+          <Suspense fallback={null}>
             <ChatComponent
               isOpen={chatOpen}
               onClose={handleCloseChat}
