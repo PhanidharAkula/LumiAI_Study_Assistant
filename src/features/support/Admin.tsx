@@ -1076,7 +1076,9 @@ export default function Admin() {
                 lane (never wraps/overlaps). Hidden scrollbar. */}
             <div className="hidden max-[1100px]:block">
               <div className="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                <div className="inline-flex min-w-full gap-1 rounded-full border border-solid border-line bg-vellum p-1 shadow-plate">
+                {/* Transparent on mobile - the section buttons float on the
+                    page (no vellum pill); the active tab keeps its bg-ink pill. */}
+                <div className="inline-flex min-w-full gap-1 p-1">
                   {NAV.map((item) => {
                     const active = activeTab === item.id;
                     return (
