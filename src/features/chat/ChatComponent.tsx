@@ -1881,6 +1881,11 @@ const ChatComponent = ({
   if (!isOpen) return null;
 
   if (initialLoading) {
+    // First load is covered by the global loader (useLoadingSignal above), so
+    // render nothing here - otherwise this second full-screen loader peeks
+    // through at the Suspense -> mount handoff (the "double render"). Conversation
+    // switches (not the first load) still show the inline loader below.
+    if (chatFirstLoad) return null;
     return (
       <motion.div
         className="fixed inset-0 z-1000 flex flex-col overflow-hidden atlas-sky pt-7.5 max-md:p-2.5"
