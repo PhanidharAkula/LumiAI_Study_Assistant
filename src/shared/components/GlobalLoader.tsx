@@ -12,6 +12,8 @@
  * instantly so content appears on a clean slate.
  */
 import { useGlobalLoading } from "@shared/lib/loadingSignal";
+import { loaderSeed } from "@shared/lib/loaderLabel";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 
 const GlobalLoader = () => {
   const { loading, label } = useGlobalLoading();
@@ -22,6 +24,7 @@ const GlobalLoader = () => {
         loading ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
+      <PageBackdrop seed={loaderSeed(label)} />
       <div
         className={`spinner ${loading ? "" : "[animation-play-state:paused]"}`}
       />

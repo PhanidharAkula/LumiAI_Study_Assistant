@@ -12,6 +12,7 @@ import {
   starPath,
 } from "@shared/components/atlas";
 import { BackButton, Button } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { fadeRise, fadeRiseSoft, stagger } from "@shared/motion";
 
@@ -132,17 +133,7 @@ const Progress = () => {
   return (
     <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the charts. */}
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-        aria-hidden="true"
-      >
-        <Constellation
-          name="your sky so far"
-          size={440}
-          twinkle
-          className="absolute -right-28 -top-16 text-ink/10"
-        />
-      </div>
+      <PageBackdrop seed="your sky so far" />
 
       <BackButton
         className="absolute left-6 top-6 z-2 max-[600px]:left-4 max-[600px]:top-4"

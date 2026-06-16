@@ -20,6 +20,7 @@ import {
   starPath,
 } from "@shared/components/atlas";
 import { BackButton, Button, IconButton } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { DUR, fadeRise, pressLift, stagger } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 import { resolveStudyFiles } from "@features/study/resolveStudyFiles";
@@ -925,6 +926,7 @@ CRITICAL JSON FORMATTING RULES:
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
+      <PageBackdrop seed="quiz expedition" />
       {/* The night's faint stars behind the expedition. */}
       {isNight && <Starfield count={30} seed={9} />}
       {/* Header - atlas plate masthead */}
@@ -1045,10 +1047,10 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Delete key - surfaces on hover (always shown on touch) */}
                 <IconButton
-                  size="sm"
+                  size="action"
                   variant="danger"
                   label="Delete quiz"
-                  className="h-8! w-8! opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 max-md:opacity-100"
                   onClick={(e) => handleDeleteClick(e, item.id)}
                 >
                   <svg

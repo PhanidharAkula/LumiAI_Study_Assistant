@@ -471,7 +471,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
   const studyButtonClass = (popup?: boolean) =>
     popup
       ? "hidden w-full max-md:flex cursor-pointer items-center justify-start gap-3 rounded-lg border-0 bg-transparent px-3.5 py-3 text-[14.5px] font-semibold text-ink transition-colors duration-150 hover:bg-cream/80 active:bg-cream"
-      : "inline-flex max-md:hidden cursor-pointer items-center justify-center gap-2 rounded-full border border-solid border-ink/25 bg-transparent px-5 py-2.5 text-[13.5px] font-semibold text-ink transition-[color,background-color,border-color] duration-200 hover:border-ink hover:bg-ink hover:text-cream";
+      : "inline-flex max-md:hidden cursor-pointer items-center justify-center gap-2 rounded-full border border-solid border-ink/25 bg-vellum h-11.5 px-5 text-[13.5px] font-semibold text-ink transition-[color,background-color,border-color] duration-200 hover:border-ink hover:bg-ink hover:text-cream";
 
   function MotionFlashcardsButton({ popup }: { popup?: boolean }) {
     return (

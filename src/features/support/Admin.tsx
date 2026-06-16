@@ -10,6 +10,7 @@ import {
   IconButton,
   Spinner,
 } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import Select from "@shared/components/Select";
 import { fadeRiseSoft, stagger } from "@shared/motion";
@@ -964,7 +965,8 @@ export default function Admin() {
   );
 
   return (
-    <div className="min-h-dvh w-full overflow-x-hidden px-12.5 pb-25 pt-0 max-[1024px]:px-7.5 max-md:px-5 max-md:pb-20 max-[480px]:px-3.75">
+    <div className="relative min-h-dvh w-full overflow-x-hidden px-12.5 pb-25 pt-0 max-[1024px]:px-7.5 max-md:px-5 max-md:pb-20 max-[480px]:px-3.75">
+      <PageBackdrop seed="control room" />
       {/* Masthead - the control-room banner */}
       <motion.div
         className="flex items-center justify-between gap-4 px-2.5 pb-5 pt-7.5 max-md:px-1 max-md:pt-5"

@@ -10,6 +10,7 @@ import TagSelector from "./TagSelector";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { scrimFade, spring } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
@@ -563,7 +564,12 @@ const ChatComponent = ({
       container.removeEventListener("touchmove", handleTouchMove);
       resizeObserver.disconnect();
     };
-  }, [initialLoading]);
+    // Key off chatLoading, NOT initialLoading: the chat renders `null` until
+    // chatLoading flips false (~120ms after initialLoading), so the scroll
+    // container only mounts then. Re-running on initialLoading fired while the
+    // component was still null - the effect bailed (no container), never
+    // attaching the scroll/wheel/touch listeners or scrolling to the bottom.
+  }, [chatLoading]);
 
   // Keep the ref in sync synchronously so async handlers read the latest thread.
   useEffect(() => {
@@ -1902,6 +1908,7 @@ const ChatComponent = ({
       exit="exit"
       tabIndex={-1}
     >
+      <PageBackdrop seed="conversation desk" />
       {/* The desk's header rail - instrument keys over a veiled hairline band. */}
       <motion.div
         className="fixed left-0 top-0 z-110 flex w-full items-center gap-3.75 border-0 atlas-sky px-7 py-3.5 max-[1024px]:px-4.5 max-[1024px]:py-3 max-md:right-0 max-md:z-130 max-md:p-3"
@@ -1913,7 +1920,7 @@ const ChatComponent = ({
           <div className="relative">
             <IconButton
               variant="key"
-              size="md"
+              size="keyLg"
               label="Chat history"
               aria-expanded={showHistory}
               className={`history-button ${
@@ -2020,9 +2027,9 @@ const ChatComponent = ({
                                   padding so they truncate with "..." before these buttons. */}
                               <div className="absolute bottom-2.5 right-2.5 flex gap-1.5 opacity-0 [transition:opacity_0.2s_ease] group-hover:opacity-100 max-md:opacity-100">
                                 <IconButton
-                                  size="sm"
+                                  size="action"
                                   label="Edit title"
-                                  className="h-8! w-8! bg-vellum text-ink/70 hover:border-ink hover:bg-ink hover:text-cream"
+                                  className="bg-vellum text-ink/70 hover:border-ink hover:bg-ink hover:text-cream"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleTitleEdit(conv);
@@ -2045,10 +2052,10 @@ const ChatComponent = ({
                                   </svg>
                                 </IconButton>
                                 <IconButton
-                                  size="sm"
+                                  size="action"
                                   variant="danger"
                                   label="Delete conversation"
-                                  className="h-8! w-8! bg-vellum"
+                                  className="bg-vellum"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteConfirm(conv);
@@ -2085,7 +2092,7 @@ const ChatComponent = ({
           {messages.length > 0 && (
             <IconButton
               variant="key"
-              size="md"
+              size="keyLg"
               label="New conversation"
               onClick={handleNewConversation}
             >

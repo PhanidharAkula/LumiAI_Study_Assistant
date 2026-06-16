@@ -70,10 +70,14 @@ export const BackButton = forwardRef<HTMLButtonElement, BackButtonProps>(
 const ICON_SIZES = {
   /** Dense contexts: history-row actions, inline list controls. */
   sm: "h-9 w-9",
-  /** Default instrument key: headers, send/attach, modal close. */
+  /** Row/card action keys (view/edit/delete): compact on desktop, 44px on phones. */
+  action: "h-9 w-9 max-md:h-11 max-md:w-11",
+  /** Default instrument key: headers, send/attach. */
   md: "h-10 w-10 max-md:h-11 max-md:w-11",
-  /** Hero controls (flashcard prev/flip/next). */
-  lg: "h-12 w-12 max-md:h-10 max-md:w-10",
+  /** Back-disc-matched key: menu + close (46px desktop, 44px phone). */
+  keyLg: "h-11.5 w-11.5 max-md:h-11 max-md:w-11",
+  /** Hero controls (flashcard prev/flip/next): 46px desktop, 44px on phones. */
+  lg: "h-11.5 w-11.5 max-md:h-11 max-md:w-11",
 } as const;
 
 const ICON_VARIANTS = {
@@ -139,9 +143,12 @@ type CloseButtonProps = Omit<IconButtonProps, "children" | "label"> & {
 
 /** The canonical dismiss key - every overlay/panel closes with this. */
 export const CloseButton = forwardRef<HTMLButtonElement, CloseButtonProps>(
-  function CloseButton({ label = "Close", iconSize = 18, ...rest }, ref) {
+  function CloseButton(
+    { label = "Close", iconSize = 18, size = "keyLg", ...rest },
+    ref
+  ) {
     return (
-      <IconButton ref={ref} label={label} {...rest}>
+      <IconButton ref={ref} label={label} size={size} {...rest}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width={iconSize}

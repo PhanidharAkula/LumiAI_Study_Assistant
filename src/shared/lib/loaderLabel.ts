@@ -16,6 +16,30 @@ const ROUTE_LABELS: Record<string, string> = {
   "/auth/callback": "Signing you in",
 };
 
+/**
+ * The constellation seed for each destination, keyed by the label above so the
+ * GlobalLoader paints the SAME corner sky as the page it's loading (each page's
+ * PageBackdrop uses the matching seed). Derived from the label - which already
+ * tracks the destination across every load phase - so the two can't drift.
+ */
+const LABEL_SEEDS: Record<string, string> = {
+  "Reading the instruments": "control room",
+  "Opening the desk": "correspondence desk",
+  "Gathering your cards": "review ritual",
+  "Charting your progress": "your sky so far",
+  "Signing you in": "observatory entrance",
+  "Dealing the deck": "flashcard deck",
+  "Plotting the quiz": "quiz expedition",
+  "Opening the chat": "conversation desk",
+  "Tuning in": "tuning in",
+  "Opening the class": "atlas of classes",
+  "Charting your sky": "atlas of classes",
+};
+
+export function loaderSeed(label: string): string {
+  return LABEL_SEEDS[label] ?? "charting the sky";
+}
+
 export function loaderLabel(pathname: string, search: string): string {
   if (pathname === "/dashboard") {
     const p = new URLSearchParams(search);

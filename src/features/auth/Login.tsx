@@ -115,13 +115,13 @@ const Login = () => {
           name="observatory entrance"
           size={520}
           twinkle
-          className="absolute -right-28 -top-20 text-ink/13"
+          className="absolute -right-28 -top-20 text-ink/13 max-md:-right-16 max-md:-top-12 max-md:h-64 max-md:w-64 max-[420px]:h-56 max-[420px]:w-56"
         />
         <Constellation
           name="lumi at night"
           size={380}
           twinkle
-          className="absolute -bottom-24 -left-20 text-ink/10"
+          className="absolute -bottom-24 -left-20 text-ink/10 max-md:-bottom-12 max-md:-left-14 max-md:h-56 max-md:w-56 max-[420px]:h-48 max-[420px]:w-48"
         />
       </div>
 

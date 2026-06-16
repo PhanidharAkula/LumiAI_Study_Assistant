@@ -165,13 +165,13 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
           name="The Luminarium"
           size={620}
           twinkle
-          className="absolute -right-36 -top-24 text-ink/15 max-md:-right-52"
+          className="absolute -right-36 -top-24 text-ink/15 max-md:-right-16 max-md:-top-12 max-md:h-64 max-md:w-64 max-[420px]:h-56 max-[420px]:w-56"
         />
         <Constellation
           name="studywithlumi"
           size={460}
           twinkle
-          className="absolute -bottom-32 -left-28 text-ink/12 max-md:-left-44"
+          className="absolute -bottom-32 -left-28 text-ink/12 max-md:-bottom-12 max-md:-left-14 max-md:h-56 max-md:w-56 max-[420px]:h-48 max-[420px]:w-48"
         />
       </div>
 

@@ -18,6 +18,7 @@ import {
   IconButton,
   Spinner,
 } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import {
   DUR,
   fadeRise,
@@ -718,7 +719,7 @@ const Dashboard = ({ session }: Props) => {
               <IconButton
                 label="Edit class"
                 title="Edit class"
-                size="sm"
+                size="action"
                 onClick={(e) => {
                   e.stopPropagation();
                   // Rename in place over the dashboard, same as create, not a
@@ -746,7 +747,7 @@ const Dashboard = ({ session }: Props) => {
               <IconButton
                 label="Delete class"
                 title="Delete class"
-                size="sm"
+                size="action"
                 variant="danger"
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -859,7 +860,8 @@ const Dashboard = ({ session }: Props) => {
 
   return (
     <>
-      <div className="min-h-dvh w-full overflow-hidden px-12.5 pt-0 pb-25 max-[1024px]:px-7.5 max-[1024px]:pb-7.5 max-md:px-5 max-md:pb-5 max-[480px]:px-3.75 max-[480px]:pb-20">
+      <div className="relative min-h-dvh w-full overflow-hidden px-12.5 pt-0 pb-25 max-[1024px]:px-7.5 max-[1024px]:pb-7.5 max-md:px-5 max-md:pb-5 max-[480px]:px-3.75 max-[480px]:pb-20">
+        <PageBackdrop seed="atlas of classes" />
         {initialLoading ? null : (
           <motion.div
             className="w-full overflow-y-auto"
@@ -883,7 +885,7 @@ const Dashboard = ({ session }: Props) => {
                 </motion.div>
               ) : (
                 <motion.div
-                  className="mx-auto w-full max-w-310 min-h-[calc(100dvh-220px)] max-md:pb-15"
+                  className="mx-auto w-full max-w-310 min-h-[calc(100dvh-220px)] pb-13 max-md:pb-15"
                   key="classes-container"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -923,15 +925,15 @@ const Dashboard = ({ session }: Props) => {
                     className="relative z-20 flex items-center justify-between gap-4 px-5 pt-9 pb-2.5 max-md:px-2.5 max-md:pt-6 max-md:pb-2.5"
                   >
                     <div className="flex items-center gap-2.5">
-                      <LumiStar size={28} />
-                      <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-ink max-[380px]:hidden">
+                      <LumiStar size={34} />
+                      <span className="font-display text-[23px] font-semibold tracking-[-0.01em] text-ink max-[380px]:hidden">
                         Lumi AI
                       </span>
                     </div>
                     <div className="flex items-center gap-3 max-[480px]:gap-2">
                       <Button
                         size="sm"
-                        className={`max-md:px-4 max-md:py-2 max-md:text-[13px] ${
+                        className={`h-11.5 max-md:h-11 max-md:px-4 max-md:text-[13px] ${
                           classes.length > 0
                             ? "min-[769px]:inline-flex"
                             : "min-[769px]:hidden"
@@ -960,6 +962,7 @@ const Dashboard = ({ session }: Props) => {
                         <IconButton
                           label="Open menu"
                           variant="key"
+                          size="keyLg"
                           onClick={toggleMenu}
                         >
                           <svg

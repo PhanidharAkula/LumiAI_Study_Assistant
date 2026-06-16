@@ -23,9 +23,9 @@ import { useEscapeToClose } from "@shared/hooks/overlay";
 
 /* Trigger pill - collapses to an icon key on phones (badge floats above). */
 const TRIGGER_BASE =
-  "relative flex cursor-pointer items-center gap-2 rounded-full border border-solid py-2.5 px-4 text-[13px] font-semibold transition-colors duration-200 max-md:h-11 max-md:w-11 max-md:justify-center max-md:p-0";
-const TRIGGER_DAY = `${TRIGGER_BASE} border-ink/25 bg-vellum/70 text-ink hover:border-ink hover:bg-vellum`;
-const TRIGGER_NIGHT = `${TRIGGER_BASE} border-starlight/30 bg-transparent text-starlight hover:border-starlight/70 hover:bg-starlight/10`;
+  "relative flex cursor-pointer items-center gap-2 rounded-full border border-solid h-11.5 px-4 text-[13px] font-semibold transition-colors duration-200 max-md:h-11 max-md:w-11 max-md:justify-center max-md:p-0";
+const TRIGGER_DAY = `${TRIGGER_BASE} border-ink/25 bg-vellum text-ink hover:border-ink hover:bg-vellum`;
+const TRIGGER_NIGHT = `${TRIGGER_BASE} border-starlight/30 bg-night-2 text-starlight hover:border-starlight/70 hover:bg-night-2`;
 
 /* Drop-in panel motion - vocabulary spring/durations, dropdown-shaped. */
 const dropIn: Variants = {

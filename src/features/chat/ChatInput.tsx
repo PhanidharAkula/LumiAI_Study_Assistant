@@ -176,7 +176,7 @@ const ChatInput = ({
       {/* The writing desk - one vellum plate; the plate IS the field. */}
       <form
         onSubmit={handleSubmit}
-        className="relative flex items-end gap-1.5 rounded-[28px] border border-solid border-line bg-vellum p-2 shadow-plate transition-[border-color,box-shadow] duration-200 focus-within:border-ink/30 focus-within:shadow-float max-md:gap-1 max-md:p-1.5"
+        className="relative flex items-end gap-1.5 rounded-[28px] border border-solid border-line bg-vellum p-2 shadow-plate transition-[border-color,box-shadow] duration-200 focus-within:border-ink/30 focus-within:shadow-float max-md:items-center max-md:gap-1 max-md:p-1.5"
       >
         <input
           ref={fileInputRef}

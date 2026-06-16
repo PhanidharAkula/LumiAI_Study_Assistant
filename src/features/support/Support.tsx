@@ -7,8 +7,9 @@ import {
   getMyTickets,
   type SupportTicket,
 } from "@shared/services/supportService";
-import { Constellation, CornerTicks, UI } from "@shared/components/atlas";
+import { CornerTicks, UI } from "@shared/components/atlas";
 import { BackButton, Button } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import Select from "@shared/components/Select";
 import { fadeRise, fadeRiseSoft, stagger } from "@shared/motion";
@@ -148,17 +149,7 @@ const Support = ({ session }: { session: Session | null }) => {
   return (
     <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the desk. */}
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-        aria-hidden="true"
-      >
-        <Constellation
-          name="correspondence desk"
-          size={440}
-          twinkle
-          className="absolute -right-28 -top-16 text-ink/10"
-        />
-      </div>
+      <PageBackdrop seed="correspondence desk" />
 
       <BackButton
         className="absolute left-6 top-6 z-2 max-[600px]:left-4 max-[600px]:top-4"
@@ -304,8 +295,9 @@ const Support = ({ session }: { session: Session | null }) => {
             </span>
           )}
         </motion.div>
-        {tickets.length === 0 ? (
-          <p className="cursor-default p-5 text-center font-display italic text-[16px] leading-[1.6] text-muted">
+        <motion.div variants={fadeRiseSoft}>
+          {tickets.length === 0 ? (
+            <p className="cursor-default p-5 text-center font-display italic text-[16px] leading-[1.6] text-muted">
             No requests yet. Anything you send will show up here.
           </p>
         ) : (
@@ -337,7 +329,8 @@ const Support = ({ session }: { session: Session | null }) => {
               ))}
             </AnimatePresence>
           </div>
-        )}
+          )}
+        </motion.div>
       </motion.div>
     </div>
   );

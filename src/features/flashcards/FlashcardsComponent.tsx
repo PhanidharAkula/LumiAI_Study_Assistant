@@ -12,6 +12,7 @@ import {
   starPath,
 } from "@shared/components/atlas";
 import { BackButton, Button, IconButton } from "@shared/components/controls";
+import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { fadeRise, pressLift, stagger } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 import { resolveStudyFiles } from "@features/study/resolveStudyFiles";
@@ -593,6 +594,7 @@ CRITICAL JSON FORMATTING RULES:
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
+      <PageBackdrop seed="flashcard deck" />
       {/* Header */}
       <div className="py-5 px-14 flex items-center gap-5 relative z-100 max-[1024px]:px-9 max-md:px-5 max-md:gap-3.75 max-[480px]:px-3.75">
         <BackButton
@@ -638,10 +640,10 @@ CRITICAL JSON FORMATTING RULES:
                   {new Date(item.created_at).toLocaleDateString()}
                 </span>
                 <IconButton
-                  size="sm"
+                  size="action"
                   variant="danger"
                   label="Delete deck"
-                  className="h-8! w-8! opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 max-md:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteConfirmDialog({
