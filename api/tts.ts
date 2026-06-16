@@ -37,10 +37,13 @@ const DEFAULT_VOICE = "nova";
 const TONE =
   "Speak like a warm, friendly tutor: natural, relaxed, and lightly encouraging.";
 
-// Brisk-but-natural pace for tts-1 / tts-1-hd. Their `speed` is deterministic
-// and pitch-preserving, unlike a client-side playbackRate (unreliable on
-// Safari). Tune here if it feels too fast/slow.
-const TTS_SPEED = 1.1;
+// Natural pace for tts-1 / tts-1-hd. Their `speed` is deterministic and
+// pitch-preserving, unlike a client-side playbackRate (unreliable on Safari).
+// 1.0 is the natural narration rate; >1 reads rushed and amplifies the
+// clip-to-clip prosody variation of sentence-by-sentence streaming. Optional
+// LUMI_TTS_SPEED env override so the pace can be tuned without a redeploy.
+const envSpeed = Number(process.env.LUMI_TTS_SPEED);
+const TTS_SPEED = Number.isFinite(envSpeed) && envSpeed > 0 ? envSpeed : 1.0;
 
 function sendJson(res: any, status: number, payload: unknown): void {
   res.statusCode = status;
