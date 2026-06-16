@@ -42,3 +42,6 @@ coverage/
 *.temp
 .cache/
 .vercel
+
+# Local-only working docs (QA checklists, scratch notes) - not part of the repo
+docs/

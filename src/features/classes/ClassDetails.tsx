@@ -552,7 +552,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
 
   return (
     <motion.div
-      className="h-full w-full pt-7.5"
+      className="h-full w-full pt-5"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -562,7 +562,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       {!showQuiz && !showFlashcards && (
         <>
           <motion.div
-            className="flex items-center gap-4 border-0 border-b border-solid border-line px-2.5 pb-5 max-md:gap-3"
+            className="flex items-center gap-4 border-0 border-b border-solid border-line px-1.5 pb-5 max-md:gap-3 max-md:px-0"
             variants={stagger()}
             initial="hidden"
             animate="visible"
@@ -586,28 +586,25 @@ const ClassDetails = ({ classData, onBack }: Props) => {
               />
             </motion.div>
 
-            <motion.div className="m-0 min-w-0 flex-1" variants={fadeRise}>
-              {/* Eyebrow: record label + created date on one quiet line, so the
-                  class name below can stand alone as the hero (2 lines, not 3). */}
-              <p
-                className={`${UI.overline} mb-1.5 flex flex-wrap items-center gap-x-2`}
-              >
-                <span>Class record</span>
-                <span aria-hidden="true" className="text-ink/30">
-                  ·
-                </span>
-                {/* <span className="text-muted">
-                  Created{" "}
-                  {new Date(classData.created_at).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span> */}
-              </p>
-              <p className="m-0 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
-                {classData.name}
-              </p>
+            <motion.div
+              className="m-0 flex min-w-0 flex-1 items-center"
+              variants={fadeRise}
+            >
+              <div className="min-w-0">
+                {/* Eyebrow: record label + created date on one quiet line, so the
+                    class name below can stand alone as the hero (2 lines, not 3). */}
+                <p
+                  className={`${UI.overline} mb-1 flex flex-wrap items-center gap-x-2`}
+                >
+                  <span>Class record</span>
+                  <span aria-hidden="true" className="text-ink/30">
+                    ·
+                  </span>
+                </p>
+                <p className="m-0 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
+                  {classData.name}
+                </p>
+              </div>
             </motion.div>
 
             <motion.div
@@ -888,7 +885,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                       {/* Instrument keys - revealed on hover (always shown on mobile). */}
                       <div className="flex shrink-0 items-center justify-end gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 max-md:ml-1 max-md:gap-2 max-md:opacity-100">
                         <motion.button
-                          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-ink/20 bg-transparent text-ink/70 transition-colors duration-150 hover:border-ink hover:bg-ink hover:text-cream max-md:h-8 max-md:w-8 [&_svg]:h-4 [&_svg]:w-4"
+                          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-ink/20 bg-transparent text-ink/70 transition-colors duration-150 hover:border-ink hover:bg-ink hover:text-cream max-md:h-11 max-md:w-11 [&_svg]:h-4 [&_svg]:w-4 max-md:[&_svg]:h-5 max-md:[&_svg]:w-5"
                           onClick={() => handleFileView(file)}
                           title="View file"
                           whileHover={{
@@ -914,7 +911,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                           </svg>
                         </motion.button>
                         <motion.button
-                          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-ink/20 bg-transparent text-ink/70 transition-colors duration-150 hover:border-vermilion hover:bg-vermilion hover:text-white max-md:h-8 max-md:w-8 [&_svg]:h-4 [&_svg]:w-4"
+                          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-ink/20 bg-transparent text-ink/70 transition-colors duration-150 hover:border-vermilion hover:bg-vermilion hover:text-white max-md:h-11 max-md:w-11 [&_svg]:h-4 [&_svg]:w-4 max-md:[&_svg]:h-5 max-md:[&_svg]:w-5"
                           onClick={() =>
                             handleFileDelete(file.id, file.path, file.name)
                           }

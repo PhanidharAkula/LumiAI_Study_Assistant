@@ -71,7 +71,7 @@ const USERS_PER_PAGE = 20;
 // the ticket-status filter). Hairline → ink-fill when armed; body font for the
 // label (mono is reserved for overline LABELS, never action text).
 const FILTER_PILL_BASE =
-  "rounded-full border border-solid px-3.5 py-1.5 text-[13px] font-medium cursor-pointer font-[inherit] transition-[color,background-color,border-color,box-shadow] duration-200 max-md:py-2 max-md:min-h-9 max-[480px]:flex-1 max-[480px]:min-w-20 max-[480px]:justify-center";
+  "rounded-full border border-solid px-3.5 py-1.5 text-[13px] font-medium cursor-pointer font-[inherit] transition-[color,background-color,border-color,box-shadow] duration-200 max-md:py-2 max-md:min-h-9";
 const filterPill = (active: boolean) =>
   `${FILTER_PILL_BASE} ${
     active
@@ -898,7 +898,7 @@ export default function Admin() {
           className="w-full rounded-lg border border-solid border-ink/20 bg-white/60 py-2 pl-9 pr-3 text-[13px] font-[inherit] text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-gold-deep max-md:text-[14px] max-md:py-2.5 max-[480px]:text-[16px]"
         />
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 max-md:justify-center">
         {[
           { value: "all", label: "All" },
           { value: "open", label: "Open" },

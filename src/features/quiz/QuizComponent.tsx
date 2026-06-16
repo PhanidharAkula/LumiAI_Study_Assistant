@@ -919,7 +919,7 @@ CRITICAL JSON FORMATTING RULES:
   return createPortal(
     <motion.div
       className={`fixed inset-0 z-1000 flex flex-col overflow-hidden transition-colors duration-700 ${
-        isNight ? "bg-night" : "bg-cream/95 backdrop-blur-[2px]"
+        isNight ? "bg-night" : "atlas-sky"
       }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -929,7 +929,7 @@ CRITICAL JSON FORMATTING RULES:
       {isNight && <Starfield count={30} seed={9} />}
       {/* Header - atlas plate masthead */}
       <div
-        className={`py-5 px-7.5 flex items-center gap-5 relative z-100 max-md:py-2.5 max-md:px-3.5 max-md:sticky max-md:top-0 max-[480px]:py-2.5 max-[480px]:px-3 ${
+        className={`py-5 px-14 flex items-center gap-5 relative z-100 max-[1024px]:px-9 max-md:px-5 max-md:sticky max-md:top-0 max-[480px]:px-3.75 ${
           isNight
             ? "max-md:bg-night/95"
             : "max-md:bg-cream/95 max-md:backdrop-blur-[2px]"
@@ -943,23 +943,23 @@ CRITICAL JSON FORMATTING RULES:
               ? "Back to setup"
               : "Close quiz"
           }
-          className="shrink-0 max-md:h-9! max-md:w-9!"
+          className="shrink-0"
         />
         <div className="flex-1 flex items-center">
           <div>
             <h1
-              className={`m-0 font-display text-[24px] font-semibold tracking-[-0.01em] max-md:text-[16px] max-[360px]:text-[14px] ${
+              className={`m-0 font-display text-[24px] font-semibold tracking-[-0.01em] max-md:text-[16px] ${
                 isNight ? "text-starlight" : "text-ink"
               }`}
             >
-              {classData?.name}
+              Quiz
             </h1>
             <p
-              className={`mt-1 mx-0 mb-0 font-mono text-[10px] font-medium uppercase tracking-[0.2em] max-md:text-[9px] max-[480px]:hidden ${
+              className={`mt-1 mx-0 mb-0 font-mono text-[10px] font-medium uppercase tracking-[0.2em] max-md:text-[9px] ${
                 isNight ? "text-starlight/50" : "text-muted"
               }`}
             >
-              Interactive Quiz Session
+              {classData?.name}
             </p>
           </div>
         </div>
@@ -1212,7 +1212,7 @@ CRITICAL JSON FORMATTING RULES:
               {/* Generate Button - the one gold CTA on this screen */}
               <Button
                 variant="gold"
-                className="mx-auto w-fit px-9"
+                className="mx-auto w-fit px-9 max-md:mb-6"
                 onClick={handleGenerateQuiz}
                 disabled={selectedFiles.length === 0 || generatingQuiz}
               >

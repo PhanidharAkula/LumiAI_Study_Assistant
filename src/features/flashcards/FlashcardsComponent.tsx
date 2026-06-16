@@ -588,13 +588,13 @@ CRITICAL JSON FORMATTING RULES:
   // the tree, it stays viewport-anchored and full-screen on refresh and click.
   return createPortal(
     <motion.div
-      className="fixed inset-0 bg-cream/95 backdrop-blur-[2px] z-1000 flex flex-col overflow-hidden"
+      className="fixed inset-0 atlas-sky z-1000 flex flex-col overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       {/* Header */}
-      <div className="py-5 px-7.5 flex items-center gap-5 relative z-100 max-md:py-3.75 max-md:px-5 max-md:gap-3.75">
+      <div className="py-5 px-14 flex items-center gap-5 relative z-100 max-[1024px]:px-9 max-md:px-5 max-md:gap-3.75 max-[480px]:px-3.75">
         <BackButton
           onClick={handleBackButton}
           label={
@@ -602,7 +602,7 @@ CRITICAL JSON FORMATTING RULES:
               ? "Back to setup"
               : "Close flashcards"
           }
-          className="shrink-0 max-md:h-9! max-md:w-9!"
+          className="shrink-0"
         />
 
         <div className="flex-1 flex items-center">
@@ -832,7 +832,7 @@ CRITICAL JSON FORMATTING RULES:
               {/* Generate Button - the one gold CTA on this screen */}
               <Button
                 variant="gold"
-                className="mx-auto w-fit px-9"
+                className="mx-auto w-fit px-9 max-md:mb-6"
                 onClick={handleGenerateFlashcards}
                 disabled={generatingCards || selectedFiles.length === 0}
               >

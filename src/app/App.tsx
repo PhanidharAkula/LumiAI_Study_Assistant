@@ -31,6 +31,13 @@ const OpenInBrowser = lazy(() => import("@features/marketing/OpenInBrowser"));
 // left alone). Without this, SPA navigation keeps the previous page's scroll.
 function ScrollToTop(): null {
   const { pathname } = useLocation();
+  // Own scroll restoration instead of the browser's: every route change jumps to
+  // the top (below), so there's nothing for the browser to "restore" on
+  // back/forward. Notably this stops Chrome on iOS from leaving a partial scroll
+  // after a back navigation (its retractable URL bar otherwise offsets it).
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  }, []);
   // useLayoutEffect runs before paint, and behavior:"instant" bypasses the
   // global `scroll-behavior: smooth` - so the new route paints at the top
   // immediately instead of rendering then animating up.
