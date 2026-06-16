@@ -28,9 +28,6 @@ export const spring = {
   plate: { type: "spring", stiffness: 320, damping: 26 } as Transition,
 } as const;
 
-/** The engraved-rise ease (same curve as the old CSS `rise` keyframe). */
-export const EASE_OUT = [0.22, 1, 0.36, 1] as const;
-
 /** Durations (s) for non-spring fades. */
 export const DUR = { fast: 0.15, base: 0.22, slow: 0.4 } as const;
 

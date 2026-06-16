@@ -120,7 +120,7 @@ const CARD_VALUE = "text-[13.5px] text-ink text-right [word-break:break-word]";
 const USER_SORTS = [
   { value: "newest", label: "Newest first" },
   { value: "oldest", label: "Oldest first" },
-  { value: "name", label: "Name (A–Z)" },
+  { value: "name", label: "Name (A-Z)" },
   { value: "classes", label: "Most classes" },
   { value: "files", label: "Most files" },
   { value: "storage", label: "Most storage" },
@@ -365,7 +365,7 @@ export default function Admin() {
       }
     } catch (err) {
       console.error("init error:", err);
-      setError("Failed to initialize admin");
+      setError("We couldn't load the admin dashboard. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -400,10 +400,7 @@ export default function Admin() {
       setFilteredUsers(enrichedUsers);
     } catch (err) {
       console.error("Error fetching users:", err);
-      setError(
-        (err instanceof Error ? err.message : String(err)) ||
-          "Error fetching users"
-      );
+      setError("We couldn't load the user list. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -1019,7 +1016,7 @@ export default function Admin() {
           />
           <span className={UI.overlineMuted}>Restricted instruments</span>
           <p className="m-0 font-display text-[26px] font-semibold text-ink">
-            Not Authorised
+            You don't have access
           </p>
         </div>
       )}
@@ -1293,7 +1290,7 @@ export default function Admin() {
                       {totalUserPages > 1 && (
                         <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-solid border-line bg-cream/60 px-4 py-2.5 max-md:flex-col max-md:gap-2">
                           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-muted">
-                            Showing {pageStart + 1}–
+                            Showing {pageStart + 1}-
                             {Math.min(
                               pageStart + USERS_PER_PAGE,
                               filteredUsers.length
@@ -1353,7 +1350,7 @@ export default function Admin() {
                       )}
 
                       {/* Desktop: semantic table (hairline rules, mono heads) */}
-                      <div className="overflow-hidden rounded-xl border border-solid border-line max-md:hidden">
+                      <div className="overflow-x-auto rounded-xl border border-solid border-line max-md:hidden">
                         <table className="w-full border-collapse text-left">
                           <thead className="bg-cream/60">
                             <tr>
@@ -1830,7 +1827,7 @@ export default function Admin() {
         title="Couldn't Delete User"
         message={
           deleteError
-            ? `An error occurred while deleting the user: ${deleteError}`
+            ? "Something went wrong while deleting this user. Please try again."
             : ""
         }
         confirmText="OK"

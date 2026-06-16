@@ -92,7 +92,7 @@ const Modal = ({
     <AnimatePresence>
       {open && (
         <motion.div
-          className={`fixed inset-0 z-999990 flex bg-night/55 backdrop-blur-[3px] ${
+          className={`fixed inset-0 z-[var(--z-modal)] flex bg-night/55 backdrop-blur-[3px] ${
             asSheet
               ? "items-end"
               : topOnMobile

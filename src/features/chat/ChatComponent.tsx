@@ -161,7 +161,7 @@ const sanitizeAssistantResponse = (text: string): string => {
       continue;
     }
     const metaPreface =
-      /^(chatgpt|assistant|ai)\b|^(alright|ok|okay|sure)([,.!]?\s+here'?s?)?/i;
+      /^(assistant|ai)\b|^(alright|ok|okay|sure)([,.!]?\s+here'?s?)?/i;
     if (metaPreface.test(l) && l.length < 80) {
       start = i + 1;
       continue;
@@ -1220,7 +1220,7 @@ const ChatComponent = ({
 
       let fullResponse = "";
 
-      // Smooth streaming. Claude's text arrives in variable-size network bursts,
+      // Smooth streaming. The model's text arrives in variable-size network bursts,
       // which paint as blocky jumps. Decouple arrival from display: tokens land
       // in `streamTarget`, and an animation-frame loop releases characters toward
       // it at a steady, self-balancing rate - it absorbs bursts and settles to
@@ -1886,7 +1886,7 @@ const ChatComponent = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-1000 flex flex-col overflow-hidden atlas-sky pt-17 max-[1024px]:pt-16 max-md:px-2.5 max-md:pb-2.5 max-md:pt-15"
+      className="fixed inset-0 z-[var(--z-overlay)] flex flex-col overflow-hidden atlas-sky pt-17 max-[1024px]:pt-16 max-md:px-2.5 max-md:pb-2.5 max-md:pt-15"
       variants={scrimFade}
       // No entrance fade: the global loader covered the load and shares the same
       // atlas-sky background, so the chat just appears in place. A fade-in here
@@ -2249,7 +2249,7 @@ const ChatComponent = ({
               SAME sky as the chat surface, aligned by viewport coords - a
               seamless, borderless blend that still hides messages scrolling
               under the fixed mobile dock (the sky is opaque). */}
-          <div className="atlas-sky relative mx-auto w-full max-w-205 max-[1024px]:max-w-none max-md:fixed max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:z-120 max-md:py-2 max-md:px-5">
+          <div className="atlas-sky relative mx-auto w-full max-w-205 max-[1024px]:max-w-none max-md:fixed max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:z-120 max-md:px-5 max-md:pt-2 max-md:pb-[max(8px,env(safe-area-inset-bottom))]">
             {/* Floating "jump to latest" - only while unpinned; sits just above
                 the dock (centered) and never overlaps it. */}
             <AnimatePresence>

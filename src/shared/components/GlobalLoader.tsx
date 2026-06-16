@@ -20,7 +20,7 @@ const GlobalLoader = () => {
   return (
     <div
       aria-hidden={!loading}
-      className={`atlas-sky fixed inset-0 z-2000 flex flex-col items-center justify-center gap-1 ${
+      className={`atlas-sky fixed inset-0 z-[var(--z-loader)] flex flex-col items-center justify-center gap-1 ${
         loading ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >

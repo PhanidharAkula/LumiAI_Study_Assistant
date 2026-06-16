@@ -18,6 +18,17 @@ export interface ReviewCard {
   srs: SrsState | null; // null => brand-new card, never reviewed
 }
 
+// Shape of a flashcard_srs row as the queue reads it (documents the schema +
+// gives the service compile-time checking; mirrors src/scripts/27_*.sql).
+interface SrsQueueRow {
+  deck_id: string;
+  card_index: number;
+  ease: number;
+  interval_days: number;
+  repetitions: number;
+  due_at: string;
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const NEW_CARDS_PER_SESSION = 20;
 
@@ -85,11 +96,13 @@ export const getDueCount = async (): Promise<number> => {
       supabase
         .from("flashcard_history")
         .select("id, num_cards")
-        .eq("user_id", user.id),
+        .eq("user_id", user.id)
+        .returns<{ id: string; num_cards: number | null }[]>(),
       supabase
         .from("flashcard_srs")
         .select("deck_id, due_at")
-        .eq("user_id", user.id),
+        .eq("user_id", user.id)
+        .returns<{ deck_id: string; due_at: string }[]>(),
     ]);
 
     const now = Date.now();
@@ -131,12 +144,18 @@ export const getReviewQueue = async (): Promise<{
         supabase
           .from("flashcard_history")
           .select("id, class_id, cards")
-          .eq("user_id", user.id),
+          .eq("user_id", user.id)
+          .returns<{ id: string; class_id: string; cards: unknown }[]>(),
         supabase
           .from("flashcard_srs")
           .select("deck_id, card_index, ease, interval_days, repetitions, due_at")
-          .eq("user_id", user.id),
-        supabase.from("classes").select("id, name").eq("user_id", user.id),
+          .eq("user_id", user.id)
+          .returns<SrsQueueRow[]>(),
+        supabase
+          .from("classes")
+          .select("id, name")
+          .eq("user_id", user.id)
+          .returns<{ id: string; name: string }[]>(),
       ]);
 
     if (!decks || decks.length === 0) return { cards: [], hasDecks: false, error: false };
@@ -144,7 +163,7 @@ export const getReviewQueue = async (): Promise<{
     const classNameById = new Map<string, string>();
     for (const c of classes ?? []) classNameById.set(c.id, c.name);
 
-    const srsByKey = new Map<string, Record<string, number | string>>();
+    const srsByKey = new Map<string, SrsQueueRow>();
     for (const r of srs ?? []) srsByKey.set(`${r.deck_id}:${r.card_index}`, r);
 
     const now = Date.now();

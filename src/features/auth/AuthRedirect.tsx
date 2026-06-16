@@ -123,7 +123,7 @@ const AuthRedirect = () => {
       } catch (err) {
         console.error("Authentication error:", err);
         setError(
-          `Authentication failed: ${err instanceof Error ? err.message : String(err)}`
+          "We couldn't finish signing you in. Taking you back to sign in..."
         );
         setTimeout(() => navigate("/login"), 1800);
       }

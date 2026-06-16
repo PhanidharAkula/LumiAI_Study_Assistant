@@ -558,7 +558,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-1200 flex flex-col overflow-hidden bg-night">
+    <div className="fixed inset-0 z-[var(--z-talk)] flex flex-col overflow-hidden bg-night">
       <Starfield count={70} seed={11} />
       <div
         className="pointer-events-none absolute inset-0"
@@ -802,7 +802,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
       </div>
 
       {started && (
-        <div className="fixed bottom-10 left-1/2 z-1220 flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-7.5 max-md:gap-6 max-[480px]:bottom-6 max-[480px]:gap-5">
+        <div className="fixed bottom-10 left-1/2 z-1220 flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-[calc(30px+env(safe-area-inset-bottom))] max-md:gap-6 max-[480px]:bottom-[calc(24px+env(safe-area-inset-bottom))] max-[480px]:gap-5">
           <motion.button
             type="button"
             className={`${TALK_BTN} ${muted ? TALK_BTN_MUTED : TALK_BTN_DEFAULT}`}

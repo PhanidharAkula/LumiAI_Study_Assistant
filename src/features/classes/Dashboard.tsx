@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Link } from "react-router-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@shared/lib/supabaseClient";
@@ -783,8 +782,8 @@ const Dashboard = ({ session }: Props) => {
               </IconButton>
             </div>
 
-            <div className="flex-1">
-              <h3 className="font-display text-[21px] font-semibold leading-snug tracking-[-0.01em] text-ink">
+            <div className="min-w-0 flex-1">
+              <h3 className="break-words font-display text-[21px] font-semibold leading-snug tracking-[-0.01em] text-ink">
                 {classItem.name}
               </h3>
               {classItem.description && (
@@ -1201,20 +1200,20 @@ const Dashboard = ({ session }: Props) => {
                       it as a Modal plate (AddClassForm renders the kit Modal -
                       scrim, Escape, and scroll-lock included). */}
                   {renderClassesGrid()}
-                  {showAddForm && (
-                    <AddClassForm
-                      onClassCreated={handleAddClass as any}
-                      onCancel={() => setShowAddForm(false)}
-                    />
-                  )}
-                  {editingClass && (
-                    <AddClassForm
-                      isEditing
-                      initialData={editingClass as any}
-                      onClassUpdated={handleUpdateClassInline as any}
-                      onCancel={() => setEditingClass(null)}
-                    />
-                  )}
+                  {/* Both stay mounted (driven by `open`) so the Modal can play
+                      its close animation instead of vanishing on unmount. */}
+                  <AddClassForm
+                    open={showAddForm}
+                    onClassCreated={handleAddClass as any}
+                    onCancel={() => setShowAddForm(false)}
+                  />
+                  <AddClassForm
+                    open={!!editingClass}
+                    isEditing
+                    initialData={(editingClass as any) ?? { name: "" }}
+                    onClassUpdated={handleUpdateClassInline as any}
+                    onCancel={() => setEditingClass(null)}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1414,7 +1413,7 @@ const Dashboard = ({ session }: Props) => {
           navigate("/");
         }}
         title="Account Deleted Successfully"
-        message="Your account and all associated data have been permanently removed from our servers. Thank you for using LumiAI."
+        message="Your account and all associated data have been permanently removed from our servers. Thank you for using Lumi AI."
         confirmText="Done"
         cancelText=""
         danger={false}

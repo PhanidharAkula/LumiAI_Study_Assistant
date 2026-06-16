@@ -13,6 +13,9 @@ interface ClassRecord {
 }
 
 interface AddClassFormProps {
+  /** Drives the Modal open/close. Kept mounted while closed so the Modal can
+   *  play its exit animation. */
+  open: boolean;
   onCancel: () => void;
   onClassCreated?: (cls: ClassRecord) => void;
   isEditing?: boolean;
@@ -23,6 +26,7 @@ interface AddClassFormProps {
 /** The create/rename-class dialog - a floating Modal plate above the page
  *  (the dashboard stays visible behind the scrim; sheet on phones). */
 const AddClassForm = ({
+  open,
   onCancel,
   onClassCreated,
   isEditing = false,
@@ -34,17 +38,17 @@ const AddClassForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Seed the field each time the dialog OPENS (create starts blank; rename seeds
+  // the current name) and hand focus to the input. Keyed on `open` only - the
+  // form stays mounted while closed so the Modal can animate out, so re-seeding
+  // on every render would wipe what the user is typing.
   useEffect(() => {
-    if (isEditing && initialData) {
-      setName(initialData.name);
-    }
-  }, [isEditing, initialData]);
-
-  // The Modal moves focus to its plate on open; hand it on to the input so
-  // typing can start immediately (this effect runs after Modal's, parent-last).
-  useEffect(() => {
+    if (!open) return;
+    setName(isEditing && initialData ? initialData.name : "");
+    setError("");
     inputRef.current?.focus();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,9 +129,9 @@ const AddClassForm = ({
         error
       );
       setError(
-        `Failed to ${isEditing ? "update" : "create"} class: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+        isEditing
+          ? "We couldn't rename this class. Please try again."
+          : "We couldn't create this class. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -136,7 +140,7 @@ const AddClassForm = ({
 
   return (
     <Modal
-      open
+      open={open}
       onClose={() => {
         // Match the Cancel button: no dismissing mid-submit.
         if (!isSubmitting) onCancel();

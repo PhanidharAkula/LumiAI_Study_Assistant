@@ -589,7 +589,7 @@ CRITICAL JSON FORMATTING RULES:
   // the tree, it stays viewport-anchored and full-screen on refresh and click.
   return createPortal(
     <motion.div
-      className="fixed inset-0 atlas-sky z-1000 flex flex-col overflow-hidden"
+      className="fixed inset-0 atlas-sky z-[var(--z-overlay)] flex flex-col overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

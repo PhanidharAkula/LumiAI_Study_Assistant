@@ -7,7 +7,7 @@
  * regardless of specificity, silently killing `p-*`/`text-*`/`tracking-*`.
  *
  * ───────────────────────────────────────────────────────────────────────────
- *  THE LUMINARIUM — LumiAI's design language: a celestial atlas for your mind.
+ *  THE LUMINARIUM - Lumi AI's design language: a celestial atlas for your mind.
  *
  *  Lumi means light. The app is an astronomer's study atelier: warm parchment
  *  pages, midnight-ink plates, gold-leaf stars, engraved hairlines, chart
@@ -67,13 +67,25 @@
   /* ── Motion ───────────────────────────────────────────────── */
   --animate-blink: blink 1s infinite;
   --animate-thinking-fade: thinking-fade 1.4s infinite;
-  --animate-typing-bounce: typing-bounce 1.5s infinite ease-in-out;
   --animate-twinkle: twinkle 3.2s ease-in-out infinite;
   --animate-orbit: orbit 60s linear infinite;
   --animate-orbit-slow: orbit 140s linear infinite;
   --animate-rise: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-breathe: breathe 5.5s ease-in-out infinite;
   --animate-shimmer: shimmer 2.8s linear infinite;
+}
+
+/* Layering - global z-index scale: the order overlays stack at the body level.
+   Plain custom properties (not @theme tokens) so they're always emitted to
+   :root and resolve in z-[var(--z-*)]. Local scoped z-indices (page headers
+   ~z-10/20, dropdown panels/scrims ~z-90-100/999, the dashboard AI dock z-100,
+   card actions z-5) live in their own stacking contexts and don't compete. */
+:root {
+  --z-overlay: 1000; /* full-screen takeovers: chat, quiz, flashcards, file viewer */
+  --z-talk: 1200; /* talk overlay (its controls/menus stack above this) */
+  --z-loader: 2000; /* global loading veil */
+  --z-modal: 999990; /* floating Modal plates (create class, pickers, sheets) */
+  --z-dialog: 999999; /* ConfirmDialog - top of everything */
 }
 
 @keyframes blink {
@@ -93,17 +105,6 @@
   }
   50% {
     opacity: 1;
-  }
-}
-
-@keyframes typing-bounce {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-4px);
   }
 }
 

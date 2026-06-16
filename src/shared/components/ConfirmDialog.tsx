@@ -223,7 +223,7 @@ const ConfirmDialog = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="accdel-dialog-overlay pointer-events-auto fixed inset-0 isolate z-999999 flex h-full w-full items-center justify-center bg-night/60 backdrop-blur-[3px]"
+          className="accdel-dialog-overlay pointer-events-auto fixed inset-0 isolate z-[var(--z-dialog)] flex h-full w-full items-center justify-center bg-night/60 backdrop-blur-[3px]"
           variants={scrimFade}
           initial="hidden"
           animate="visible"

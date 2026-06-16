@@ -1,0 +1,15 @@
+{
+  "name": "Lumi AI",
+  "short_name": "Lumi",
+  "description": "Upload your study materials and Lumi turns them into conversations, quizzes, flashcards, and review that sticks.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3edde",
+  "theme_color": "#f3edde",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/apple-touch-icon.png", "type": "image/png", "sizes": "180x180" },
+    { "src": "/logo.png", "type": "image/png", "sizes": "1024x1024", "purpose": "any maskable" }
+  ]
+}

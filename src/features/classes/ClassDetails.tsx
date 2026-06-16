@@ -389,32 +389,50 @@ const ClassDetails = ({ classData, onBack }: Props) => {
 
   const handleConfirmUpload = async () => {
     const { file, pendingFiles, currentIndex } = uploadConfirmData;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    setUploadConfirmData({ ...uploadConfirmData, isOpen: false });
 
-    setUploadConfirmData({
-      ...uploadConfirmData,
-      isOpen: false,
-    });
+    let user: User | null = null;
+    try {
+      ({
+        data: { user },
+      } = await supabase.auth.getUser());
+    } catch (err) {
+      console.error("Error getting user for upload:", err);
+    }
+    if (!user) {
+      // Couldn't confirm the session (e.g. offline) - clear the spinner instead
+      // of leaving the dropzone stuck, and tell the user.
+      setUploading(false);
+      setErrorDialog({
+        isOpen: true,
+        title: "Upload failed",
+        message: "We couldn't verify your session. Please try again.",
+      });
+      return;
+    }
 
-    await uploadSingleFile(file as File, user as User);
-
-    processNextFile(pendingFiles, currentIndex + 1, user as User);
+    await uploadSingleFile(file as File, user);
+    processNextFile(pendingFiles, currentIndex + 1, user);
   };
 
   const handleCancelUpload = async () => {
     const { pendingFiles, currentIndex } = uploadConfirmData;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    setUploadConfirmData({ ...uploadConfirmData, isOpen: false });
 
-    setUploadConfirmData({
-      ...uploadConfirmData,
-      isOpen: false,
-    });
+    let user: User | null = null;
+    try {
+      ({
+        data: { user },
+      } = await supabase.auth.getUser());
+    } catch (err) {
+      console.error("Error getting user for upload:", err);
+    }
+    if (!user) {
+      setUploading(false);
+      return;
+    }
 
-    processNextFile(pendingFiles, currentIndex + 1, user as User);
+    processNextFile(pendingFiles, currentIndex + 1, user);
   };
 
   const toggleMenu = () => {
@@ -586,11 +604,8 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                   className={`${UI.overline} mb-1 flex flex-wrap items-center gap-x-2`}
                 >
                   <span>Class record</span>
-                  <span aria-hidden="true" className="text-ink/30">
-                    ·
-                  </span>
                 </p>
-                <p className="m-0 font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
+                <p className="m-0 break-words font-display text-[28px] font-semibold leading-[1.15] tracking-[-0.01em] text-ink max-md:text-[23px]">
                   {classData.name}
                 </p>
               </div>

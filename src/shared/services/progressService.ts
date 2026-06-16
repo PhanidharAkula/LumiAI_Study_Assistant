@@ -74,6 +74,32 @@ function computeStreaks(dateKeys: string[]): { current: number; longest: number 
   return { current, longest: Math.max(longest, current) };
 }
 
+// Row shapes for the queries below - they document the schema this service
+// reads and give it compile-time checking. (Full DB-verified types would come
+// from `supabase gen types typescript`; these mirror src/scripts/*.sql.)
+interface ClassRow {
+  id: string;
+  name: string;
+}
+interface DeckRow {
+  id: string;
+  class_id: string | null;
+  num_cards: number | null;
+  created_at: string | null;
+}
+interface ProgressSrsRow {
+  deck_id: string;
+  interval_days: number | null;
+  last_reviewed_at: string | null;
+}
+interface QuizRow {
+  score: { percentage?: number } | null;
+  created_at: string | null;
+}
+interface DatedRow {
+  created_at: string | null;
+}
+
 export const getProgress = async (): Promise<Progress | null> => {
   const empty: Progress = {
     hasActivity: false,
@@ -92,31 +118,53 @@ export const getProgress = async (): Promise<Progress | null> => {
     } = await supabase.auth.getUser();
     if (!user) return empty;
 
-    const [
-      { data: classes },
-      { data: decks },
-      { data: srs },
-      { data: quizzes },
-      { data: convos },
-      { data: notes },
-    ] = await Promise.all([
-      supabase.from("classes").select("id, name").eq("user_id", user.id),
+    const queries = await Promise.allSettled([
+      supabase
+        .from("classes")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .returns<ClassRow[]>(),
       supabase
         .from("flashcard_history")
         .select("id, class_id, num_cards, created_at")
-        .eq("user_id", user.id),
+        .eq("user_id", user.id)
+        .returns<DeckRow[]>(),
       supabase
         .from("flashcard_srs")
         .select("deck_id, interval_days, last_reviewed_at")
-        .eq("user_id", user.id),
-      supabase.from("quiz_history").select("score, created_at").eq("user_id", user.id),
-      supabase.from("conversations").select("created_at").eq("user_id", user.id),
-      supabase.from("notes").select("created_at").eq("user_id", user.id),
+        .eq("user_id", user.id)
+        .returns<ProgressSrsRow[]>(),
+      supabase
+        .from("quiz_history")
+        .select("score, created_at")
+        .eq("user_id", user.id)
+        .returns<QuizRow[]>(),
+      supabase
+        .from("conversations")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .returns<DatedRow[]>(),
+      supabase
+        .from("notes")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .returns<DatedRow[]>(),
     ]);
 
-    const srsRows = srs ?? [];
-    const quizRows = quizzes ?? [];
-    const deckRows = decks ?? [];
+    // One degraded table shouldn't blank the whole screen - treat any failed
+    // query (rejected promise OR query error) as empty and carry on with the rest.
+    const rows = <T>(i: number): T[] => {
+      const r = queries[i];
+      return r.status === "fulfilled"
+        ? ((r.value as { data: T[] | null }).data ?? [])
+        : [];
+    };
+    const classes = rows<ClassRow>(0);
+    const deckRows = rows<DeckRow>(1);
+    const srsRows = rows<ProgressSrsRow>(2);
+    const quizRows = rows<QuizRow>(3);
+    const convos = rows<DatedRow>(4);
+    const notes = rows<DatedRow>(5);
 
     // ---- Streak: every action that counts as "studying" ----
     const activityDates: string[] = [];

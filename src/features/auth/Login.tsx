@@ -73,7 +73,7 @@ const Login = () => {
       });
       if (error) throw error;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError("We couldn't start Google sign in. Please try again.");
       setLoading(false);
     }
   };

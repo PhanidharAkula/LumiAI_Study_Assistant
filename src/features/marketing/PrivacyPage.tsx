@@ -9,7 +9,7 @@ const PrivacyPage = () => {
       </p>
 
       <p>
-        LumiAI ("LumiAI", "we", "us", or "our") operates the LumiAI study
+        Lumi AI ("Lumi AI", "we", "us", or "our") operates the Lumi AI study
         assistant at studywithlumi.com (the "Service"). This Privacy Policy
         explains what information we collect, how we use it, and the choices you
         have.

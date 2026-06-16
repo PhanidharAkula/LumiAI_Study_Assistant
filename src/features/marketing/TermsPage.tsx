@@ -9,14 +9,14 @@ const TermsPage = () => {
       </p>
 
       <p>
-        These Terms of Service ("Terms") govern your use of LumiAI (the
+        These Terms of Service ("Terms") govern your use of Lumi AI (the
         "Service") at studywithlumi.com. By using the Service, you agree to
         these Terms. If you do not agree, please do not use the Service.
       </p>
 
       <h2>The Service</h2>
       <p>
-        LumiAI is an AI-powered study assistant that helps you organize study
+        Lumi AI is an AI-powered study assistant that helps you organize study
         materials and generate explanations, quizzes, and flashcards.
       </p>
 
@@ -58,7 +58,7 @@ const TermsPage = () => {
       <h2>Intellectual property</h2>
       <p>
         The Service, including its software, design, and branding, is owned by
-        LumiAI and protected by applicable laws. These Terms do not grant you
+        Lumi AI and protected by applicable laws. These Terms do not grant you
         any rights to our trademarks or branding.
       </p>
 
@@ -78,7 +78,7 @@ const TermsPage = () => {
 
       <h2>Limitation of liability</h2>
       <p>
-        To the fullest extent permitted by law, LumiAI will not be liable for
+        To the fullest extent permitted by law, Lumi AI will not be liable for
         any indirect, incidental, or consequential damages arising from your use
         of the Service.
       </p>

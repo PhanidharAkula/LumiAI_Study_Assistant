@@ -21,7 +21,7 @@ import {
 } from "@shared/components/atlas";
 import { BackButton, Button, IconButton } from "@shared/components/controls";
 import { PageBackdrop } from "@shared/components/PageBackdrop";
-import { DUR, fadeRise, pressLift, stagger } from "@shared/motion";
+import { fadeRise, pressLift, stagger } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 import { resolveStudyFiles } from "@features/study/resolveStudyFiles";
 import { isSupportedForAI } from "@shared/lib/fileExtract";
@@ -209,7 +209,7 @@ const ResultsConstellation = ({
       hashSeed(questions.map((q) => q.question).join("|") || "expedition")
     );
     const n = questions.length;
-    // Stars pack tighter as expeditions grow (10–100 questions).
+    // Stars pack tighter as expeditions grow (5-50 questions).
     const minDist = Math.max(4, 26 / Math.sqrt(Math.max(n, 1)));
     const pts: { x: number; y: number; r: number }[] = [];
     let guard = 0;
@@ -661,22 +661,45 @@ CRITICAL JSON FORMATTING RULES:
       );
 
       // Ensure all questions have required fields
-      parsedQuiz.questions = parsedQuiz.questions.map(
-        (q: any, idx: number) => ({
+      parsedQuiz.questions = parsedQuiz.questions.map((q: any, idx: number) => {
+        const type = q.type || "multiple-choice";
+        const options =
+          q.options && q.options.length
+            ? q.options
+            : type === "true-false"
+              ? ["True", "False"]
+              : [];
+        let correctAnswer = q.correctAnswer ?? 0;
+        // The model is asked to return the option INDEX for choice questions, but
+        // it sometimes returns the option text (e.g. "True"). Grading compares
+        // indices, so map any text answer back to its index to stay correct.
+        if (
+          (type === "multiple-choice" || type === "true-false") &&
+          typeof correctAnswer === "string" &&
+          !/^\d+$/.test(correctAnswer.trim())
+        ) {
+          const matchIdx = options.findIndex(
+            (o: any) => normalizeAnswer(o) === normalizeAnswer(correctAnswer)
+          );
+          if (matchIdx >= 0) correctAnswer = matchIdx;
+        }
+        return {
           id: q.id || idx + 1,
-          type: q.type || "multiple-choice",
+          type,
           question: q.question || "Question text missing",
-          options: q.options || [],
-          correctAnswer: q.correctAnswer ?? 0,
+          options,
+          correctAnswer,
           explanation: q.explanation || "No explanation provided",
           points: q.points || range.min, // Default to minimum points for the difficulty level
-        })
-      );
+        };
+      });
 
       setCurrentQuiz({
         ...parsedQuiz,
         difficulty,
-        numQuestions,
+        // Persist the ACTUAL number of questions the model returned (it may
+        // differ from the requested count), so history/progress stay accurate.
+        numQuestions: parsedQuiz.questions.length,
         selectedFiles,
         classId: classData.id,
         className: classData.name,
@@ -768,7 +791,8 @@ CRITICAL JSON FORMATTING RULES:
     const scoreData = {
       totalPoints,
       earnedPoints,
-      percentage: Math.round((earnedPoints / totalPoints) * 100),
+      percentage:
+        totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0,
       correctCount: Object.values(results).filter((r) => r.isCorrect).length,
       totalQuestions: currentQuiz.questions.length,
       results,
@@ -919,7 +943,7 @@ CRITICAL JSON FORMATTING RULES:
   // the tree, it stays viewport-anchored and full-screen on refresh and click.
   return createPortal(
     <motion.div
-      className={`fixed inset-0 z-1000 flex flex-col overflow-hidden transition-colors duration-700 ${
+      className={`fixed inset-0 z-[var(--z-overlay)] flex flex-col overflow-hidden transition-colors duration-700 ${
         isNight ? "bg-night" : "atlas-sky"
       }`}
       initial={{ opacity: 0 }}
@@ -1089,7 +1113,7 @@ CRITICAL JSON FORMATTING RULES:
             >
               {/* Configuration Cards Grid */}
               <motion.div
-                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-3.75 items-stretch mb-5 flex-1 max-[1024px]:gap-5 max-md:flex max-md:flex-col max-md:gap-3"
+                className="grid grid-cols-3 grid-rows-[1fr_1fr] gap-3.75 items-stretch mb-5 flex-1 max-[1024px]:grid-cols-2 max-[1024px]:grid-rows-[auto] max-[1024px]:gap-4 max-md:flex max-md:flex-col max-md:gap-3"
                 variants={stagger()}
                 initial="hidden"
                 animate="visible"
@@ -1176,7 +1200,7 @@ CRITICAL JSON FORMATTING RULES:
                     <h3 className={CONFIG_H3}>Questions</h3>
                   </div>
                   <div className="grid grid-cols-3 gap-2.5 max-md:gap-2 max-[480px]:grid-cols-2">
-                    {[10, 20, 30, 40, 50, 100].map((num) => (
+                    {[5, 10, 20, 30, 40, 50].map((num) => (
                       <motion.button
                         key={num}
                         className={numberBtn(numQuestions === num)}
@@ -1197,7 +1221,7 @@ CRITICAL JSON FORMATTING RULES:
 
                 {/* Files Selection Card - shared with Flashcards. */}
                 <FileSelectionCard
-                  className="col-3 row-[1/3]"
+                  className="col-3 row-[1/3] max-[1024px]:col-[1/3] max-[1024px]:row-3"
                   files={
                     (classData?.files?.filter((f: any) =>
                       isSupportedForAI(f.name)
@@ -1526,7 +1550,7 @@ CRITICAL JSON FORMATTING RULES:
                 {/* Mobile-only action bar: the desktop sidebar that holds
                     Submit/Quit is display:none ≤768px, so surface them here in a
                     fixed bottom bar (otherwise a quiz can't be submitted on a phone). */}
-                <div className="hidden max-md:flex fixed bottom-0 left-0 right-0 z-100 gap-2 p-3 bg-night-2/95 backdrop-blur-[2px] border-0 border-t border-solid border-line-night">
+                <div className="hidden max-md:flex fixed bottom-0 left-0 right-0 z-100 gap-2 p-3 pb-[max(12px,env(safe-area-inset-bottom))] bg-night-2/95 backdrop-blur-[2px] border-0 border-t border-solid border-line-night">
                   <motion.button
                     whileTap={{ scale: 0.98 }}
                     className={`${NIGHT_QUIT_BTN} flex-1 py-3 px-4 text-[15px] font-semibold`}

@@ -113,9 +113,14 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
     }
 
     if (file.type?.includes("pdf")) {
+      // Defense-in-depth for user-uploaded PDFs: the file is served from a
+      // cross-origin signed URL (already isolated from the app origin); the
+      // sandbox additionally blocks it from navigating/framing the parent while
+      // still allowing the browser's PDF viewer to run.
       return (
         <iframe
           src={`${url}#toolbar=0`}
+          sandbox="allow-same-origin allow-scripts allow-popups allow-downloads"
           className="h-full w-full border-none"
           onLoad={() => setLoading(false)}
           title={file.name}
@@ -195,7 +200,7 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-1000 flex items-center justify-center bg-night/70 backdrop-blur-[3px]"
+      className="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-night/70 backdrop-blur-[3px]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
