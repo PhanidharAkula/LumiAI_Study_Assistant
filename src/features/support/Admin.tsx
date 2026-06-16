@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@shared/lib/supabaseClient";
+import type { Json } from "@shared/lib/database.types";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
@@ -492,7 +493,11 @@ export default function Admin() {
   async function updateSetting(key: string, value: unknown) {
     const { error: updErr } = await supabase
       .from("app_settings")
-      .upsert({ key, value, updated_at: new Date().toISOString() });
+      .upsert({
+        key,
+        value: value as unknown as Json,
+        updated_at: new Date().toISOString(),
+      });
     if (updErr) console.error(`Error updating ${key}:`, updErr);
     return !updErr;
   }
@@ -558,7 +563,8 @@ export default function Admin() {
       make_admin: makeAdmin,
     });
 
-    if (error || (data && data.ok === false)) {
+    const result = data as { ok?: boolean; error?: string } | null;
+    if (error || (result && result.ok === false)) {
       console.error("admin_set_user_admin failed:", error || data);
       // Revert on failure.
       setUsers((prev) =>
@@ -611,9 +617,10 @@ export default function Admin() {
         );
       }
 
-      if (rpcData && rpcData.ok === false) {
+      const rpcResult = rpcData as { ok?: boolean; error?: string } | null;
+      if (rpcResult && rpcResult.ok === false) {
         throw new Error(
-          `User deletion failed: ${rpcData.error || "Unknown error"}`
+          `User deletion failed: ${rpcResult.error || "Unknown error"}`
         );
       }
 

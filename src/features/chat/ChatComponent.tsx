@@ -1744,7 +1744,7 @@ const ChatComponent = ({
           .from("conversations")
           .select("*")
           .eq("session_id", conversationPair.session_id)
-          .eq("user_id", user?.id)
+          .eq("user_id", user?.id as string)
           .order("created_at", { ascending: true });
 
         if (!sessionError && sessionRows && sessionRows.length) {

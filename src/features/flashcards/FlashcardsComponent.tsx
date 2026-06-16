@@ -229,7 +229,7 @@ const FlashcardsComponent = ({
         .limit(20);
 
       if (!error && data) {
-        setFlashcardHistory(data);
+        setFlashcardHistory(data as unknown as FlashcardHistoryItem[]);
       }
     } catch (error) {
       console.error("Error loading flashcard history:", error);
@@ -433,7 +433,7 @@ CRITICAL JSON FORMATTING RULES:
             cards: parsedData.cards,
             num_cards: parsedData.cards.length,
             card_style: cardStyle,
-            source_files: selectedFileNames,
+            source_files: selectedFileNames as string[],
           });
 
         // Saving is best-effort (the deck opens for study either way), but
@@ -558,7 +558,10 @@ CRITICAL JSON FORMATTING RULES:
 
   const handleDeleteHistory = async (deckId: string | null) => {
     try {
-      await supabase.from("flashcard_history").delete().eq("id", deckId);
+      await supabase
+        .from("flashcard_history")
+        .delete()
+        .eq("id", deckId as string);
       loadFlashcardHistory();
       setDeleteConfirmDialog({ isOpen: false, deckId: null });
     } catch (error) {

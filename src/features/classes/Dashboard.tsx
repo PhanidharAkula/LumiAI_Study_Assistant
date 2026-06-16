@@ -346,7 +346,7 @@ const Dashboard = ({ session }: Props) => {
           name: updatedClass.name,
           description: updatedClass.description,
         })
-        .eq("id", updatedClass.id);
+        .eq("id", updatedClass.id as string);
 
       if (error) throw error;
 
@@ -372,7 +372,7 @@ const Dashboard = ({ session }: Props) => {
       const { data: files, error: filesError } = await supabase
         .from("files")
         .select("id, path")
-        .eq("class_id", id);
+        .eq("class_id", id as string);
 
       if (filesError) throw filesError;
 
@@ -391,7 +391,7 @@ const Dashboard = ({ session }: Props) => {
         const { error: filesDeleteError } = await supabase
           .from("files")
           .delete()
-          .eq("class_id", id);
+          .eq("class_id", id as string);
 
         if (filesDeleteError)
           console.error(
@@ -400,7 +400,10 @@ const Dashboard = ({ session }: Props) => {
           );
       }
 
-      const { error } = await supabase.from("classes").delete().eq("id", id);
+      const { error } = await supabase
+        .from("classes")
+        .delete()
+        .eq("id", id as string);
 
       if (error) throw error;
 
@@ -505,9 +508,10 @@ const Dashboard = ({ session }: Props) => {
       console.log("RPC response:", rpcData);
 
       // Check if the RPC returned an error
-      if (rpcData && rpcData.ok === false) {
+      const rpcResult = rpcData as { ok?: boolean; error?: string } | null;
+      if (rpcResult && rpcResult.ok === false) {
         throw new Error(
-          `Account deletion failed: ${rpcData.error || "Unknown error"}`
+          `Account deletion failed: ${rpcResult.error || "Unknown error"}`
         );
       }
 
@@ -743,7 +747,7 @@ const Dashboard = ({ session }: Props) => {
                     const { data: files } = await supabase
                       .from("files")
                       .select("id")
-                      .eq("class_id", classItem.id);
+                      .eq("class_id", classItem.id as string);
                     const fileCount = files ? files.length : 0;
                     setClassDeleteConfirm({
                       isOpen: true,

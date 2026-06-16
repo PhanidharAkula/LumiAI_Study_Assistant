@@ -136,7 +136,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       const { data, error } = await supabase
         .from("files")
         .select("*")
-        .eq("class_id", classData.id)
+        .eq("class_id", classData.id as string)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -175,7 +175,10 @@ const ClassDetails = ({ classData, onBack }: Props) => {
         await supabase.storage.from("files").remove([filePath]);
       }
 
-      const { error } = await supabase.from("files").delete().eq("id", fileId);
+      const { error } = await supabase
+        .from("files")
+        .delete()
+        .eq("id", fileId as string);
 
       if (error) throw error;
 
@@ -314,7 +317,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       const { data: existingFiles } = await supabase
         .from("files")
         .select("name")
-        .eq("class_id", classData!.id)
+        .eq("class_id", classData!.id as string)
         .eq("name", currentFile.name);
 
       if (existingFiles && existingFiles.length > 0) {
@@ -360,7 +363,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
         size: file.size,
         type: file.type,
         path: filePath,
-        class_id: classData!.id,
+        class_id: classData!.id as string,
         user_id: user.id,
       });
 

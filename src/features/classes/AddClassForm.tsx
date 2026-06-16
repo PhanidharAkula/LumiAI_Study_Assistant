@@ -118,7 +118,7 @@ const AddClassForm = ({
         if (insertError) throw insertError;
 
         if (typeof onClassCreated === "function") {
-          onClassCreated(data[0]);
+          onClassCreated(data![0] as ClassRecord);
         } else {
           console.warn("onClassCreated is not a function or not provided");
         }

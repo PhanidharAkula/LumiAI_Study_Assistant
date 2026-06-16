@@ -8,6 +8,7 @@ import {
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
+import type { Json } from "@shared/lib/database.types";
 import { fetchStreamingResponse } from "@shared/services/aiService";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import {
@@ -408,7 +409,7 @@ const QuizComponent = ({
         .limit(20);
 
       if (!error && data) {
-        setQuizHistory(data);
+        setQuizHistory(data as unknown as QuizHistoryItem[]);
       }
     } catch (error) {
       console.error("Error loading quiz history:", error);
@@ -820,7 +821,7 @@ CRITICAL JSON FORMATTING RULES:
             class_id: classData.id,
             quiz_data: quizDataWithFiles,
             user_answers: userAnswers,
-            score: scoreData,
+            score: scoreData as unknown as Json,
             created_at: new Date().toISOString(),
           });
 
