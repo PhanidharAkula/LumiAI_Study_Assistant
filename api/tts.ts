@@ -7,6 +7,7 @@
  * credits. All copy stays on-brand ("Lumi"), never naming the upstream service.
  */
 import { getAuthedUser } from "./_auth.js";
+import { rateLimit } from "./_ratelimit.js";
 
 const TTS_KEY = process.env.LUMI_TTS_KEY || "";
 // tts-1 is low-latency and consistent run-to-run (best for a back-and-forth
@@ -14,6 +15,10 @@ const TTS_KEY = process.env.LUMI_TTS_KEY || "";
 // little differently each time; tts-1-hd is higher quality but slower.
 const TTS_MODEL = process.env.LUMI_TTS_MODEL || "tts-1";
 const TTS_ENDPOINT = "https://api.openai.com/v1/audio/speech";
+
+// Per-user cap: max TTS calls per minute. Speech is synthesized per sentence,
+// so this is higher than chat. Override with LUMI_TTS_RATE_LIMIT.
+const TTS_RATE_LIMIT = Number(process.env.LUMI_TTS_RATE_LIMIT) || 60;
 
 // Bound spoken text so one request can't run up a large bill.
 const MAX_TTS_CHARS = 2000;
@@ -92,6 +97,12 @@ export default async function handler(req: any, res: any): Promise<void> {
           ? "Please sign in to use Lumi."
           : "Voice is temporarily unavailable.",
     });
+  }
+
+  // Per-user rate limit (no-op until a KV store is configured; fails open).
+  const rl = await rateLimit("tts", auth.userId, TTS_RATE_LIMIT, 60);
+  if (!rl.ok) {
+    return sendJson(res, 429, { error: "Voice is busy. Please wait a moment." });
   }
 
   let body: any;

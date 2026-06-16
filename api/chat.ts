@@ -10,6 +10,7 @@
  */
 import AI from "@anthropic-ai/sdk";
 import { getAuthedUser } from "./_auth.js";
+import { rateLimit } from "./_ratelimit.js";
 
 // The chat model id, supplied by the LUMI_MODEL env var.
 const MODEL = process.env.LUMI_MODEL || "";
@@ -23,6 +24,10 @@ const VOICE_MODEL = process.env.LUMI_VOICE_MODEL || "claude-haiku-4-5";
 // (and over-delays) lighter turns; "medium" keeps answer quality while trimming
 // latency on heavier questions. Tune to "low" for snappier, "high" for deeper.
 const CHAT_EFFORT = "medium";
+
+// Per-user cap: max chat/quiz/flashcard/voice-text calls per minute. Override
+// with LUMI_CHAT_RATE_LIMIT. Generous for a human; stops scripted abuse.
+const CHAT_RATE_LIMIT = Number(process.env.LUMI_CHAT_RATE_LIMIT) || 30;
 
 type Role = "user" | "assistant";
 type ContentPart =
@@ -154,6 +159,15 @@ export default async function handler(req: any, res: any): Promise<void> {
         auth.status === 401
           ? "Please sign in to use Lumi."
           : "Lumi is temporarily unavailable. Please try again soon.",
+    });
+  }
+
+  // Per-user rate limit (no-op until a KV store is configured; fails open).
+  const rl = await rateLimit("chat", auth.userId, CHAT_RATE_LIMIT, 60);
+  if (!rl.ok) {
+    return sendJson(res, 429, {
+      error:
+        "You're going a little fast for Lumi. Please wait a moment and try again.",
     });
   }
 
