@@ -1247,7 +1247,7 @@ const Dashboard = ({ session }: Props) => {
 
       {!selectedClass && hasLoaded && (
         <motion.div
-          className="pointer-events-none fixed bottom-0 left-0 z-100 flex w-full justify-center px-4 pb-7 max-md:p-3.75 max-md:bg-gradient-to-t max-md:from-cream max-md:via-cream/80 max-md:to-transparent max-[480px]:p-3"
+          className="pointer-events-none fixed bottom-0 left-0 z-100 flex w-full justify-center px-4 pb-7 max-md:p-3.75 max-md:bg-linear-to-t max-md:from-cream max-md:via-cream/80 max-md:to-transparent max-[480px]:p-3"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...spring.gentle, delay: 0.5 }}
