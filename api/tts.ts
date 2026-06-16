@@ -16,9 +16,11 @@ const TTS_KEY = process.env.LUMI_TTS_KEY || "";
 const TTS_MODEL = process.env.LUMI_TTS_MODEL || "tts-1";
 const TTS_ENDPOINT = "https://api.openai.com/v1/audio/speech";
 
-// Per-user cap: max TTS calls per minute. Speech is synthesized per sentence,
-// so this is higher than chat. Override with LUMI_TTS_RATE_LIMIT.
-const TTS_RATE_LIMIT = Number(process.env.LUMI_TTS_RATE_LIMIT) || 60;
+// Per-user fair-use limits: a generous DAILY budget plus a per-minute burst
+// guard. Speech is synthesized per sentence, so both are higher than chat.
+// Override via env; set BURST to 0 to disable the burst check.
+const TTS_DAILY = Number(process.env.LUMI_TTS_DAILY) || 600;
+const TTS_BURST = Number(process.env.LUMI_TTS_BURST ?? 60);
 
 // Bound spoken text so one request can't run up a large bill.
 const MAX_TTS_CHARS = 2000;
@@ -100,9 +102,17 @@ export default async function handler(req: any, res: any): Promise<void> {
   }
 
   // Per-user rate limit (no-op until a KV store is configured; fails open).
-  const rl = await rateLimit("tts", auth.userId, TTS_RATE_LIMIT, 60);
+  const rl = await rateLimit("tts", auth.userId, {
+    perDay: TTS_DAILY,
+    perMin: TTS_BURST,
+  });
   if (!rl.ok) {
-    return sendJson(res, 429, { error: "Voice is busy. Please wait a moment." });
+    return sendJson(res, 429, {
+      error:
+        rl.scope === "day"
+          ? "Voice is unavailable for the rest of today."
+          : "Voice is busy. Please wait a moment.",
+    });
   }
 
   let body: any;

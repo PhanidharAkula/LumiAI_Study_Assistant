@@ -25,9 +25,12 @@ const VOICE_MODEL = process.env.LUMI_VOICE_MODEL || "claude-haiku-4-5";
 // latency on heavier questions. Tune to "low" for snappier, "high" for deeper.
 const CHAT_EFFORT = "medium";
 
-// Per-user cap: max chat/quiz/flashcard/voice-text calls per minute. Override
-// with LUMI_CHAT_RATE_LIMIT. Generous for a human; stops scripted abuse.
-const CHAT_RATE_LIMIT = Number(process.env.LUMI_CHAT_RATE_LIMIT) || 30;
+// Per-user fair-use limits: a generous DAILY budget (the real cost ceiling - a
+// serious learner won't reach it) plus a light per-minute burst guard so a
+// script can't spend it all at once. Override via env; set BURST to 0 to disable
+// the burst check.
+const CHAT_DAILY = Number(process.env.LUMI_CHAT_DAILY) || 300;
+const CHAT_BURST = Number(process.env.LUMI_CHAT_BURST ?? 30);
 
 type Role = "user" | "assistant";
 type ContentPart =
@@ -163,11 +166,16 @@ export default async function handler(req: any, res: any): Promise<void> {
   }
 
   // Per-user rate limit (no-op until a KV store is configured; fails open).
-  const rl = await rateLimit("chat", auth.userId, CHAT_RATE_LIMIT, 60);
+  const rl = await rateLimit("chat", auth.userId, {
+    perDay: CHAT_DAILY,
+    perMin: CHAT_BURST,
+  });
   if (!rl.ok) {
     return sendJson(res, 429, {
       error:
-        "You're going a little fast for Lumi. Please wait a moment and try again.",
+        rl.scope === "day"
+          ? "You've reached today's Lumi usage limit - it resets tomorrow."
+          : "You're going a little fast for Lumi. Please wait a moment and try again.",
     });
   }
 

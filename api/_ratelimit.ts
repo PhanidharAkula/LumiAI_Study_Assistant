@@ -1,68 +1,92 @@
 /**
  * Per-user rate limiter for the serverless API routes.
  *
- * Caps how many times a single signed-in user can hit the AI / TTS endpoints in
- * a short window, so one account can't script thousands of calls and run up
- * provider cost. Backed by a Redis-compatible REST store (Vercel KV or Upstash)
- * via plain fetch - no SDK dependency.
+ * Two windows per user so heavy, legitimate study isn't punished while abuse is
+ * still bounded:
+ *   - a generous DAILY budget = the real fair-use / cost ceiling (a serious
+ *     learner won't reach it), and
+ *   - a light per-MINUTE burst guard so a script can't spend the whole daily
+ *     budget - or spike provider cost - in a single second. A human never gets
+ *     near the burst (it's ~a request every 2s, sustained). Set perMin to 0 to
+ *     disable the burst check entirely.
  *
- * FAILS OPEN: if the store isn't configured (no env vars) or is unreachable, it
- * allows the request. A KV outage (or not having set one up yet) must never
- * block a paying user from chatting - we'd rather lose limiting than the app.
+ * Backed by a Redis-compatible REST store (Vercel KV / Upstash) via plain fetch.
+ * FAILS OPEN: if the store isn't configured or is unreachable, requests are
+ * allowed - a KV outage must never block a real user.
  *
- * Setup to ACTIVATE: create a Vercel KV / Upstash store and connect it to the
- * project; that injects KV_REST_API_URL + KV_REST_API_TOKEN (or the
- * UPSTASH_REDIS_REST_* equivalents). Until then this is a no-op.
+ * Activate by connecting a Vercel KV / Upstash store to the project (injects
+ * KV_REST_API_URL + KV_REST_API_TOKEN, or the UPSTASH_REDIS_REST_* names).
  */
 const KV_URL =
   process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "";
 const KV_TOKEN =
   process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "";
 
+const DAY_SEC = 86400;
+const MIN_SEC = 60;
+
 export interface RateLimitResult {
-  /** false => over the limit; the caller should respond 429. */
+  /** false => over a limit; the caller should respond 429. */
   ok: boolean;
-  /** Requests left in the current window (best-effort). */
-  remaining: number;
+  /** Which window was exceeded, for a tailored message. */
+  scope?: "minute" | "day";
+}
+
+export interface RateLimitOptions {
+  /** Max requests per rolling day - the fair-use / cost ceiling. */
+  perDay: number;
+  /** Max requests per minute - anti-flood burst guard. 0 disables it. */
+  perMin?: number;
 }
 
 /**
- * Fixed-window counter: allow up to `limit` requests per `windowSec` per user.
- * One round-trip (INCR + first-hit EXPIRE) via the Upstash REST pipeline.
+ * Fixed-window counters (one per window) for a user. One round-trip via the
+ * Upstash REST pipeline: INCR each counter, and set its TTL only on the first
+ * hit (EXPIRE ... NX) so the window is fixed, not sliding.
  */
 export async function rateLimit(
   bucket: string,
   userId: string,
-  limit: number,
-  windowSec: number
+  { perDay, perMin = 0 }: RateLimitOptions
 ): Promise<RateLimitResult> {
-  if (!KV_URL || !KV_TOKEN) return { ok: true, remaining: limit }; // not configured
-  const key = `rl:${bucket}:${userId}`;
+  if (!KV_URL || !KV_TOKEN) return { ok: true }; // not configured -> off
+  const dKey = `rl:${bucket}:d:${userId}`;
+  const mKey = `rl:${bucket}:m:${userId}`;
   try {
-    const resp = await fetch(`${KV_URL}/pipeline`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${KV_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      // INCR returns the new count; EXPIRE ... NX sets the TTL only on the first
-      // hit of the window, so the window is fixed (it doesn't slide on each call).
-      body: JSON.stringify([
-        ["INCR", key],
-        ["EXPIRE", key, String(windowSec), "NX"],
-      ]),
-      signal: AbortSignal.timeout(2000),
-    });
-    if (!resp.ok) throw new Error(`KV ${resp.status}`);
-    const data = (await resp.json()) as Array<{ result?: unknown }>;
-    const count = Number(data?.[0]?.result ?? 0);
-    return { ok: count <= limit, remaining: Math.max(0, limit - count) };
+    const cmds: string[][] = [
+      ["INCR", dKey],
+      ["EXPIRE", dKey, String(DAY_SEC), "NX"],
+    ];
+    if (perMin > 0) {
+      cmds.push(["INCR", mKey], ["EXPIRE", mKey, String(MIN_SEC), "NX"]);
+    }
+    const data = (await kvPipeline(cmds)) as Array<{ result?: unknown }>;
+    const dayCount = Number(data?.[0]?.result ?? 0);
+    if (dayCount > perDay) return { ok: false, scope: "day" };
+    if (perMin > 0 && Number(data?.[2]?.result ?? 0) > perMin) {
+      return { ok: false, scope: "minute" };
+    }
+    return { ok: true };
   } catch (err) {
-    // Store down / misconfigured -> fail open so chat keeps working.
+    // Store down / misconfigured -> fail open so the app keeps working.
     console.error(
       "[ratelimit] backend error, allowing request:",
       (err as Error)?.message
     );
-    return { ok: true, remaining: limit };
+    return { ok: true };
   }
+}
+
+async function kvPipeline(commands: string[][]): Promise<unknown> {
+  const resp = await fetch(`${KV_URL}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${KV_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commands),
+    signal: AbortSignal.timeout(2000),
+  });
+  if (!resp.ok) throw new Error(`KV ${resp.status}`);
+  return resp.json();
 }
