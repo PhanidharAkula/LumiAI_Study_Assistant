@@ -3,16 +3,16 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-// Dev-only plugin: serve the /api/chat serverless function through Vite's dev
-// server so AI works locally without `vercel dev`. The API key stays
-// server-side (it lives in process.env, never in the client bundle).
+// Dev-only plugin: serve the /api/* serverless functions (chat, tts, usage)
+// through Vite's dev server so AI + the usage bar work locally without
+// `vercel dev`. The API key stays server-side (process.env, never the bundle).
 function devApiPlugin() {
   return {
     name: "lumi-dev-api",
     apply: "serve",
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        const route = (req.url || "").match(/^\/api\/(chat|tts)(?:[/?]|$)/);
+        const route = (req.url || "").match(/^\/api\/(chat|tts|usage)(?:[/?]|$)/);
         if (!route) return next();
         try {
           const mod = await server.ssrLoadModule(`/api/${route[1]}.ts`);
