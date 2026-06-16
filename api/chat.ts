@@ -9,7 +9,7 @@
  * and through the Vite dev middleware (which does not) - see vite.config.js.
  */
 import AI from "@anthropic-ai/sdk";
-import { getAuthedUser } from "./_auth";
+import { getAuthedUser } from "./_auth.js";
 
 // The chat model id, supplied by the LUMI_MODEL env var.
 const MODEL = process.env.LUMI_MODEL || "";

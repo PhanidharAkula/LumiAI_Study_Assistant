@@ -6,7 +6,7 @@
  * name. Auth-gated like /api/chat so it can't be called anonymously to burn
  * credits. All copy stays on-brand ("Lumi"), never naming the upstream service.
  */
-import { getAuthedUser } from "./_auth";
+import { getAuthedUser } from "./_auth.js";
 
 const TTS_KEY = process.env.LUMI_TTS_KEY || "";
 // tts-1 is low-latency and consistent run-to-run (best for a back-and-forth
