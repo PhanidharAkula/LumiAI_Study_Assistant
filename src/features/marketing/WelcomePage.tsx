@@ -10,6 +10,7 @@ import {
   starPath,
 } from "@shared/components/atlas";
 import { plateLift, pressLift } from "@shared/motion";
+import { usePageMeta } from "@shared/hooks/usePageMeta";
 
 /* Hand-engraved feature emblems - stroke-drawn instruments, one gold accent
    each. Replaces the old Lottie animations (and the ~520 KB of JSON they
@@ -108,6 +109,7 @@ const FEATURES = [
 ];
 
 const WelcomePage = ({ session }: { session?: Session | null }) => {
+  usePageMeta({ title: "Lumi AI - Your AI Study Assistant", path: "/" });
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {

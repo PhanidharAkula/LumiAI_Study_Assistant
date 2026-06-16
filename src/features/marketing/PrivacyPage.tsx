@@ -1,6 +1,8 @@
 import LegalLayout from "./LegalLayout";
+import { usePageMeta } from "@shared/hooks/usePageMeta";
 
 const PrivacyPage = () => {
+  usePageMeta({ title: "Privacy Policy - Lumi AI", path: "/privacy" });
   return (
     <LegalLayout>
       <h1>Privacy Policy</h1>

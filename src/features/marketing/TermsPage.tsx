@@ -1,6 +1,8 @@
 import LegalLayout from "./LegalLayout";
+import { usePageMeta } from "@shared/hooks/usePageMeta";
 
 const TermsPage = () => {
+  usePageMeta({ title: "Terms of Service - Lumi AI", path: "/terms" });
   return (
     <LegalLayout>
       <h1>Terms of Service</h1>

@@ -10,6 +10,7 @@
     <!-- Favicons (served from /public at the site root) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#f3edde" />
     <link rel="manifest" href="/site.webmanifest" />
@@ -39,6 +40,39 @@
     <meta name="twitter:title" content="Lumi AI - Your AI Study Assistant" />
     <meta name="twitter:description" content="Upload your study materials and Lumi turns them into conversations, quizzes, flashcards, and review that sticks." />
     <meta name="twitter:image" content="https://www.studywithlumi.com/og-image.png" />
+
+    <!-- Structured data: brand + logo, site, and app (helps Google show the
+         correct name/logo and understand the product). -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.studywithlumi.com/#organization",
+            "name": "Lumi AI",
+            "url": "https://www.studywithlumi.com/",
+            "logo": "https://www.studywithlumi.com/logo.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.studywithlumi.com/#website",
+            "name": "Lumi AI",
+            "url": "https://www.studywithlumi.com/",
+            "publisher": { "@id": "https://www.studywithlumi.com/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Lumi AI",
+            "url": "https://www.studywithlumi.com/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web",
+            "description": "Upload your study materials and Lumi turns them into conversations, quizzes, flashcards, and review that sticks.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

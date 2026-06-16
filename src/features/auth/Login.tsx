@@ -11,6 +11,7 @@ import {
 } from "@shared/components/atlas";
 import { BackButton } from "@shared/components/controls";
 import { fadeRise, pressLift } from "@shared/motion";
+import { usePageMeta } from "@shared/hooks/usePageMeta";
 
 const GoogleG = () => (
   <svg viewBox="0 0 48 48" width="19" height="19" aria-hidden="true">
@@ -34,6 +35,7 @@ const GoogleG = () => (
 );
 
 const Login = () => {
+  usePageMeta({ title: "Sign in - Lumi AI", path: "/login" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
