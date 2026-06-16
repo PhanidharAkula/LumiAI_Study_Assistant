@@ -11,6 +11,7 @@ import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
 import { PageBackdrop } from "@shared/components/PageBackdrop";
+import { UsageBar } from "@shared/components/UsageBar";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { scrimFade, spring } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
@@ -2111,6 +2112,8 @@ const ChatComponent = ({
             </IconButton>
           )}
         </div>
+
+        <UsageBar variant="day" className="max-md:hidden" />
 
         {/* Plate label - purely decorative observatory register. */}
         <p

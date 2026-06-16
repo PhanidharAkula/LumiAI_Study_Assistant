@@ -14,6 +14,7 @@ import {
   starPath,
 } from "@shared/components/atlas";
 import { CloseButton } from "@shared/components/controls";
+import { UsageBar } from "@shared/components/UsageBar";
 import { keyPress, pressLift } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 
@@ -640,6 +641,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
             </div>
           )}
         </div>
+        <UsageBar variant="night" className="max-md:hidden" />
         <div className="flex items-center gap-2.5">
           <CloseButton
             variant="night"

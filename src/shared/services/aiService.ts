@@ -286,6 +286,11 @@ export const fetchStreamingResponse = async (
       }
     }
 
+    // The turn consumed tokens server-side - nudge any open usage bars to refetch.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("lumi:usage"));
+    }
+
     // A normal completion always ends with the server's [DONE] sentinel. If the
     // stream closed cleanly without it, the response was cut off (proxy timeout
     // or dropped connection) - surface a retryable error instead of saving a

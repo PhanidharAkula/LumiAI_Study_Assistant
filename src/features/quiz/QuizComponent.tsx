@@ -21,6 +21,7 @@ import {
   starPath,
 } from "@shared/components/atlas";
 import { BackButton, Button, IconButton } from "@shared/components/controls";
+import { UsageBar } from "@shared/components/UsageBar";
 import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { fadeRise, pressLift, stagger } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
@@ -990,6 +991,9 @@ CRITICAL JSON FORMATTING RULES:
             </p>
           </div>
         </div>
+
+        {/* Shared daily AI budget gauge - self-contained, render-only. */}
+        <UsageBar variant={isNight ? "night" : "day"} className="max-md:hidden" />
 
         {/* History - shared dropdown; rows are feature-owned via renderItem. */}
         <HistoryDropdown

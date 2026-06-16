@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import { TokenBudgetProvider } from "@shared/lib/tokenBudget";
 import "./index.css";
 import "./App.css";
 
@@ -10,7 +11,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter
       future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
     >
-      <App />
+      <TokenBudgetProvider>
+        <App />
+      </TokenBudgetProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
