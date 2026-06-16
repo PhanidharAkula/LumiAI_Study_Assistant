@@ -93,9 +93,9 @@ export class VoicePlayer {
   private drain(flushAll: boolean): void {
     let m: RegExpExecArray | null;
     while ((m = SENTENCE.exec(this.buffer))) {
-      const sentence = m[1].trim();
+      const sentence = m[1]!.trim();
       if (sentence.length < MIN_SENTENCE && !flushAll) break;
-      this.buffer = m[2];
+      this.buffer = m[2]!;
       this.enqueue(sentence);
     }
     if (flushAll) {

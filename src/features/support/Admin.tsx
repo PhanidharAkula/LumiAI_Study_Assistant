@@ -1448,7 +1448,7 @@ export default function Admin() {
                                       setAdminToggleConfirm({
                                         userId: u.id,
                                         userName:
-                                          u.full_name || u.email.split("@")[0],
+                                          u.full_name || u.email.split("@")[0]!,
                                         makeAdmin: !u.is_admin,
                                       })
                                     }
@@ -1479,7 +1479,7 @@ export default function Admin() {
                                       setDeleteConfirm({
                                         userId: u.id,
                                         userName:
-                                          u.full_name || u.email.split("@")[0],
+                                          u.full_name || u.email.split("@")[0]!,
                                         userEmail: u.email,
                                       })
                                     }
@@ -1589,7 +1589,7 @@ export default function Admin() {
                                   setAdminToggleConfirm({
                                     userId: u.id,
                                     userName:
-                                      u.full_name || u.email.split("@")[0],
+                                      u.full_name || u.email.split("@")[0]!,
                                     makeAdmin: !u.is_admin,
                                   })
                                 }
@@ -1620,7 +1620,7 @@ export default function Admin() {
                                   setDeleteConfirm({
                                     userId: u.id,
                                     userName:
-                                      u.full_name || u.email.split("@")[0],
+                                      u.full_name || u.email.split("@")[0]!,
                                     userEmail: u.email,
                                   })
                                 }

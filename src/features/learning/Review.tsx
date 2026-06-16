@@ -256,28 +256,28 @@ const Review = () => {
         ) : (
           <>
             <div
-              key={`${current.deckId}:${current.cardIndex}:${index}`}
+              key={`${current!.deckId}:${current!.cardIndex}:${index}`}
               className={`${UI.plate} flex min-h-60 cursor-default flex-col p-7 max-[600px]:p-5`}
             >
               <CornerTicks />
               <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <span className={`cursor-default ${UI.overlineMuted}`}>
-                  {current.className}
+                  {current!.className}
                 </span>
-                {current.srs === null && (
+                {current!.srs === null && (
                   <span className="rounded-full border border-solid border-gold-deep/40 bg-gold/15 px-2.5 py-0.75 font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-gold-deep">
                     New
                   </span>
                 )}
-                {current.category && (
+                {current!.category && (
                   <span className="rounded-full border border-solid border-verdi/30 bg-sage/25 px-2.5 py-0.75 font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-verdi">
-                    {current.category}
+                    {current!.category}
                   </span>
                 )}
               </div>
 
               <div className="flex flex-1 items-center justify-center whitespace-pre-wrap wrap-break-word py-2 text-center font-display text-[24px] font-semibold leading-[1.4] max-[600px]:text-[20px]">
-                {current.front}
+                {current!.front}
               </div>
 
               {flipped && (
@@ -287,7 +287,7 @@ const Review = () => {
                   <Starfield count={14} seed={9} />
                   <p className={`relative ${UI.overlineNight}`}>Answer</p>
                   <div className="relative mt-2.5 whitespace-pre-wrap wrap-break-word text-[16px] leading-[1.6] text-starlight">
-                    {current.back}
+                    {current!.back}
                   </div>
                 </div>
               )}

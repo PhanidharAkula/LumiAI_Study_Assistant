@@ -370,14 +370,14 @@ const ChatMessage = ({
     for (let i = 0; i < lines.length; i++) {
       if (
         i + 1 < lines.length &&
-        /\|/.test(lines[i]) &&
-        isTableSep(lines[i + 1])
+        /\|/.test(lines[i]!) &&
+        isTableSep(lines[i + 1]!)
       ) {
-        const rows: string[][] = [splitCells(lines[i])]; // header
+        const rows: string[][] = [splitCells(lines[i]!)]; // header
         i++; // skip the separator row
-        while (i + 1 < lines.length && /\|/.test(lines[i + 1])) {
+        while (i + 1 < lines.length && /\|/.test(lines[i + 1]!)) {
           i++;
-          rows.push(splitCells(lines[i]));
+          rows.push(splitCells(lines[i]!));
         }
         const cols = Math.max(...rows.map((r) => r.length));
         const widths: number[] = [];
@@ -388,14 +388,14 @@ const ChatMessage = ({
           tableOut.push(
             r
               .map((cell, c) =>
-                c < cols - 1 ? (cell || "").padEnd(widths[c]) : cell || ""
+                c < cols - 1 ? (cell || "").padEnd(widths[c]!) : cell || ""
               )
               .join("  ")
               .replace(/[ \t]+$/, "") // never leave trailing padding
           );
         }
       } else {
-        tableOut.push(lines[i]);
+        tableOut.push(lines[i]!);
       }
     }
     // Non-table math (table cells were already unwrapped above).

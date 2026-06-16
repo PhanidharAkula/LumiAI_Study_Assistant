@@ -228,7 +228,7 @@ const ResultsConstellation = ({
   }, [questions]);
 
   const charted = questions.map((q, i) => ({
-    pt: stars[i],
+    pt: stars[i]!,
     correct: !!results[q.id]?.isCorrect,
   }));
   const route = charted.filter((s) => s.correct);
@@ -494,7 +494,7 @@ const QuizComponent = ({
 
       const range = (
         pointRanges as Record<string, { min: number; max: number }>
-      )[difficulty];
+      )[difficulty]!;
 
       const prompt = `You are an expert quiz generator. Create a comprehensive ${difficulty} difficulty quiz with exactly ${numQuestions} questions based on the provided study materials: the text below, plus any attached images (photos, slides, or scanned/figure pages) - read those too.
 
@@ -1584,7 +1584,7 @@ CRITICAL JSON FORMATTING RULES:
                 {/* Left Side - Scrollable Review */}
                 <div className="flex flex-col gap-5 pb-15 overflow-y-auto h-[calc(100dvh-132px)] pr-2.5 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-md:w-full max-md:h-auto max-md:p-0 max-md:gap-2.5 max-md:overflow-y-visible max-[480px]:p-3">
                   {currentQuiz?.questions?.map((question, index) => {
-                    const result = quizScore.results[question.id];
+                    const result = quizScore.results[question.id]!;
                     return (
                       <div
                         key={question.id}

@@ -248,7 +248,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     if (started || !recognitionSupported) return;
     const voice = TTS_VOICES[voiceIndex]?.id || DEFAULT_TTS_VOICE;
     if (greetingRef.current?.voice === voice) return;
-    const text = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+    const text = GREETINGS[Math.floor(Math.random() * GREETINGS.length)]!;
     // Store the in-flight promise (not just the resolved blob) so the greeting
     // can await this single fetch even if Begin is clicked before it finishes -
     // it never falls back to a second, slower fetch.
@@ -324,7 +324,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     const greeting =
       greetingRef.current?.voice === voice
         ? greetingRef.current.text
-        : GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+        : GREETINGS[Math.floor(Math.random() * GREETINGS.length)]!;
     conversationHistoryRef.current = [{ role: "assistant", content: greeting }];
     speakLine(greeting);
   };
@@ -472,7 +472,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         setThinking(false);
         // Drop the user turn that got no reply so history stays alternating.
         const h = conversationHistoryRef.current;
-        if (h.length && h[h.length - 1].role === "user") h.pop();
+        if (h.length && h[h.length - 1]!.role === "user") h.pop();
         if (result.error) {
           speakLine(
             "Sorry, I'm having trouble responding right now. Please try again in a moment."

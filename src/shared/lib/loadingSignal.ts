@@ -26,7 +26,7 @@ let snapshot: { loading: boolean; label: string } = {
 const recompute = () => {
   const loading = entries.length > 0;
   // Most recently begun phase = the current (deepest) context to name.
-  const label = loading ? entries[entries.length - 1].label : DEFAULT_LABEL;
+  const label = loading ? entries[entries.length - 1]!.label : DEFAULT_LABEL;
   if (loading !== snapshot.loading || label !== snapshot.label) {
     snapshot = { loading, label };
   }

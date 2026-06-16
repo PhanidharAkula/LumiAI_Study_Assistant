@@ -50,7 +50,7 @@ const escStack: Array<() => void> = [];
 
 function onWindowEscape(e: KeyboardEvent) {
   if (e.key !== "Escape" || escStack.length === 0) return;
-  escStack[escStack.length - 1]();
+  escStack[escStack.length - 1]!();
 }
 
 export function useEscapeToClose(active: boolean, onClose: () => void): void {

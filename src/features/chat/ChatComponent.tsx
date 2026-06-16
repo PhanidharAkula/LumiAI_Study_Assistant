@@ -142,9 +142,9 @@ const THINKING_PHRASES = [
 // A random phrase from `arr`, avoiding `exclude` so the label never repeats
 // back-to-back.
 const randomPhrase = (arr: string[], exclude?: string): string => {
-  if (arr.length <= 1) return arr[0];
-  let pick = arr[Math.floor(Math.random() * arr.length)];
-  while (pick === exclude) pick = arr[Math.floor(Math.random() * arr.length)];
+  if (arr.length <= 1) return arr[0]!;
+  let pick = arr[Math.floor(Math.random() * arr.length)]!;
+  while (pick === exclude) pick = arr[Math.floor(Math.random() * arr.length)]!;
   return pick;
 };
 
@@ -155,7 +155,7 @@ const sanitizeAssistantResponse = (text: string): string => {
   const lines = text.split(/\r?\n/);
   let start = 0;
   for (let i = 0; i < Math.min(3, lines.length); i++) {
-    const l = lines[i].trim();
+    const l = lines[i]!.trim();
     if (!l) {
       start = i + 1;
       continue;
@@ -316,7 +316,7 @@ const messagesFromConv = (conv: any): ChatMsg[] => {
       );
       out.push({
         type: "user",
-        content: qParts[i],
+        content: qParts[i]!,
         id: `q-${conv.id}-${i}`,
         contextFiles: storedUserMsg?.contextFiles || [],
         files: storedUserMsg?.files || [],
@@ -325,7 +325,7 @@ const messagesFromConv = (conv: any): ChatMsg[] => {
     if (i < aParts.length) {
       out.push({
         type: "assistant",
-        content: aParts[i],
+        content: aParts[i]!,
         id: `a-${conv.id}-${i}`,
       });
     }
@@ -1615,8 +1615,8 @@ const ChatComponent = ({
     if (!last || last.type !== "error") return;
     let userMsg: ChatMsg | null = null;
     for (let i = all.length - 1; i >= 0; i--) {
-      if (all[i].type === "user") {
-        userMsg = all[i];
+      if (all[i]!.type === "user") {
+        userMsg = all[i]!;
         break;
       }
     }

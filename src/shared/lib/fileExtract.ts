@@ -142,7 +142,7 @@ function ooxmlToText(xml: string, paraTag: string, textTag: string): string {
     let m: RegExpExecArray | null;
     let line = "";
     runRe.lastIndex = 0;
-    while ((m = runRe.exec(para)) !== null) line += decodeXml(m[1]);
+    while ((m = runRe.exec(para)) !== null) line += decodeXml(m[1]!);
     if (line.trim()) out.push(line);
   }
   return out.join("\n");
@@ -184,7 +184,7 @@ async function extractPptx(blob: Blob): Promise<string> {
       );
     const parts: string[] = [];
     for (let i = 0; i < slides.length; i++) {
-      const xml = await zip.files[slides[i]].async("string");
+      const xml = await zip.files[slides[i]!]!.async("string");
       const text = ooxmlToText(xml, "a:p", "a:t").trim();
       if (text) parts.push(`--- Slide ${i + 1} ---\n${text}`);
     }

@@ -82,7 +82,7 @@ export function constellationFor(name: string): {
     .join(" ");
   let alphaIdx = 0;
   stars.forEach((p, i) => {
-    if (p.w > stars[alphaIdx].w) alphaIdx = i;
+    if (p.w > stars[alphaIdx]!.w) alphaIdx = i;
   });
   return { stars, alphaIdx, pathD };
 }

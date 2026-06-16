@@ -93,10 +93,10 @@ function toApiContent(content: string | ContentPart[]): any {
         // The API only accepts these image media types; drop anything else so a
         // bad upload is skipped cleanly instead of 400-ing the whole request.
         const ALLOWED_IMAGE = ["image/png", "image/jpeg", "image/gif", "image/webp"];
-        if (!ALLOWED_IMAGE.includes(match[1])) return null;
+        if (!ALLOWED_IMAGE.includes(match[1]!)) return null;
         return {
           type: "image",
-          source: { type: "base64", media_type: match[1], data: match[2] },
+          source: { type: "base64", media_type: match[1]!, data: match[2]! },
         };
       }
       return null;

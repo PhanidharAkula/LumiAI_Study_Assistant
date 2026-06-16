@@ -121,7 +121,7 @@ function buildMessages(
   if (!dupe) msgs.push({ role: "user", content: userContent });
 
   // The API requires the conversation to start with a user turn.
-  while (msgs.length && msgs[0].role !== "user") msgs.shift();
+  while (msgs.length && msgs[0]!.role !== "user") msgs.shift();
   if (!msgs.length) msgs.push({ role: "user", content: userContent });
   return msgs;
 }
@@ -204,7 +204,7 @@ export const fetchStreamingResponse = async (
       userContent = userMessage;
     } else if (parts.length === 1 && (!files || files.length === 0)) {
       const only = parts[0];
-      if (only.type === "text") userContent = only.text;
+      if (only && only.type === "text") userContent = only.text;
     }
 
     const messages = buildMessages(history, userContent);

@@ -50,7 +50,7 @@ function computeStreaks(dateKeys: string[]): { current: number; longest: number 
   let longest = 1;
   let run = 1;
   for (let i = 1; i < sorted.length; i++) {
-    if (diffDays(sorted[i - 1], sorted[i]) === 1) {
+    if (diffDays(sorted[i - 1]!, sorted[i]!) === 1) {
       run += 1;
       longest = Math.max(longest, run);
     } else {
@@ -155,9 +155,8 @@ export const getProgress = async (): Promise<Progress | null> => {
     // query (rejected promise OR query error) as empty and carry on with the rest.
     const rows = <T>(i: number): T[] => {
       const r = queries[i];
-      return r.status === "fulfilled"
-        ? ((r.value as { data: T[] | null }).data ?? [])
-        : [];
+      if (!r || r.status !== "fulfilled") return [];
+      return (r.value as { data: T[] | null }).data ?? [];
     };
     const classes = rows<ClassRow>(0);
     const deckRows = rows<DeckRow>(1);

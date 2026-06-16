@@ -134,7 +134,7 @@ export default function AdminAnalytics({ users }: Props) {
         <div className={UI.rule} />
         <div className="flex justify-between mt-2">
           <span className={UI.overlineMuted}>
-            {fmtDay(signupDays[0].start)}
+            {fmtDay(signupDays[0]!.start)}
           </span>
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-gold-deep">
             ✦ Today

@@ -22,6 +22,7 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["node", "vite/client"],
     "paths": {

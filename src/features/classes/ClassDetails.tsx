@@ -308,7 +308,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
       return;
     }
 
-    const currentFile = files[index];
+    const currentFile = files[index]!;
 
     try {
       const { data: existingFiles } = await supabase
