@@ -220,6 +220,7 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
             {!isGenericFile && (
               <IconButton
                 variant="ghost"
+                size="keyLg"
                 label="Download file"
                 onClick={handleSmallButtonDownload}
               >
