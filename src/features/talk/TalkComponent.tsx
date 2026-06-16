@@ -257,21 +257,8 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     greetingRef.current = { text, voice, audio };
   }, [started, voiceIndex, recognitionSupported]);
 
-  // Close the voice dropdown on an outside click (Escape closes the whole
-  // overlay; selecting a voice or re-tapping the trigger closes it too).
-  useEffect(() => {
-    if (!voiceMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (
-        voiceMenuWrapRef.current &&
-        !voiceMenuWrapRef.current.contains(e.target as Node)
-      ) {
-        setVoiceMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [voiceMenuOpen]);
+  // Outside-click dismissal is handled by a scrim (dismiss-only / swallowed),
+  // matching the rest of the app's dropdowns. Escape closes the whole overlay.
 
   const openVoiceMenu = () => setVoiceMenuOpen((v) => !v);
   const selectVoice = (i: number) => {
@@ -611,6 +598,13 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
                   {TTS_VOICES[voiceIndex]?.label || "Voice"}
                 </span>
               </motion.button>
+              {/* Outside-click scrim: dismiss-only (swallows the click). */}
+              {voiceMenuOpen && (
+                <div
+                  className="fixed inset-0 z-1390 bg-transparent"
+                  onClick={() => setVoiceMenuOpen(false)}
+                />
+              )}
               {voiceMenuOpen && (
                 <motion.div
                   className="absolute left-0 top-14.5 z-1400 max-h-[60vh] min-w-60 overflow-y-auto rounded-xl border border-solid border-line-night bg-night-2 shadow-night"

@@ -734,25 +734,8 @@ const ChatComponent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialClassId, conversationId]);
 
-  useEffect(() => {
-    if (!showHistory) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        historyDropdownRef.current &&
-        !historyDropdownRef.current.contains(event.target as Node) &&
-        !(event.target as HTMLElement).closest(".history-button")
-      ) {
-        setShowHistory(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showHistory]);
+  // Outside-click dismissal is handled by a scrim (see below), so a click
+  // elsewhere only closes the dropdown - it's swallowed, never passed through.
 
   const handleClose = () => {
     // Abort any in-flight stream so closing mid-response doesn't keep the
@@ -1944,6 +1927,14 @@ const ChatComponent = ({
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
             </IconButton>
+            {/* Outside-click scrim (in the rail's stacking context, below the
+                z-100 panel): dismiss-only, swallows the click. */}
+            {showHistory && (
+              <div
+                className="fixed inset-0 z-90 bg-transparent"
+                onClick={() => setShowHistory(false)}
+              />
+            )}
             <AnimatePresence>
               {showHistory && (
                 <motion.div
@@ -2259,7 +2250,7 @@ const ChatComponent = ({
             <AnimatePresence>
               {showJumpButton && (
                 <motion.div
-                  className="pointer-events-none absolute -top-12 left-1/2 z-121 -translate-x-1/2 max-md:-top-11"
+                  className="pointer-events-none absolute -top-13 left-1/2 z-121 -translate-x-1/2 max-md:-top-14"
                   initial={{ opacity: 0, y: 8, scale: 0.85 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.85 }}

@@ -118,17 +118,6 @@ const ClassDetails = ({ classData, onBack }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classData]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Escape closes the study-instruments menu (stacked - dialogs above win).
   useEscapeToClose(showMenu, () => setShowMenu(false));
 
@@ -639,10 +628,18 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                   </svg>
                 </IconButton>
 
+                {/* Outside-click scrim: dismiss-only (swallows the click). */}
+                {showMenu && (
+                  <div
+                    className="fixed inset-0 z-999 bg-transparent"
+                    onClick={() => setShowMenu(false)}
+                  />
+                )}
+
                 <AnimatePresence>
                   {showMenu && (
                     <motion.div
-                      className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-65 flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2 shadow-float"
+                      className="absolute right-0 top-[calc(100%+10px)] z-1000 flex w-65 flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2 shadow-float"
                       variants={menuVariants}
                       initial="hidden"
                       animate="visible"

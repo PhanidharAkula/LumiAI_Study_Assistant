@@ -176,17 +176,6 @@ const Dashboard = ({ session }: Props) => {
     }
   }, [loading]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Escape closes the profile menu (stacked - overlays above it win first).
   useEscapeToClose(showMenu, () => setShowMenu(false));
 
@@ -933,7 +922,7 @@ const Dashboard = ({ session }: Props) => {
                     <div className="flex items-center gap-3 max-[480px]:gap-2">
                       <Button
                         size="sm"
-                        className={`h-11.5 max-md:h-11 max-md:px-4 max-md:text-[13px] ${
+                        className={`h-11 max-md:h-10.5 max-md:px-4 max-md:text-[13px] ${
                           classes.length > 0
                             ? "min-[769px]:inline-flex"
                             : "min-[769px]:hidden"
@@ -983,10 +972,19 @@ const Dashboard = ({ session }: Props) => {
                           </svg>
                         </IconButton>
 
+                        {/* Outside-click scrim: dismiss-only (swallows the
+                            click) so a click elsewhere can't also fire. */}
+                        {showMenu && (
+                          <div
+                            className="fixed inset-0 z-999 bg-transparent"
+                            onClick={() => setShowMenu(false)}
+                          />
+                        )}
+
                         <AnimatePresence>
                           {showMenu && (
                             <motion.div
-                              className="absolute right-0 top-[calc(100%+10px)] z-10 flex w-75 flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2.5 shadow-float max-md:w-70"
+                              className="absolute right-0 top-[calc(100%+10px)] z-1000 flex w-75 flex-col gap-0.5 rounded-xl border border-solid border-line bg-vellum p-2.5 shadow-float max-md:w-70"
                               variants={menuVariants}
                               initial="hidden"
                               animate="visible"
