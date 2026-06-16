@@ -969,7 +969,7 @@ export default function Admin() {
       <PageBackdrop seed="control room" />
       {/* Masthead - the control-room banner */}
       <motion.div
-        className="flex items-center justify-between gap-4 px-2.5 pb-5 pt-7.5 max-md:px-1 max-md:pt-5"
+        className="flex items-center justify-between gap-4 px-2.5 pb-5 pt-7.5 max-md:px-0 max-md:pt-5"
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -999,7 +999,7 @@ export default function Admin() {
       </motion.div>
 
       {/* Hairline rule under the masthead */}
-      <div className="px-2.5 max-md:px-1">
+      <div className="px-2.5 max-md:px-0">
         <div className={UI.rule} />
       </div>
 
@@ -1028,7 +1028,7 @@ export default function Admin() {
 
       {/* Control room - compact left rail + content plate */}
       {isAdmin === true && (
-        <div className="mt-4 grid grid-cols-[240px_1fr] items-start gap-5 px-2.5 max-[1100px]:grid-cols-1 max-md:px-1">
+        <div className="mt-4 grid grid-cols-[240px_1fr] items-start gap-5 px-2.5 max-[1100px]:grid-cols-1 max-md:px-0">
           {/* LEFT RAIL (desktop) / TOP TAB BAND (mobile) */}
           <nav
             aria-label="Admin sections"

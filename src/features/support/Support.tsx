@@ -147,7 +147,7 @@ const Support = ({ session }: { session: Session | null }) => {
   if (loadingTickets) return null;
 
   return (
-    <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
+    <div className="relative min-h-dvh w-full overflow-x-hidden px-5 pt-21 pb-15 max-[480px]:px-3.75 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the desk. */}
       <PageBackdrop seed="correspondence desk" />
 
@@ -158,7 +158,7 @@ const Support = ({ session }: { session: Session | null }) => {
       />
 
       <motion.div
-        className="relative z-1 mx-auto max-w-160"
+        className="relative z-1 mx-auto max-w-160 max-[480px]:px-1.25"
         variants={stagger()}
         initial="hidden"
         animate="visible"

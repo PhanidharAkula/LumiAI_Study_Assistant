@@ -112,7 +112,7 @@ const Review = () => {
   if (loading) return null;
 
   return (
-    <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
+    <div className="relative min-h-dvh w-full overflow-x-hidden px-5 pt-21 pb-15 max-[480px]:px-3.75 max-[600px]:pt-18 max-[600px]:pb-10">
       <PageBackdrop seed="review ritual" />
       <BackButton
         className="absolute left-6 top-6 z-2 max-[600px]:left-4 max-[600px]:top-4"
@@ -120,7 +120,7 @@ const Review = () => {
         label="Back to dashboard"
       />
 
-      <div className="mx-auto max-w-150">
+      <div className="mx-auto max-w-150 max-[480px]:px-1.25">
         <div className="mb-6 flex items-end justify-between gap-3">
           <div>
             <p className={`${UI.overline} cursor-default`}>Spaced review</p>

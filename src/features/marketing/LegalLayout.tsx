@@ -27,8 +27,8 @@ const LegalLayout = ({ children }: { children: ReactNode }) => {
   // to home for a direct visit - e.g. a pasted URL or Google OAuth review.
   const from = (location.state as { from?: string } | null)?.from ?? "/";
   return (
-    <div className="flex min-h-dvh w-full justify-center px-5 py-5 max-[480px]:px-4">
-      <div className="w-full max-w-190 cursor-default">
+    <div className="flex min-h-dvh w-full justify-center px-5 py-5 max-[480px]:px-3.75">
+      <div className="w-full max-w-190 cursor-default max-[480px]:px-1">
         <BackButton
           className="mb-5"
           onClick={() => navigate(from)}

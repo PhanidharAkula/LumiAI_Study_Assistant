@@ -151,7 +151,7 @@ const WelcomePage = ({ session }: { session?: Session | null }) => {
 
   return (
     <motion.div
-      className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden px-10 pb-14 pt-7 max-md:px-6 max-md:pt-5 max-[360px]:px-3"
+      className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden px-10 pb-14 pt-7 max-md:px-5 max-md:pt-5 max-[480px]:px-3.75"
       initial="hidden"
       animate="visible"
       variants={containerVariants}

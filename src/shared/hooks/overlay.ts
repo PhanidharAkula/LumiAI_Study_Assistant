@@ -7,17 +7,38 @@ import { useEffect, useRef, useState } from "react";
 /* Reference-counted body scroll lock: nested overlays (dialog over chat over
    dashboard) each take a lock; the body unlocks when the LAST one releases. */
 let scrollLocks = 0;
+let lockedScrollY = 0;
 
 export function useScrollLock(active: boolean): void {
   useEffect(() => {
     if (!active) return;
     scrollLocks += 1;
-    document.body.style.overflow = "hidden";
+    // `overflow: hidden` alone does NOT stop iOS touch-scroll behind a fixed
+    // overlay (the page underneath still pans). The iOS-proof lock is to pin the
+    // body with `position: fixed; top: -scrollY`, then restore the scroll
+    // position when the LAST overlay releases. Ref-counted for nested overlays.
+    if (scrollLocks === 1) {
+      lockedScrollY = window.scrollY;
+      const body = document.body;
+      body.style.position = "fixed";
+      body.style.top = `-${lockedScrollY}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+      body.style.overflow = "hidden";
+    }
     return () => {
       scrollLocks -= 1;
       if (scrollLocks <= 0) {
         scrollLocks = 0;
-        document.body.style.overflow = "";
+        const body = document.body;
+        body.style.position = "";
+        body.style.top = "";
+        body.style.left = "";
+        body.style.right = "";
+        body.style.width = "";
+        body.style.overflow = "";
+        window.scrollTo(0, lockedScrollY);
       }
     };
   }, [active]);

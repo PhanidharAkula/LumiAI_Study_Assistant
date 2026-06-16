@@ -934,7 +934,7 @@ CRITICAL JSON FORMATTING RULES:
         className={`py-5 px-14 flex items-center gap-5 relative z-100 max-[1024px]:px-9 max-md:px-5 max-md:sticky max-md:top-0 max-[480px]:px-3.75 ${
           isNight
             ? "max-md:bg-night/95"
-            : "max-md:bg-cream/95 max-md:backdrop-blur-[2px]"
+            : "atlas-sky"
         }`}
       >
         <BackButton
@@ -1075,13 +1075,13 @@ CRITICAL JSON FORMATTING RULES:
 
       {/* quiz-content-area class kept as a querySelector hook (scroll-to-top);
           `relative` keeps it painting above the night Starfield. */}
-      <div className="quiz-content-area relative flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-5 bg-transparent flex flex-col max-md:p-0">
+      <div className="quiz-content-area relative flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-5 bg-transparent flex flex-col max-md:block max-md:p-0">
         <AnimatePresence mode="wait">
           {/* Setup State */}
           {quizState === "setup" && !generatingQuiz && (
             <motion.div
               key="setup"
-              className="w-full max-w-350 m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-175 max-[1024px]:p-3.75 max-md:max-w-full max-md:p-3"
+              className="w-full max-w-350 m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-175 max-[1024px]:p-3.75 max-md:max-w-full max-md:py-3 max-md:px-5 max-[480px]:px-3.75"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1240,7 +1240,7 @@ CRITICAL JSON FORMATTING RULES:
           {quizState === "taking" && currentQuiz && (
             <motion.div
               key="taking"
-              className="mx-0 my-auto w-full max-w-full h-full p-0 flex flex-col overflow-hidden max-md:h-auto max-md:overflow-y-auto"
+              className="mx-0 my-auto w-full max-w-full h-full p-0 flex flex-col overflow-hidden max-md:h-auto max-md:my-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1551,7 +1551,7 @@ CRITICAL JSON FORMATTING RULES:
           {quizState === "reviewing" && quizScore && currentQuiz && (
             <motion.div
               key="reviewing"
-              className="mx-0 my-auto w-full max-w-full h-full p-0 flex flex-col overflow-hidden max-md:h-auto max-md:overflow-y-auto"
+              className="mx-0 my-auto w-full max-w-full h-full p-0 flex flex-col overflow-hidden max-md:h-auto max-md:my-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

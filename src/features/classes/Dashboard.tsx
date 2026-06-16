@@ -666,7 +666,7 @@ const Dashboard = ({ session }: Props) => {
 
     return (
       <motion.div
-        className="grid min-h-75 grid-cols-[repeat(auto-fill,minmax(350px,1fr))] content-start items-start gap-6 p-5 max-[1024px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] max-[1024px]:gap-5 max-[480px]:grid-cols-1 max-[480px]:gap-4 max-[480px]:p-2.5"
+        className="grid min-h-75 grid-cols-[repeat(auto-fill,minmax(350px,1fr))] content-start items-start gap-6 py-5 max-[1024px]:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] max-[1024px]:gap-5 max-[480px]:grid-cols-1 max-[480px]:gap-4 max-[480px]:py-2.5"
         variants={stagger()}
         initial="hidden"
         animate="visible"
@@ -684,12 +684,12 @@ const Dashboard = ({ session }: Props) => {
           <div className={`${UI.rule} mt-5`} />
         </motion.div>
 
-        {classes.map((classItem, i) => (
+        {classes.map((classItem) => (
           <motion.div
             key={classItem.id}
             className={`${UI.plate} ${UI.plateHover} group flex cursor-pointer flex-col items-start gap-3 self-start p-6 max-md:p-5`}
             onClick={() => handleSelectClass(classItem)}
-            variants={i < 12 ? fadeRise : undefined}
+            variants={fadeRise}
             {...plateLift}
           >
             <div className="-ml-2 -mt-1 text-verdi/80">
@@ -882,7 +882,7 @@ const Dashboard = ({ session }: Props) => {
                   transition={spring.gentle}
                 >
                   {announcement && (
-                    <div className="mx-5 mt-7.5 flex items-start gap-3.5 rounded-xl border border-solid border-line bg-cream/80 px-5 py-4 shadow-plate max-md:mx-2.5">
+                    <div className="mt-7.5 flex items-start gap-3.5 rounded-xl border border-solid border-line bg-cream/80 px-5 py-4 shadow-plate">
                       <span
                         className="mt-px text-[13px] text-gold"
                         aria-hidden="true"
@@ -911,7 +911,7 @@ const Dashboard = ({ session }: Props) => {
                     // relative z-20 lifts the whole header bar (and its profile
                     // dropdown) above the cards grid, which is a later sibling at
                     // z-auto - otherwise the menu opens *behind* the first card row.
-                    className="relative z-20 flex items-center justify-between gap-4 px-5 pt-9 pb-2.5 max-md:px-2.5 max-md:pt-6 max-md:pb-2.5"
+                    className="relative z-20 flex items-center justify-between gap-4 px-1.5 pt-9 pb-2.5 max-md:pt-6 max-md:pb-2.5"
                   >
                     <div className="flex items-center gap-2.5">
                       <LumiStar size={34} />
@@ -1247,7 +1247,7 @@ const Dashboard = ({ session }: Props) => {
 
       {!selectedClass && hasLoaded && (
         <motion.div
-          className="pointer-events-none fixed bottom-0 left-0 z-100 flex w-full justify-center px-4 pb-7 max-md:p-3.75 max-[480px]:p-3"
+          className="pointer-events-none fixed bottom-0 left-0 z-100 flex w-full justify-center px-4 pb-7 max-md:p-3.75 max-md:bg-gradient-to-t max-md:from-cream max-md:via-cream/80 max-md:to-transparent max-[480px]:p-3"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...spring.gentle, delay: 0.5 }}

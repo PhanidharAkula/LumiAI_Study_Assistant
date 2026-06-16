@@ -506,7 +506,12 @@ const ChatComponent = ({
     // streaming auto-scroll (which now re-pins every animation frame) can never
     // yank them back.
     const unpinFollow = () => {
-      if (pinnedToBottom.current) {
+      // Don't unpin (or show the jump button) when there's nothing to scroll -
+      // on a short conversation a swipe / overscroll bounce would otherwise flip
+      // the button on with no scroll event to ever turn it back off.
+      const scrollable =
+        container.scrollHeight - container.clientHeight > PIN_AT_BOTTOM;
+      if (scrollable && pinnedToBottom.current) {
         pinnedToBottom.current = false;
         setShowJumpButton(true);
       }
@@ -1894,7 +1899,7 @@ const ChatComponent = ({
       <PageBackdrop seed="conversation desk" />
       {/* The desk's header rail - instrument keys over a veiled hairline band. */}
       <motion.div
-        className="fixed left-0 top-0 z-110 flex w-full items-center gap-3.75 border-0 atlas-sky px-7 py-3.5 max-[1024px]:px-4.5 max-[1024px]:py-3 max-md:right-0 max-md:z-130 max-md:p-3"
+        className="fixed left-0 top-0 z-110 flex w-full items-center gap-3.75 border-0 atlas-sky px-7 py-3.5 max-[1024px]:px-4.5 max-[1024px]:py-3 max-md:right-0 max-md:z-130 max-md:px-5 max-md:py-3"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
@@ -1991,7 +1996,7 @@ const ChatComponent = ({
                                 className="flex flex-col"
                                 onClick={() => loadConversation(conv)}
                               >
-                                <p className="mt-0 mx-0 mb-0.5 truncate font-display text-[14.5px] font-semibold leading-[1.3] text-ink">
+                                <p className="mt-0 mx-0 mb-1.5 truncate font-display text-[14.5px] font-semibold leading-[1.3] text-ink">
                                   {conv.title || "New Conversation"}
                                 </p>
                                 <p className="mt-0 mx-0 mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap pr-22 text-[12.5px] leading-[1.35] text-muted">
@@ -2018,7 +2023,7 @@ const ChatComponent = ({
                                   padding so they truncate with "..." before these buttons. */}
                               <div className="absolute bottom-2.5 right-2.5 flex gap-1.5 opacity-0 [transition:opacity_0.2s_ease] group-hover:opacity-100 max-md:opacity-100">
                                 <IconButton
-                                  size="action"
+                                  size="sm"
                                   label="Edit title"
                                   className="bg-vellum text-ink/70 hover:border-ink hover:bg-ink hover:text-cream"
                                   onClick={(e) => {
@@ -2043,7 +2048,7 @@ const ChatComponent = ({
                                   </svg>
                                 </IconButton>
                                 <IconButton
-                                  size="action"
+                                  size="sm"
                                   variant="danger"
                                   label="Delete conversation"
                                   className="bg-vellum"
@@ -2145,7 +2150,7 @@ const ChatComponent = ({
         >
           {documents.length > 0 && (
             <motion.div
-              className="w-full border-0 border-b border-solid border-line px-5 py-3.75"
+              className="w-full border-0 border-b border-solid border-line px-5 py-3.75 max-md:px-2.5"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
@@ -2203,14 +2208,14 @@ const ChatComponent = ({
           {/* Scroll happens on the FULL width (ref here) so hovering anywhere
               scrolls; messages stay centered via the inner 820px column. */}
           <motion.div
-            className="w-full flex-1 overflow-y-auto scroll-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
+            className="w-full flex-1 overflow-y-auto overscroll-contain scroll-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
             ref={chatContainerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
           >
             {/* Centered content column - messages live here at max 820px. */}
-            <div className="mx-auto flex min-h-full w-full max-w-205 flex-col px-5 max-[1024px]:max-w-none max-[1024px]:px-3.5 max-md:px-3">
+            <div className="mx-auto flex min-h-full w-full max-w-205 flex-col px-5 max-[1024px]:max-w-none max-[1024px]:px-3.5 max-md:px-2.5">
               {messages.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center p-10 text-center">
                   <div className="mb-6 text-ink/40">
@@ -2244,7 +2249,7 @@ const ChatComponent = ({
               SAME sky as the chat surface, aligned by viewport coords - a
               seamless, borderless blend that still hides messages scrolling
               under the fixed mobile dock (the sky is opaque). */}
-          <div className="atlas-sky relative mx-auto w-full max-w-205 max-[1024px]:max-w-none max-md:fixed max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:z-120 max-md:py-2 max-md:px-3">
+          <div className="atlas-sky relative mx-auto w-full max-w-205 max-[1024px]:max-w-none max-md:fixed max-md:left-0 max-md:right-0 max-md:bottom-0 max-md:z-120 max-md:py-2 max-md:px-5">
             {/* Floating "jump to latest" - only while unpinned; sits just above
                 the dock (centered) and never overlaps it. */}
             <AnimatePresence>

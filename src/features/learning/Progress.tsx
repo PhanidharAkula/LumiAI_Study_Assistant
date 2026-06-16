@@ -131,7 +131,7 @@ const Progress = () => {
   if (loading) return null;
 
   return (
-    <div className="relative min-h-dvh w-full px-5 pt-21 pb-15 max-[600px]:px-3.5 max-[600px]:pt-18 max-[600px]:pb-10">
+    <div className="relative min-h-dvh w-full overflow-x-hidden px-5 pt-21 pb-15 max-[480px]:px-3.75 max-[600px]:pt-18 max-[600px]:pb-10">
       {/* Faint sky behind the charts. */}
       <PageBackdrop seed="your sky so far" />
 
@@ -141,7 +141,7 @@ const Progress = () => {
         label="Back to dashboard"
       />
 
-      <div className="relative z-1 mx-auto max-w-160">
+      <div className="relative z-1 mx-auto max-w-160 max-[480px]:px-1.25">
         <p className={`${UI.overline} cursor-default text-center`}>
           Fig. 1 - Your sky so far
         </p>

@@ -694,13 +694,13 @@ CRITICAL JSON FORMATTING RULES:
       {/* Content Area - flex:1 + min-h-0 scroll region; the flashcard-content-area
           class is a scroll-to-top querySelector hook. Children use m-auto to
           center vertically when they fit, collapsing to 0 (scroll from top) when taller. */}
-      <div className="flashcard-content-area flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-5 bg-transparent flex flex-col max-[480px]:p-2.5">
+      <div className="flashcard-content-area flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-5 bg-transparent flex flex-col max-md:block max-md:p-0">
         <AnimatePresence mode="wait">
           {/* Setup State */}
           {flashcardState === "setup" && !generatingCards && (
             <motion.div
               key="setup"
-              className="w-full max-w-350 m-auto flex flex-col gap-5 p-0 h-auto justify-center"
+              className="w-full max-w-350 m-auto flex flex-col gap-5 p-0 h-auto justify-center max-[1024px]:max-w-175 max-[1024px]:p-3.75 max-md:max-w-full max-md:py-3 max-md:px-5 max-[480px]:px-3.75"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}

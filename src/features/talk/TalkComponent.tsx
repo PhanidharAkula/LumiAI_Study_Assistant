@@ -568,7 +568,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
             "radial-gradient(60rem 40rem at 50% 110%, rgb(199 154 51 / 0.12), transparent 60%)",
         }}
       />
-      <div className="fixed inset-x-0 top-0 z-1210 flex items-center justify-between bg-transparent p-7.5 max-md:p-5 max-[480px]:p-4">
+      <div className="fixed inset-x-0 top-0 z-1210 flex items-center justify-between bg-transparent p-7.5 max-md:p-5 max-[480px]:px-5 max-[480px]:py-4">
         <div className="flex items-center gap-2.5">
           {!started && (
             <div ref={voiceMenuWrapRef} className="relative">

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { CornerTicks } from "@shared/components/atlas";
 import { Button } from "@shared/components/controls";
 import { scrimFade, modalPop } from "@shared/motion";
-import { useEscapeToClose } from "@shared/hooks/overlay";
+import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -191,6 +191,11 @@ const ConfirmDialog = ({
     return title;
   };
 
+  // Body scroll lock via the shared hook (ref-counted, iOS-proof position:fixed)
+  // - consistent with every other overlay, and won't fight their locks when a
+  // confirm opens on top of one (e.g. delete-conversation over the chat).
+  useScrollLock(isOpen);
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (isOpen) {
@@ -198,16 +203,13 @@ const ConfirmDialog = ({
       if (hideBackground) {
         document.body.classList.add("accdel-hide-bg");
       }
-      document.body.style.overflow = "hidden";
     } else {
       document.body.classList.remove("accdel-dialog-open");
       document.body.classList.remove("accdel-hide-bg");
-      document.body.style.overflow = "";
     }
     return () => {
       document.body.classList.remove("accdel-dialog-open");
       document.body.classList.remove("accdel-hide-bg");
-      document.body.style.overflow = "";
     };
   }, [isOpen, hideBackground]);
 
@@ -229,7 +231,7 @@ const ConfirmDialog = ({
           onClick={onClose}
         >
           <motion.div
-            className="relative flex w-[90%] max-w-110 flex-col items-center rounded-xl border border-solid border-line bg-vellum px-8 py-9 shadow-float max-md:w-full max-[480px]:w-[calc(100%-24px)] max-[480px]:max-w-[min(420px,calc(100%-24px))] max-[480px]:px-5 max-[480px]:py-7"
+            className="relative flex w-[90%] max-w-110 flex-col items-center rounded-xl border border-solid border-line bg-vellum px-8 py-9 shadow-float max-md:w-full max-[480px]:w-[calc(100%-40px)] max-[480px]:max-w-[min(420px,calc(100%-40px))] max-[480px]:px-5 max-[480px]:py-7"
             variants={modalPop}
             initial="hidden"
             animate="visible"

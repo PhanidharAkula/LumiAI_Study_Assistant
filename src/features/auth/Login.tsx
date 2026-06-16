@@ -101,7 +101,7 @@ const Login = () => {
 
   return (
     <motion.div
-      className="relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden px-6 py-15 max-md:py-10 max-[360px]:px-3 [@media(max-height:700px)]:justify-start [@media(max-height:700px)]:overflow-y-auto [@media(max-height:700px)]:pt-20"
+      className="relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden px-6 py-15 max-md:px-5 max-md:py-10 max-[480px]:px-3.75 [@media(max-height:700px)]:justify-start [@media(max-height:700px)]:overflow-y-auto [@media(max-height:700px)]:pt-20"
       initial="hidden"
       animate="visible"
       variants={containerVariants}

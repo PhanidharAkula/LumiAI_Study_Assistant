@@ -202,7 +202,7 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
       onClick={onClose}
     >
       <motion.div
-        className="relative flex h-[85dvh] w-[90%] max-w-250 flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:h-[90dvh] max-md:w-[95%]"
+        className="relative flex h-[85dvh] w-[90%] max-w-250 flex-col overflow-hidden rounded-xl border border-solid border-line bg-vellum shadow-float max-md:h-[90dvh] max-md:w-[calc(100%-40px)]"
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
