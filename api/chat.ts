@@ -10,7 +10,12 @@
  */
 import AI from "@anthropic-ai/sdk";
 import { getAuthedUser } from "./_auth.js";
-import { rateLimit } from "./_ratelimit.js";
+import {
+  getDailyTokens,
+  addDailyTokens,
+  burstOk,
+  getDailyTokenLimit,
+} from "./_ratelimit.js";
 
 // The chat model id, supplied by the LUMI_MODEL env var.
 const MODEL = process.env.LUMI_MODEL || "";
@@ -25,11 +30,8 @@ const VOICE_MODEL = process.env.LUMI_VOICE_MODEL || "claude-haiku-4-5";
 // latency on heavier questions. Tune to "low" for snappier, "high" for deeper.
 const CHAT_EFFORT = "medium";
 
-// Per-user fair-use limits: a generous DAILY budget (the real cost ceiling - a
-// serious learner won't reach it) plus a light per-minute burst guard so a
-// script can't spend it all at once. Override via env; set BURST to 0 to disable
-// the burst check.
-const CHAT_DAILY = Number(process.env.LUMI_CHAT_DAILY) || 300;
+// Anti-flood burst guard (requests/min/user). The real cap is the shared daily
+// TOKEN budget (see _ratelimit + app_settings.daily_token_limit). 0 disables it.
 const CHAT_BURST = Number(process.env.LUMI_CHAT_BURST ?? 30);
 
 type Role = "user" | "assistant";
@@ -165,17 +167,19 @@ export default async function handler(req: any, res: any): Promise<void> {
     });
   }
 
-  // Per-user rate limit (no-op until a KV store is configured; fails open).
-  const rl = await rateLimit("chat", auth.userId, {
-    perDay: CHAT_DAILY,
-    perMin: CHAT_BURST,
-  });
-  if (!rl.ok) {
+  // Shared daily TOKEN budget (across chat/quiz/flashcards/voice) + a light
+  // anti-flood burst. No-op until a KV store is connected; fails open.
+  const tokenLimit = await getDailyTokenLimit(auth.token);
+  if ((await getDailyTokens(auth.userId)) >= tokenLimit) {
+    return sendJson(res, 429, {
+      code: "budget_exhausted",
+      error: "You've used today's Lumi limit. It resets tomorrow.",
+    });
+  }
+  if (!(await burstOk(auth.userId, CHAT_BURST))) {
     return sendJson(res, 429, {
       error:
-        rl.scope === "day"
-          ? "You've reached today's Lumi usage limit - it resets tomorrow."
-          : "You're going a little fast for Lumi. Please wait a moment and try again.",
+        "You're going a little fast for Lumi. Please wait a moment and try again.",
     });
   }
 
@@ -319,6 +323,12 @@ export default async function handler(req: any, res: any): Promise<void> {
             })}\n\n`
           );
         }
+        // Meter the tokens this turn actually consumed against the daily budget.
+        const u = (final as any)?.usage;
+        await addDailyTokens(
+          auth.userId,
+          (u?.input_tokens ?? 0) + (u?.output_tokens ?? 0)
+        );
       } catch (err: any) {
         console.error("[chat] stream error:", err?.status, err?.message);
         res.write(
@@ -342,6 +352,11 @@ export default async function handler(req: any, res: any): Promise<void> {
         .filter((b) => b.type === "text")
         .map((b) => b.text)
         .join("");
+      const u = (msg as any)?.usage;
+      await addDailyTokens(
+        auth.userId,
+        (u?.input_tokens ?? 0) + (u?.output_tokens ?? 0)
+      );
       sendJson(res, 200, { text });
     }
   } catch (err: any) {

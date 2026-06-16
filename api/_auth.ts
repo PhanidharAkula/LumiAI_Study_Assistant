@@ -11,7 +11,7 @@
  * the route handlers, not as a route of its own.
  */
 export type AuthResult =
-  | { ok: true; userId: string }
+  | { ok: true; userId: string; token: string }
   | { ok: false; status: 401 | 503 };
 
 export async function getAuthedUser(req: any): Promise<AuthResult> {
@@ -41,7 +41,9 @@ export async function getAuthedUser(req: any): Promise<AuthResult> {
     }
     if (!resp.ok) return { ok: false, status: 503 };
     const user = (await resp.json()) as { id?: string };
-    return user?.id ? { ok: true, userId: user.id } : { ok: false, status: 401 };
+    return user?.id
+      ? { ok: true, userId: user.id, token }
+      : { ok: false, status: 401 };
   } catch (err: any) {
     // Network error / timeout: the auth service is unreachable, not a bad token.
     console.error("[auth] session verification failed:", err?.message);

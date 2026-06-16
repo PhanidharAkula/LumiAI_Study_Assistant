@@ -7,7 +7,12 @@
  * credits. All copy stays on-brand ("Lumi"), never naming the upstream service.
  */
 import { getAuthedUser } from "./_auth.js";
-import { rateLimit } from "./_ratelimit.js";
+import {
+  getDailyTokens,
+  addDailyTokens,
+  burstOk,
+  getDailyTokenLimit,
+} from "./_ratelimit.js";
 
 const TTS_KEY = process.env.LUMI_TTS_KEY || "";
 // tts-1 is low-latency and consistent run-to-run (best for a back-and-forth
@@ -16,10 +21,8 @@ const TTS_KEY = process.env.LUMI_TTS_KEY || "";
 const TTS_MODEL = process.env.LUMI_TTS_MODEL || "tts-1";
 const TTS_ENDPOINT = "https://api.openai.com/v1/audio/speech";
 
-// Per-user fair-use limits: a generous DAILY budget plus a per-minute burst
-// guard. Speech is synthesized per sentence, so both are higher than chat.
-// Override via env; set BURST to 0 to disable the burst check.
-const TTS_DAILY = Number(process.env.LUMI_TTS_DAILY) || 600;
+// Anti-flood burst guard (requests/min/user). Voice draws from the same shared
+// daily token budget as chat (an approximate token cost per request). 0 = off.
 const TTS_BURST = Number(process.env.LUMI_TTS_BURST ?? 60);
 
 // Bound spoken text so one request can't run up a large bill.
@@ -101,18 +104,18 @@ export default async function handler(req: any, res: any): Promise<void> {
     });
   }
 
-  // Per-user rate limit (no-op until a KV store is configured; fails open).
-  const rl = await rateLimit("tts", auth.userId, {
-    perDay: TTS_DAILY,
-    perMin: TTS_BURST,
-  });
-  if (!rl.ok) {
+  // Shared daily token budget + anti-flood burst (no-op until KV connected).
+  if (
+    (await getDailyTokens(auth.userId)) >=
+    (await getDailyTokenLimit(auth.token))
+  ) {
     return sendJson(res, 429, {
-      error:
-        rl.scope === "day"
-          ? "Voice is unavailable for the rest of today."
-          : "Voice is busy. Please wait a moment.",
+      code: "budget_exhausted",
+      error: "You've used today's Lumi limit. It resets tomorrow.",
     });
+  }
+  if (!(await burstOk(auth.userId, TTS_BURST))) {
+    return sendJson(res, 429, { error: "Voice is busy. Please wait a moment." });
   }
 
   let body: any;
@@ -127,6 +130,9 @@ export default async function handler(req: any, res: any): Promise<void> {
 
   const voice = ALLOWED_VOICES.includes(body?.voice) ? body.voice : DEFAULT_VOICE;
   const input = text.slice(0, MAX_TTS_CHARS);
+  // Draw this clip's approximate token cost (~chars/4) from the shared budget so
+  // voice counts toward the same daily limit as chat.
+  void addDailyTokens(auth.userId, Math.ceil(input.length / 4));
   // Newer models take a free-text tone instruction; the classic tts-1 / tts-1-hd
   // take a numeric speed. Send only what the configured model understands.
   const steerable =
