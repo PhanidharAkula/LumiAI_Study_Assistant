@@ -38,12 +38,13 @@ export class VoicePlayer {
     private synthesize: Synthesize,
     private onStart: () => void,
     private onEnd: () => void,
-    // A single, shared <audio> element reused for every clip (instead of a fresh
-    // `new Audio()` each time): iOS only lets an element play programmatically
-    // after it's been "unlocked" inside a user gesture, so a new element per clip
-    // is silently blocked by the mobile autoplay policy. The caller unlocks this
-    // one inside the Begin tap.
-    private audio: HTMLAudioElement
+    // MOBILE ONLY: a single, shared <audio> element reused for every clip. iOS
+    // only lets an element play programmatically after it's been "unlocked"
+    // inside a user gesture, so a fresh element per clip is blocked by the mobile
+    // autoplay policy; the caller unlocks this one inside the Begin tap. On
+    // desktop this is omitted and each clip uses a new Audio() - the original,
+    // unrestricted path - so desktop behaviour is unchanged.
+    private audio?: HTMLAudioElement
   ) {}
 
   /** Feed streamed reply text; complete sentences get queued for speech. */
@@ -146,15 +147,20 @@ export class VoicePlayer {
   // reusing the single element is safe.
   private playClip(blob: Blob): Promise<void> {
     return new Promise((resolve) => {
-      const a = this.audio;
       const url = URL.createObjectURL(blob);
+      // Mobile reuses one shared, gesture-unlocked element (autoplay policy);
+      // desktop creates a fresh element per clip - the original behaviour.
+      const shared = !!this.audio;
+      const a = this.audio ?? new Audio();
       let finished = false;
       const done = () => {
         if (finished) return;
         finished = true;
-        a.onplaying = null;
-        a.onended = null;
-        a.onerror = null;
+        if (shared) {
+          a.onplaying = null;
+          a.onended = null;
+          a.onerror = null;
+        }
         URL.revokeObjectURL(url);
         this.stopCurrent = null;
         resolve();
@@ -187,7 +193,7 @@ export class VoicePlayer {
         done();
         return;
       }
-      a.muted = false; // clear any mute left by a previous stopCurrent
+      if (shared) a.muted = false; // clear a mute left by a previous stopCurrent
       a.src = url;
       a.play().catch(done);
     });

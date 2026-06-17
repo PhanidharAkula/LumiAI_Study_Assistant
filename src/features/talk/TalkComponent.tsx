@@ -95,6 +95,17 @@ const silentClipUrl = (): string => {
   return _silentUrl;
 };
 
+// Mobile browsers (notably iOS) block programmatic audio outside a user gesture,
+// so ONLY on mobile do we play through one shared <audio> element unlocked on the
+// Begin tap. Desktop has no such restriction and keeps the original per-clip
+// playback untouched.
+const IS_MOBILE =
+  typeof navigator !== "undefined" &&
+  (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (typeof window !== "undefined" &&
+      !!window.matchMedia &&
+      window.matchMedia("(pointer: coarse)").matches));
+
 // Talk is a general spoken conversation - deliberately not grounded in any
 // class's materials (that's what the chat page with file tagging is for).
 const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
@@ -310,7 +321,11 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   // once all speech finishes (half-duplex - the mic is closed while Lumi talks
   // so it never hears itself).
   const makePlayer = () => {
-    const el = audioElRef.current ?? (audioElRef.current = new Audio());
+    // Mobile plays through the one shared, gesture-unlocked element; desktop omits
+    // it and VoicePlayer uses a fresh Audio() per clip (original behaviour).
+    const el = IS_MOBILE
+      ? (audioElRef.current ?? (audioElRef.current = new Audio()))
+      : undefined;
     const player: VoicePlayer = new VoicePlayer(
       (sentence, signal) => {
         // Reuse the single pre-fetched greeting request if this line is it
@@ -535,27 +550,29 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
 
   const startConversation = () => {
     setNotice(null);
-    // Unlock audio output INSIDE this tap so Lumi's greeting + replies (which play
-    // later, from a timer and the streaming callback) are allowed on iOS/mobile,
-    // where programmatic audio is blocked unless first played from a user gesture.
-    // Harmless on desktop. Reuses one shared element (see makePlayer / VoicePlayer).
-    try {
-      const el = audioElRef.current ?? (audioElRef.current = new Audio());
-      el.muted = true;
-      el.src = silentClipUrl();
-      const p = el.play();
-      if (p && typeof p.then === "function") {
-        p.then(() => {
-          el.pause();
+    // MOBILE: unlock audio output INSIDE this tap so Lumi's greeting + replies
+    // (which play later, from a timer and the streaming callback) are allowed on
+    // iOS/mobile, where programmatic audio is blocked unless first played from a
+    // user gesture. Desktop has no such restriction and is left untouched.
+    if (IS_MOBILE) {
+      try {
+        const el = audioElRef.current ?? (audioElRef.current = new Audio());
+        el.muted = true;
+        el.src = silentClipUrl();
+        const p = el.play();
+        if (p && typeof p.then === "function") {
+          p.then(() => {
+            el.pause();
+            el.muted = false;
+          }).catch(() => {
+            el.muted = false;
+          });
+        } else {
           el.muted = false;
-        }).catch(() => {
-          el.muted = false;
-        });
-      } else {
-        el.muted = false;
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore - desktop doesn't need the unlock */
     }
     if (greetingTimerRef.current) {
       clearTimeout(greetingTimerRef.current);
