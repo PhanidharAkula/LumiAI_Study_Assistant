@@ -191,9 +191,9 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   const intentionalStopRef = useRef(false);
   // MOBILE push-to-talk: the mic is recording the user's turn right now.
   const listeningRef = useRef(false);
-  // MOBILE: whether the current push-to-talk turn captured any speech, so onend
-  // tells a real turn (now off to the AI) from an empty tap (back to idle).
-  const gotResultRef = useRef(false);
+  // MOBILE hold-to-talk: transcript accumulated while the button is held, sent on
+  // release (in the recognition's onend).
+  const heldTranscriptRef = useRef("");
 
   const setStarted = (v: boolean) => {
     startedRef.current = v;
@@ -506,10 +506,13 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     }
   };
 
-  // MOBILE push-to-talk: capture ONE spoken turn, started from a tap (the user
-  // gesture iOS needs). continuous=false so it auto-ends on silence, and the mic
-  // is never open while Lumi speaks (which on iOS would break the next turn).
-  const startPushToTalkTurn = () => {
+  // MOBILE hold-to-talk: press-and-hold the mic button to speak, release to send.
+  // The mic is open only while held - started from the press (the user gesture iOS
+  // needs) and never open while Lumi speaks. continuous=true so a pause mid-hold
+  // doesn't cut the turn; the accumulated transcript is sent on release (onend).
+  const holdToTalkStart = () => {
+    if (!startedRef.current) return;
+    if (speakingRef.current || thinkingRef.current || listeningRef.current) return;
     if (recognitionRef.current) return;
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
@@ -522,20 +525,21 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     const r: any = new SpeechRecognition();
     r.lang = "en-US";
     r.interimResults = false;
-    r.continuous = false; // one utterance, auto-ends on silence
+    r.continuous = true; // keep capturing for as long as the button is held
     r.maxAlternatives = 1;
     let lastError = "";
-    gotResultRef.current = false;
+    heldTranscriptRef.current = "";
 
     r.onresult = (ev: any) => {
-      const last = ev.results[ev.results.length - 1];
-      if (last.isFinal) {
-        const text = last[0].transcript.trim();
-        if (text) {
-          gotResultRef.current = true;
-          setListening(false);
-          pushHistory({ role: "user", content: text });
-          sendToAI(text);
+      // Accumulate every final segment captured while the button is held.
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (res?.isFinal) {
+          const t = (res[0]?.transcript || "").trim();
+          if (t) {
+            heldTranscriptRef.current +=
+              (heldTranscriptRef.current ? " " : "") + t;
+          }
         }
       }
     };
@@ -560,13 +564,18 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         setStarted(false);
         setNotice(
           lastError === "audio-capture"
-            ? "No microphone found. Connect one and tap to speak again."
-            : "Lumi needs microphone access for voice. Allow it in your browser settings, then tap to speak."
+            ? "No microphone found. Connect one and hold to speak again."
+            : "Lumi needs microphone access for voice. Allow it in your browser settings, then hold to speak."
         );
         return;
       }
-      // No speech captured (silence / a quick tap) just returns to idle; a real
-      // turn already went to the AI from onresult, so nothing else to do.
+      // Send everything captured while held; empty (held but silent) -> idle.
+      const text = heldTranscriptRef.current.trim();
+      heldTranscriptRef.current = "";
+      if (text) {
+        pushHistory({ role: "user", content: text });
+        sendToAI(text);
+      }
     };
 
     recognitionRef.current = r;
@@ -580,14 +589,15 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     }
   };
 
-  // MOBILE: the central star is the push-to-talk control - tap when idle to
-  // speak, tap while listening to send what was captured.
-  const onMobileMic = () => {
-    if (!startedRef.current) return;
-    if (listeningRef.current) {
-      stopListening(); // finalize: onresult (if any) -> onend
-    } else if (!speakingRef.current && !thinkingRef.current) {
-      startPushToTalkTurn();
+  // Release: stop the mic; its onend sends the accumulated transcript. Don't null
+  // recognitionRef here - onend does, which also blocks a too-fast re-press.
+  const holdToTalkEnd = () => {
+    if (!recognitionRef.current) return;
+    intentionalStopRef.current = true;
+    try {
+      recognitionRef.current.stop();
+    } catch {
+      /* ignore */
     }
   };
 
@@ -897,19 +907,8 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         ) : (
           <div className="flex h-full w-full max-w-150 flex-col items-center justify-center gap-16 max-md:gap-10">
             <motion.div
-              className={`relative h-62.5 w-62.5 max-md:h-52.5 max-md:w-52.5 max-[480px]:h-45 max-[480px]:w-45${
-                IS_MOBILE && !speaking && !thinking ? " cursor-pointer" : ""
-              }`}
+              className="relative h-62.5 w-62.5 max-md:h-52.5 max-md:w-52.5 max-[480px]:h-45 max-[480px]:w-45"
               style={{ scale: smoothStar }}
-              onClick={IS_MOBILE ? onMobileMic : undefined}
-              role={IS_MOBILE ? "button" : undefined}
-              aria-label={
-                IS_MOBILE
-                  ? listening
-                    ? "Tap to send"
-                    : "Tap to speak"
-                  : undefined
-              }
             >
               {/* Outer soft halo */}
               <div
@@ -993,7 +992,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
                     : IS_MOBILE
                       ? listening
                         ? "Listening…"
-                        : "Tap to speak"
+                        : "Hold to speak"
                       : muted
                         ? "Muted"
                         : "Listening…"}
@@ -1003,9 +1002,9 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
                   speaking || thinking ? (
                     <>One moment…</>
                   ) : listening ? (
-                    <>Listening… tap the star to send.</>
+                    <>Listening… release to send.</>
                   ) : (
-                    <>Tap the star, then speak.</>
+                    <>Hold the mic button and speak.</>
                   )
                 ) : muted ? (
                   <>Microphone off - unmute to continue.</>
@@ -1020,9 +1019,45 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
 
       {started && (
         <div className="fixed bottom-10 left-1/2 z-1220 flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-[calc(30px+env(safe-area-inset-bottom))] max-md:gap-6 max-[480px]:bottom-[calc(24px+env(safe-area-inset-bottom))] max-[480px]:gap-5">
-          {/* Mute is desktop-only: mobile push-to-talk isn't continuously
-              listening, so there's nothing to mute (the star is the mic). */}
-          {!IS_MOBILE && (
+          {/* Mobile: press-and-hold to speak (replaces Mute, since push-to-talk
+              isn't continuously listening). Desktop keeps Mute. */}
+          {IS_MOBILE ? (
+            <motion.button
+              type="button"
+              className={`${TALK_BTN} touch-none select-none ${
+                listening ? TALK_BTN_RED : TALK_BTN_DEFAULT
+              } ${speaking || thinking ? "opacity-40" : ""}`}
+              title="Hold to speak"
+              aria-label="Hold to speak"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                holdToTalkStart();
+              }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                holdToTalkEnd();
+              }}
+              onPointerLeave={holdToTalkEnd}
+              onPointerCancel={holdToTalkEnd}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </motion.button>
+          ) : (
             <motion.button
               type="button"
               className={`${TALK_BTN} ${muted ? TALK_BTN_MUTED : TALK_BTN_DEFAULT}`}
