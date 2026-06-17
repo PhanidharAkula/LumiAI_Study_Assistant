@@ -640,7 +640,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
               )}
             </div>
           )}
-          <UsageBar variant="night" className="max-md:hidden" />
+          <UsageBar variant="night" />
         </div>
         <div className="flex items-center gap-2.5">
           <CloseButton

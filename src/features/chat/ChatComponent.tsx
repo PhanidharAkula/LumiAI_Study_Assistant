@@ -2328,7 +2328,7 @@ const ChatComponent = ({
 
         {/* Daily budget on top, this chat's context gauge stacked beneath it.
             A fixed label width lines the two tracks up vertically. */}
-        <div className="flex flex-col items-start gap-1.5 max-md:hidden">
+        <div className="flex flex-col items-start gap-1.5">
           <UsageBar variant="day" labelClassName="w-14" />
           {messages.length > 0 && (
             <ContextBar
