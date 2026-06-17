@@ -37,7 +37,13 @@ export class VoicePlayer {
   constructor(
     private synthesize: Synthesize,
     private onStart: () => void,
-    private onEnd: () => void
+    private onEnd: () => void,
+    // A single, shared <audio> element reused for every clip (instead of a fresh
+    // `new Audio()` each time): iOS only lets an element play programmatically
+    // after it's been "unlocked" inside a user gesture, so a new element per clip
+    // is silently blocked by the mobile autoplay policy. The caller unlocks this
+    // one inside the Begin tap.
+    private audio: HTMLAudioElement
   ) {}
 
   /** Feed streamed reply text; complete sentences get queued for speech. */
@@ -133,17 +139,22 @@ export class VoicePlayer {
     if (!this.cancelled) this.finishOnce();
   }
 
-  // Play one clip via a plain <audio> element. No Web Audio routing: that was
-  // the reliable, clip-free way to play; routing through an AudioContext (for
-  // amplitude analysis) kept breaking playback on Safari.
+  // Play one clip on the shared, pre-unlocked <audio> element (see constructor).
+  // No Web Audio routing: that was the reliable, clip-free way to play; routing
+  // through an AudioContext (for amplitude analysis) kept breaking playback on
+  // Safari. Clips play strictly one at a time (the run loop awaits each), so
+  // reusing the single element is safe.
   private playClip(blob: Blob): Promise<void> {
     return new Promise((resolve) => {
+      const a = this.audio;
       const url = URL.createObjectURL(blob);
-      const a = new Audio(url);
       let finished = false;
       const done = () => {
         if (finished) return;
         finished = true;
+        a.onplaying = null;
+        a.onended = null;
+        a.onerror = null;
         URL.revokeObjectURL(url);
         this.stopCurrent = null;
         resolve();
@@ -151,8 +162,8 @@ export class VoicePlayer {
       this.stopCurrent = () => {
         try {
           // Mute as well as pause: if End races a pending play() (a clip just
-          // starting), `muted` persists on the element so it stays silent even if
-          // that play() resolves and briefly resumes.
+          // starting), `muted` persists so it stays silent even if that play()
+          // resolves and briefly resumes (cleared again before the next clip).
           a.muted = true;
           a.pause();
         } catch {
@@ -176,6 +187,8 @@ export class VoicePlayer {
         done();
         return;
       }
+      a.muted = false; // clear any mute left by a previous stopCurrent
+      a.src = url;
       a.play().catch(done);
     });
   }

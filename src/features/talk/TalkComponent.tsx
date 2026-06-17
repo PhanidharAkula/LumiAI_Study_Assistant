@@ -64,6 +64,37 @@ const GREETINGS = [
 // together right after Begin.
 const GREETING_DELAY_MS = 1000;
 
+// A tiny silent WAV (built once) used to "unlock" the shared audio element inside
+// the Begin tap on iOS/mobile, where programmatic audio is otherwise blocked
+// unless the element was first played from a user gesture.
+let _silentUrl = "";
+const silentClipUrl = (): string => {
+  if (_silentUrl) return _silentUrl;
+  const sampleRate = 8000;
+  const samples = 800; // ~0.1s
+  const buf = new ArrayBuffer(44 + samples);
+  const view = new DataView(buf);
+  const writeStr = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + samples, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true); // 8-bit
+  writeStr(36, "data");
+  view.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i++) view.setUint8(44 + i, 128); // 8-bit silence
+  _silentUrl = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  return _silentUrl;
+};
+
 // Talk is a general spoken conversation - deliberately not grounded in any
 // class's materials (that's what the chat page with file tagging is for).
 const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
@@ -96,6 +127,9 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
   const playerRef = useRef<VoicePlayer | null>(null);
+  // One shared <audio> element for all neural-voice playback, unlocked inside the
+  // Begin tap (startConversation) so mobile autoplay can't block Lumi's voice.
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   // Greeting audio pre-fetched while the start screen is up, so Begin plays it
   // instantly instead of waiting on a cold TTS call (also warms the TTS path for
   // the first real reply).
@@ -205,6 +239,9 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
       }
       playerRef.current?.cancel();
       playerRef.current = null;
+      try {
+        audioElRef.current?.pause();
+      } catch {}
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, []);
@@ -273,6 +310,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   // once all speech finishes (half-duplex - the mic is closed while Lumi talks
   // so it never hears itself).
   const makePlayer = () => {
+    const el = audioElRef.current ?? (audioElRef.current = new Audio());
     const player: VoicePlayer = new VoicePlayer(
       (sentence, signal) => {
         // Reuse the single pre-fetched greeting request if this line is it
@@ -305,7 +343,8 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         ) {
           startListening();
         }
-      }
+      },
+      el
     );
     return player;
   };
@@ -496,6 +535,28 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
 
   const startConversation = () => {
     setNotice(null);
+    // Unlock audio output INSIDE this tap so Lumi's greeting + replies (which play
+    // later, from a timer and the streaming callback) are allowed on iOS/mobile,
+    // where programmatic audio is blocked unless first played from a user gesture.
+    // Harmless on desktop. Reuses one shared element (see makePlayer / VoicePlayer).
+    try {
+      const el = audioElRef.current ?? (audioElRef.current = new Audio());
+      el.muted = true;
+      el.src = silentClipUrl();
+      const p = el.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => {
+          el.pause();
+          el.muted = false;
+        }).catch(() => {
+          el.muted = false;
+        });
+      } else {
+        el.muted = false;
+      }
+    } catch {
+      /* ignore - desktop doesn't need the unlock */
+    }
     if (greetingTimerRef.current) {
       clearTimeout(greetingTimerRef.current);
       greetingTimerRef.current = null;
@@ -522,6 +583,9 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     greetingPendingRef.current = false;
     playerRef.current?.cancel();
     playerRef.current = null;
+    try {
+      audioElRef.current?.pause();
+    } catch {}
     if (abortControllerRef.current) abortControllerRef.current.abort();
     setSpeaking(false);
     setThinking(false);
