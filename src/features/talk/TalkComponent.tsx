@@ -128,6 +128,9 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   const [speaking, setSpeakingState] = useState(false);
   const [thinking, setThinkingState] = useState(false);
   const [muted, setMutedState] = useState(false);
+  // MOBILE push-to-talk: true while the mic records the user's turn. Desktop is
+  // hands-free and doesn't use this; "Tap to speak" (idle) is derived from it.
+  const [listening, setListeningState] = useState(false);
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
   // Surfaced on the start screen when voice can't run (mic denied / unsupported).
   const [notice, setNotice] = useState<string | null>(null);
@@ -186,6 +189,11 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   // onend knows the end was intentional and skips its auto-restart; an
   // involuntary end (silence/network timeout) leaves it false.
   const intentionalStopRef = useRef(false);
+  // MOBILE push-to-talk: the mic is recording the user's turn right now.
+  const listeningRef = useRef(false);
+  // MOBILE: whether the current push-to-talk turn captured any speech, so onend
+  // tells a real turn (now off to the AI) from an empty tap (back to idle).
+  const gotResultRef = useRef(false);
 
   const setStarted = (v: boolean) => {
     startedRef.current = v;
@@ -202,6 +210,10 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
   const setThinking = (v: boolean) => {
     thinkingRef.current = v;
     setThinkingState(v);
+  };
+  const setListening = (v: boolean) => {
+    listeningRef.current = v;
+    setListeningState(v);
   };
 
   // Speech-to-text isn't in every browser (notably Safari/iOS and Firefox). Gate
@@ -275,7 +287,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         raf = requestAnimationFrame(loop);
       };
       raf = requestAnimationFrame(loop);
-    } else if (thinking) {
+    } else if (thinking || listening) {
       const t0 = performance.now();
       const loop = () => {
         const p = (performance.now() - t0) / 1000;
@@ -289,7 +301,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [speaking, thinking, starScale]);
+  }, [speaking, thinking, listening, starScale]);
 
   // Pre-fetch (and thereby warm) the greeting audio while the user is on the
   // start screen, so clicking Begin plays it without a cold TTS round-trip.
@@ -351,7 +363,11 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         setSpeaking(false);
         setThinking(false);
         if (playerRef.current === player) playerRef.current = null;
+        // Desktop keeps the continuous mic alive across turns; mobile push-to-talk
+        // returns to idle ("Tap to speak") and waits for the next tap (setting
+        // listening false above leaves the derived idle state showing).
         if (
+          !IS_MOBILE &&
           startedRef.current &&
           !mutedRef.current &&
           !recognitionRef.current
@@ -490,6 +506,91 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     }
   };
 
+  // MOBILE push-to-talk: capture ONE spoken turn, started from a tap (the user
+  // gesture iOS needs). continuous=false so it auto-ends on silence, and the mic
+  // is never open while Lumi speaks (which on iOS would break the next turn).
+  const startPushToTalkTurn = () => {
+    if (recognitionRef.current) return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setStarted(false);
+      setNotice("Voice conversations aren't supported in this browser.");
+      return;
+    }
+    const r: any = new SpeechRecognition();
+    r.lang = "en-US";
+    r.interimResults = false;
+    r.continuous = false; // one utterance, auto-ends on silence
+    r.maxAlternatives = 1;
+    let lastError = "";
+    gotResultRef.current = false;
+
+    r.onresult = (ev: any) => {
+      const last = ev.results[ev.results.length - 1];
+      if (last.isFinal) {
+        const text = last[0].transcript.trim();
+        if (text) {
+          gotResultRef.current = true;
+          setListening(false);
+          pushHistory({ role: "user", content: text });
+          sendToAI(text);
+        }
+      }
+    };
+
+    r.onerror = (e: any) => {
+      lastError = e?.error || "";
+      if (e.error !== "no-speech" && e.error !== "aborted") {
+        console.error("Speech recognition error:", e);
+      }
+    };
+
+    r.onend = () => {
+      if (recognitionRef.current === r) recognitionRef.current = null;
+      intentionalStopRef.current = false;
+      setListening(false);
+      // A missing/denied mic is fatal - stop and explain.
+      if (
+        lastError === "not-allowed" ||
+        lastError === "service-not-allowed" ||
+        lastError === "audio-capture"
+      ) {
+        setStarted(false);
+        setNotice(
+          lastError === "audio-capture"
+            ? "No microphone found. Connect one and tap to speak again."
+            : "Lumi needs microphone access for voice. Allow it in your browser settings, then tap to speak."
+        );
+        return;
+      }
+      // No speech captured (silence / a quick tap) just returns to idle; a real
+      // turn already went to the AI from onresult, so nothing else to do.
+    };
+
+    recognitionRef.current = r;
+    try {
+      r.start();
+      setListening(true);
+    } catch (e) {
+      console.error("Error starting recognition:", e);
+      recognitionRef.current = null;
+      setListening(false);
+    }
+  };
+
+  // MOBILE: the central star is the push-to-talk control - tap when idle to
+  // speak, tap while listening to send what was captured.
+  const onMobileMic = () => {
+    if (!startedRef.current) return;
+    if (listeningRef.current) {
+      stopListening(); // finalize: onresult (if any) -> onend
+    } else if (!speakingRef.current && !thinkingRef.current) {
+      startPushToTalkTurn();
+    }
+  };
+
   const sendToAI = async (userText: string) => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     playerRef.current?.cancel();
@@ -532,7 +633,8 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
           speakLine(
             "Sorry, I'm having trouble responding right now. Please try again in a moment."
           );
-        } else if (startedRef.current && !mutedRef.current) {
+        } else if (!IS_MOBILE && startedRef.current && !mutedRef.current) {
+          // Desktop reopens the continuous mic; mobile returns to idle (tap to speak).
           startListening();
         }
       }
@@ -541,7 +643,8 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
       setThinking(false);
       if (!(e instanceof Error) || e.name !== "AbortError") {
         console.error("Error getting AI response:", e);
-        if (startedRef.current && !mutedRef.current) startListening();
+        if (!IS_MOBILE && startedRef.current && !mutedRef.current)
+          startListening();
       }
     } finally {
       if (abortControllerRef.current === ac) abortControllerRef.current = null;
@@ -581,11 +684,19 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     greetedRef.current = false;
     greetingPendingRef.current = false;
     setStarted(true);
-    // Start the mic FIRST so the permission prompt appears right when Begin is
-    // clicked; the greeting then speaks from recognition.onstart, after the user
-    // allows. A denial is handled in recognition.onerror. (No getUserMedia probe -
-    // that is what used to add an extra mic open/close chime at the very start.)
-    startListening();
+    if (IS_MOBILE) {
+      // Push-to-talk: greet now (audio was unlocked in this tap), then wait for a
+      // tap to speak. Mic permission is requested on the FIRST tap-to-speak, not
+      // here - so playback (the greeting) never fights an open mic on iOS.
+      greetedRef.current = true; // greeting handled here, not from recognition.onstart
+      setListening(false);
+      speakGreeting();
+    } else {
+      // Desktop: hands-free. Start the mic now (the permission prompt appears on
+      // this tap); the greeting speaks from recognition.onstart after the user
+      // allows. A denial is handled in recognition.onerror.
+      startListening();
+    }
   };
 
   const handleStop = () => {
@@ -786,8 +897,19 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
         ) : (
           <div className="flex h-full w-full max-w-150 flex-col items-center justify-center gap-16 max-md:gap-10">
             <motion.div
-              className="relative h-62.5 w-62.5 max-md:h-52.5 max-md:w-52.5 max-[480px]:h-45 max-[480px]:w-45"
+              className={`relative h-62.5 w-62.5 max-md:h-52.5 max-md:w-52.5 max-[480px]:h-45 max-[480px]:w-45${
+                IS_MOBILE && !speaking && !thinking ? " cursor-pointer" : ""
+              }`}
               style={{ scale: smoothStar }}
+              onClick={IS_MOBILE ? onMobileMic : undefined}
+              role={IS_MOBILE ? "button" : undefined}
+              aria-label={
+                IS_MOBILE
+                  ? listening
+                    ? "Tap to send"
+                    : "Tap to speak"
+                  : undefined
+              }
             >
               {/* Outer soft halo */}
               <div
@@ -868,12 +990,24 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
                   ? "Speaking…"
                   : thinking
                     ? "Thinking…"
-                    : muted
-                      ? "Muted"
-                      : "Listening…"}
+                    : IS_MOBILE
+                      ? listening
+                        ? "Listening…"
+                        : "Tap to speak"
+                      : muted
+                        ? "Muted"
+                        : "Listening…"}
               </p>
               <p className="m-0 text-[14px] text-starlight/60 max-[480px]:text-[13px]">
-                {muted ? (
+                {IS_MOBILE ? (
+                  speaking || thinking ? (
+                    <>One moment…</>
+                  ) : listening ? (
+                    <>Listening… tap the star to send.</>
+                  ) : (
+                    <>Tap the star, then speak.</>
+                  )
+                ) : muted ? (
                   <>Microphone off - unmute to continue.</>
                 ) : (
                   <>Speak whenever you&rsquo;re ready.</>
@@ -886,14 +1020,17 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
 
       {started && (
         <div className="fixed bottom-10 left-1/2 z-1220 flex -translate-x-1/2 items-center justify-center gap-8 max-md:bottom-[calc(30px+env(safe-area-inset-bottom))] max-md:gap-6 max-[480px]:bottom-[calc(24px+env(safe-area-inset-bottom))] max-[480px]:gap-5">
-          <motion.button
-            type="button"
-            className={`${TALK_BTN} ${muted ? TALK_BTN_MUTED : TALK_BTN_DEFAULT}`}
-            title={muted ? "Unmute" : "Mute"}
-            aria-label={muted ? "Unmute microphone" : "Mute microphone"}
-            onClick={toggleMute}
-            {...keyPress}
-          >
+          {/* Mute is desktop-only: mobile push-to-talk isn't continuously
+              listening, so there's nothing to mute (the star is the mic). */}
+          {!IS_MOBILE && (
+            <motion.button
+              type="button"
+              className={`${TALK_BTN} ${muted ? TALK_BTN_MUTED : TALK_BTN_DEFAULT}`}
+              title={muted ? "Unmute" : "Mute"}
+              aria-label={muted ? "Unmute microphone" : "Mute microphone"}
+              onClick={toggleMute}
+              {...keyPress}
+            >
             {muted ? (
               <svg
                 width="22"
@@ -929,6 +1066,7 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
               </svg>
             )}
           </motion.button>
+          )}
           <motion.button
             type="button"
             className={`${TALK_BTN} ${TALK_BTN_RED}`}
