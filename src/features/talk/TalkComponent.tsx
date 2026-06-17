@@ -695,9 +695,19 @@ const TalkComponent = ({ isOpen = true, onClose = () => {} }: Props) => {
     greetingPendingRef.current = false;
     setStarted(true);
     if (IS_MOBILE) {
-      // Push-to-talk: greet now (audio was unlocked in this tap), then wait for a
-      // tap to speak. Mic permission is requested on the FIRST tap-to-speak, not
-      // here - so playback (the greeting) never fights an open mic on iOS.
+      // Push-to-talk: request mic permission NOW, inside the Begin tap, so the
+      // first hold-to-speak isn't interrupted by a permission prompt. We don't
+      // keep the stream (recognition opens its own) - just trigger the grant.
+      if (navigator.mediaDevices?.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then((stream) => stream.getTracks().forEach((t) => t.stop()))
+          .catch(() => {
+            /* denied / unavailable - holding will prompt + explain instead */
+          });
+      }
+      // Greet now (audio was unlocked in this tap); the user holds the mic button
+      // to talk. The mic is never open while Lumi speaks (that breaks iOS).
       greetedRef.current = true; // greeting handled here, not from recognition.onstart
       setListening(false);
       speakGreeting();
