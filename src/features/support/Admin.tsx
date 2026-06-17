@@ -35,13 +35,14 @@ import {
 const RANGE_SLIDER_CLS =
   "w-full cursor-pointer appearance-none bg-transparent " +
   "[&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:[background:var(--track)] " +
-  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gold-deep " +
+  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gold-deep " +
   "[&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-white " +
   "[&::-moz-range-progress]:h-2 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-gold-deep " +
-  "[&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-gold-deep";
+  "[&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-gold-deep";
 
 // Gold-fill-then-white track gradient for a limit slider, split at its value.
-const sliderTrack = (value: number, min = 10000, max = 200000): string => {
+// TEMP: floor lowered to 1k for testing (was 10k); revert when done.
+const sliderTrack = (value: number, min = 1000, max = 200000): string => {
   const pct = `${((value - min) / (max - min)) * 100}%`;
   return `linear-gradient(to right, var(--color-gold-deep) ${pct}, #fff ${pct})`;
 };
@@ -1809,8 +1810,10 @@ export default function Admin() {
                       </div>
                     </div>
 
+                    {/* Daily + context limits: stacked on mobile, side by side on desktop. */}
+                    <div className="flex flex-col gap-4 md:flex-row">
                     {/* Daily AI token budget (shared across every AI feature) */}
-                    <div className="rounded-xl border border-solid border-line bg-cream/60 p-4">
+                    <div className="min-w-0 flex-1 rounded-xl border border-solid border-line bg-cream/60 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink">
                           Daily token limit
@@ -1820,14 +1823,14 @@ export default function Admin() {
                         </span>
                       </div>
                       <p className="mb-3 mt-1 text-[12.5px] leading-relaxed text-muted">
-                        Shared AI tokens each user can spend per day across chat,
-                        quiz, flashcards, and voice.
+                        The AI tokens each user can spend per day, shared across
+                        chat, quiz, flashcards, and voice.
                       </p>
                       <input
                         type="range"
-                        min={10000}
+                        min={1000}
                         max={200000}
-                        step={5000}
+                        step={1000}
                         value={dailyTokenDraft}
                         onChange={(e) =>
                           setDailyTokenDraft(Number(e.target.value))
@@ -1839,7 +1842,7 @@ export default function Admin() {
                         className={RANGE_SLIDER_CLS}
                       />
                       <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted">
-                        <span>10k</span>
+                        <span>1k</span>
                         <span>200k</span>
                       </div>
                       <div className="mt-2 flex items-center justify-end gap-2">
@@ -1859,7 +1862,7 @@ export default function Admin() {
                     </div>
 
                     {/* Per-chat context limit (auto-compaction threshold) */}
-                    <div className="rounded-xl border border-solid border-line bg-cream/60 p-4">
+                    <div className="min-w-0 flex-1 rounded-xl border border-solid border-line bg-cream/60 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink">
                           Chat context limit
@@ -1869,14 +1872,14 @@ export default function Admin() {
                         </span>
                       </div>
                       <p className="mb-3 mt-1 text-[12.5px] leading-relaxed text-muted">
-                        When a single chat grows past this many tokens, older
-                        turns are summarized to keep replies fast and on-budget.
+                        When one chat grows past this many tokens, Lumi
+                        summarizes older turns to keep it fast.
                       </p>
                       <input
                         type="range"
-                        min={10000}
+                        min={1000}
                         max={200000}
-                        step={5000}
+                        step={1000}
                         value={contextDraft}
                         onChange={(e) => setContextDraft(Number(e.target.value))}
                         aria-label="Chat context limit"
@@ -1886,7 +1889,7 @@ export default function Admin() {
                         className={RANGE_SLIDER_CLS}
                       />
                       <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted">
-                        <span>10k</span>
+                        <span>1k</span>
                         <span>200k</span>
                       </div>
                       <div className="mt-2 flex items-center justify-end gap-2">
@@ -1903,6 +1906,7 @@ export default function Admin() {
                           Save
                         </Button>
                       </div>
+                    </div>
                     </div>
                   </div>
                 </>

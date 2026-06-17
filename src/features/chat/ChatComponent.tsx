@@ -2436,7 +2436,7 @@ const ChatComponent = ({
           {/* Scroll happens on the FULL width (ref here) so hovering anywhere
               scrolls; messages stay centered via the inner 820px column. */}
           <motion.div
-            className="w-full flex-1 overflow-y-auto overscroll-contain scroll-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
+            className="w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain scroll-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-2 max-md:pb-20"
             ref={chatContainerRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
