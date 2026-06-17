@@ -325,7 +325,8 @@ export const fetchStreamingResponse = async (
  */
 export const summarizeConversation = async (
   turns: ChatMessage[],
-  priorSummary = ""
+  priorSummary = "",
+  maxTokens = 1024
 ): Promise<string> => {
   try {
     const transcript = turns
@@ -351,7 +352,7 @@ export const summarizeConversation = async (
       system,
       messages: [{ role: "user", content: user }],
       stream: false,
-      maxTokens: 1024,
+      maxTokens,
     });
     if (!response.ok) return "";
 

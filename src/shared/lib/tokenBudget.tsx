@@ -68,7 +68,19 @@ export function TokenBudgetProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
-    const onUsage = () => refresh();
+    const onUsage = (e: Event) => {
+      // An admin slider save carries the new limit in the event detail; reflect
+      // it instantly (a refetch could read the still-cached old value and undo
+      // it). A plain event (after an AI turn) just refetches used/remaining.
+      const limit = (e as CustomEvent).detail?.limit;
+      if (typeof limit === "number" && limit > 0) {
+        setBudget((b) =>
+          b ? { ...b, limit, remaining: Math.max(0, limit - b.used) } : b
+        );
+        return;
+      }
+      refresh();
+    };
     window.addEventListener("lumi:usage", onUsage);
     const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
     return () => {

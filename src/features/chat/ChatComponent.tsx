@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
@@ -12,7 +12,6 @@ import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
 import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { UsageBar } from "@shared/components/UsageBar";
-import { ContextBar } from "@shared/components/ContextBar";
 import { estimateTokens } from "@shared/lib/tokenEstimate";
 import { useTokenBudget } from "@shared/lib/tokenBudget";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
@@ -87,11 +86,13 @@ interface StoredMessageV2 {
 interface StoredMetaV2 {
   v: 2;
   messages: StoredMessageV2[];
-  // Running summary of turns that were compacted out of the live thread once the
-  // chat passed the context limit. Replayed to the model (and shown as a small
-  // "earlier conversation summarized" marker) so a long chat stays coherent
-  // without resending every token.
+  // Payload-only compaction (the full thread always stays visible): `summary` is
+  // a running gist of the oldest `compactedCount` turns, and only `summary` + the
+  // turns AFTER that boundary are sent to the model. Persisted so a reload keeps
+  // the same boundary instead of resending everything. `compactedCount` is an
+  // index into the `messages` array below (so it round-trips exactly).
   summary?: string;
+  compactedCount?: number;
 }
 
 interface ChatComponentProps {
@@ -226,12 +227,19 @@ const splitConversationParts = (text: string | null | undefined): string[] => {
 // answer/error so the two stay index-aligned even across errored or empty turns.
 const buildConversationPayload = (
   messages: ChatMsg[],
-  summary = ""
+  summary = "",
+  compactedCount = 0
 ): { question: string; answer: string; messages_metadata: string } => {
   const ordered: StoredMessageV2[] = [];
-  for (const msg of messages) {
+  // The compaction boundary is an index into the LIVE thread, but `ordered` drops
+  // transient bubbles - so re-derive the boundary as an index into `ordered` (how
+  // many surviving rows fall before the live boundary) so it round-trips exactly.
+  let compactedInOrdered = 0;
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]!;
     if (!msg || typeof msg.content !== "string") continue;
     if (msg.type === "assistant" && msg.isStreaming) continue; // live bubble
+    let pushed = false;
     if (msg.type === "user") {
       if (!msg.content.trim()) continue;
       ordered.push({
@@ -246,17 +254,21 @@ const buildConversationPayload = (
           MAX_PERSISTED_CONTEXT
         ),
       });
+      pushed = true;
     } else if (msg.type === "error") {
       ordered.push({
         type: "error",
         content: msg.content,
         errorType: msg.errorType || "general",
       });
+      pushed = true;
     } else if (msg.content.trim()) {
       ordered.push({ type: "assistant", content: msg.content });
+      pushed = true;
     }
     // else: an empty assistant bubble (aborted before any token) - drop it; the
     // question it followed simply restores with no answer.
+    if (pushed && i < compactedCount) compactedInOrdered++;
   }
 
   const questionParts: string[] = [];
@@ -277,6 +289,7 @@ const buildConversationPayload = (
 
   const meta: StoredMetaV2 = { v: 2, messages: ordered };
   if (summary && summary.trim()) meta.summary = summary.trim();
+  if (compactedInOrdered > 0) meta.compactedCount = compactedInOrdered;
   return {
     question: questionParts.join(TURN_SEP),
     answer: answerParts.join(TURN_SEP),
@@ -297,6 +310,21 @@ const summaryFromConv = (conv: any): string => {
     /* ignore - no summary */
   }
   return "";
+};
+
+// Read the persisted compaction boundary (index into the row's stored messages).
+const compactedCountFromConv = (conv: any): number => {
+  try {
+    if (conv && conv.messages_metadata) {
+      const meta = JSON.parse(conv.messages_metadata);
+      if (meta && meta.v === 2 && typeof meta.compactedCount === "number") {
+        return meta.compactedCount;
+      }
+    }
+  } catch {
+    /* ignore - no boundary */
+  }
+  return 0;
 };
 
 // Reconstruct a conversation's messages for display. Prefers the v2 ordered
@@ -382,12 +410,15 @@ const ChatComponent = ({
 }: ChatComponentProps) => {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const messagesRef = useRef<ChatMsg[]>(messages);
-  // Running summary of turns compacted out of this chat once it passed the
-  // context limit (admin-set, default 50k). Carries the older context to the
-  // model + drives the "earlier conversation summarized" marker.
+  // Payload-only compaction: the full thread always stays on screen. `contextSummary`
+  // is a running gist of the oldest `compactedCount` turns; only that summary plus
+  // the turns AFTER the boundary are sent to the model, so cost stays bounded while
+  // the user keeps their whole conversation. The gauge reflects this sent payload.
   const [contextSummary, setContextSummary] = useState("");
   const contextSummaryRef = useRef("");
-  // Guards the async summarize-and-trim pass so it can't run twice at once.
+  const [compactedCount, setCompactedCount] = useState(0);
+  const compactedCountRef = useRef(0);
+  // Guards the async summarize pass so it can't run twice at once.
   const compactingRef = useRef(false);
   const { budget } = useTokenBudget();
   const contextLimit =
@@ -633,20 +664,13 @@ const ChatComponent = ({
     messagesRef.current = messages;
   }, [messages]);
 
-  // Mirror the compaction summary so the async send/compact paths read it fresh.
+  // Mirror the compaction state so the async send/compact paths read it fresh.
   useEffect(() => {
     contextSummaryRef.current = contextSummary;
   }, [contextSummary]);
-
-  // Estimated tokens this chat would replay to the model: the running summary
-  // plus every live turn's text, materials, and uploaded-file text. Drives the
-  // per-chat context gauge and the auto-compaction trigger. (Errors aren't
-  // replayed, so they don't count.)
-  const contextUsed = useMemo(() => {
-    let total = estimateTokens(contextSummary);
-    for (const m of messages) total += messageTokens(m);
-    return total;
-  }, [messages, contextSummary]);
+  useEffect(() => {
+    compactedCountRef.current = compactedCount;
+  }, [compactedCount]);
 
   // Mirror the abort controller so the unmount cleanup can reach it.
   useEffect(() => {
@@ -696,6 +720,7 @@ const ChatComponent = ({
             sessionId: currentSessionId,
             conversationId: currentConversationId,
             contextSummary,
+            compactedCount,
             timestamp: Date.now(),
           })
         );
@@ -711,6 +736,7 @@ const ChatComponent = ({
     currentSessionId,
     currentConversationId,
     contextSummary,
+    compactedCount,
   ]);
 
   useEffect(() => {
@@ -740,6 +766,7 @@ const ChatComponent = ({
             sessionId: savedSessionId,
             conversationId: savedConversationId,
             contextSummary: savedContextSummary,
+            compactedCount: savedCompactedCount,
             timestamp,
           } = JSON.parse(savedChat);
           if (
@@ -751,6 +778,7 @@ const ChatComponent = ({
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
             setContextSummary(savedContextSummary || "");
+            setCompactedCount(Number(savedCompactedCount) || 0);
             // Restore the session + conversation so a continued turn updates the
             // existing row instead of inserting a duplicate.
             if (savedSessionId) setCurrentSessionId(savedSessionId);
@@ -778,6 +806,7 @@ const ChatComponent = ({
             sessionId: savedSessionId,
             conversationId: savedConversationId,
             contextSummary: savedContextSummary,
+            compactedCount: savedCompactedCount,
             timestamp,
           } = JSON.parse(savedChat);
           if (
@@ -789,6 +818,7 @@ const ChatComponent = ({
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
             setContextSummary(savedContextSummary || "");
+            setCompactedCount(Number(savedCompactedCount) || 0);
             // Restore the session + conversation so a continued turn updates the
             // existing row instead of inserting a duplicate.
             if (savedSessionId) setCurrentSessionId(savedSessionId);
@@ -865,16 +895,19 @@ const ChatComponent = ({
         );
 
         setMessages(formattedMessages);
-        // Restore the most recent compaction summary across the rows.
-        let sum = "";
-        for (const conv of conversations as any[]) {
-          const s = summaryFromConv(conv);
-          if (s) sum = s;
+        // Compaction state maps cleanly only to a single stored row; a merged
+        // multi-conversation view starts fresh (it re-compacts on the next turn).
+        if (conversations.length === 1) {
+          setContextSummary(summaryFromConv(conversations[0]));
+          setCompactedCount(compactedCountFromConv(conversations[0]));
+        } else {
+          setContextSummary("");
+          setCompactedCount(0);
         }
-        setContextSummary(sum);
       } else {
         setMessages([]);
         setContextSummary("");
+        setCompactedCount(0);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -992,12 +1025,13 @@ const ChatComponent = ({
         // turn immediately (no flash if the user had scrolled up earlier).
         pinnedToBottom.current = true;
         setMessages(messageArray);
-        let sum = "";
-        for (const conv of sessionConversations as any[]) {
-          const s = summaryFromConv(conv);
-          if (s) sum = s;
+        if (sessionConversations.length === 1) {
+          setContextSummary(summaryFromConv(sessionConversations[0]));
+          setCompactedCount(compactedCountFromConv(sessionConversations[0]));
+        } else {
+          setContextSummary("");
+          setCompactedCount(0);
         }
-        setContextSummary(sum);
         setCurrentConversationId(id);
         setCurrentSessionId(data.session_id || `session-${Date.now()}`);
 
@@ -1143,11 +1177,11 @@ const ChatComponent = ({
     }
   };
 
-  // Auto-compaction: when this chat's replayed context passes the limit, fold the
-  // OLDEST turns into the running summary and drop them from the live thread, so
-  // the conversation can continue coherently without resending every token (and
-  // without blowing the daily budget). Runs after a turn is saved; fails open
-  // (keeps the full thread) on any error so a hiccup never loses messages.
+  // Payload-only auto-compaction: when the tokens we'd SEND (summary + the turns
+  // after the boundary) pass the limit, fold more of the oldest un-summarized turns
+  // into the running summary and advance the boundary. The visible thread is NEVER
+  // touched - the user keeps their whole conversation; only what's sent to the model
+  // shrinks. Runs after a turn is saved; fails open (no boundary change) on error.
   const maybeCompact = useCallback(async () => {
     if (compactingRef.current) return;
     const limit = contextLimit;
@@ -1155,13 +1189,19 @@ const ChatComponent = ({
     // The conversation we're compacting; if it changes during the async
     // summarize (user opened another chat or started a new one) we bail.
     const startConvId = currentConvIdRef.current ?? currentConversationId;
+    const prevCompacted = Math.min(
+      Math.max(0, compactedCountRef.current),
+      all.length
+    );
 
+    // Tokens we'd send today: the summary + the turns after the current boundary.
     let total = estimateTokens(contextSummaryRef.current);
-    for (const m of all) total += messageTokens(m);
+    for (let i = prevCompacted; i < all.length; i++)
+      total += messageTokens(all[i]!);
     if (total <= limit) return;
 
-    // Keep the most recent turns that fit in ~55% of the limit; summarize the
-    // rest. The headroom (vs the full limit) means we don't recompact every turn.
+    // The recent verbatim window we want to keep sending in full (~55% of the
+    // limit); everything older than it gets folded into the summary.
     const keepBudget = Math.floor(limit * 0.55);
     let acc = 0;
     let keepFrom = all.length;
@@ -1171,11 +1211,14 @@ const ChatComponent = ({
       acc += mt;
       keepFrom = i;
     }
-    // Always keep at least the last two messages on screen; only compact when
-    // there are a couple of older ones worth folding into the summary.
-    keepFrom = Math.max(0, Math.min(keepFrom, all.length - 2));
-    const toCompact = all.slice(0, keepFrom);
-    if (toCompact.length < 2) return;
+    // Move the boundary forward only (never un-summarize), always leaving the last
+    // two turns verbatim. Fold just the turns newer than the current boundary.
+    const newCompacted = Math.max(
+      prevCompacted,
+      Math.min(keepFrom, all.length - 2)
+    );
+    const toCompact = all.slice(prevCompacted, newCompacted);
+    if (toCompact.length < 1) return; // nothing new to fold
 
     compactingRef.current = true;
     try {
@@ -1194,32 +1237,35 @@ const ChatComponent = ({
           turns.push({ role: "assistant", content: trimmed });
         }
       }
-      if (turns.length < 2) return;
+      if (!turns.length) return;
 
+      // Keep the summary well under the limit so the sent payload always lands
+      // below it (a full 1024-token summary could exceed a small limit on its
+      // own). ~quarter of the limit, capped at 1024, floored so it stays useful.
+      const summaryCap = Math.max(128, Math.min(1024, Math.floor(limit * 0.25)));
       const newSummary = await summarizeConversation(
         turns,
-        contextSummaryRef.current
+        contextSummaryRef.current,
+        summaryCap
       );
       if (!newSummary) return; // fail open: keep the full thread
 
-      // Bail if the user switched/reset conversations while we summarized -
-      // applying this slice to a different thread would corrupt it.
+      // Bail if the user switched/reset conversations while we summarized.
       const convId = currentConvIdRef.current ?? currentConversationId;
       if (convId !== startConvId) return;
-      // Drop the oldest `keepFrom` turns from the LIVE thread (a stable prefix -
-      // turns only ever append), so a message sent while we were summarizing is
-      // preserved. Bail if the thread somehow shrank past that prefix.
+      // The boundary sits in the stable prefix (turns only append), so it's still
+      // valid against the live thread. Bail if the thread somehow shrank past it.
       const live = Array.isArray(messagesRef.current) ? messagesRef.current : all;
-      if (live.length < keepFrom + 1) return;
+      if (live.length < newCompacted) return;
 
       const cleanSummary = stripEmDash(newSummary);
-      const kept = live.slice(keepFrom);
       contextSummaryRef.current = cleanSummary;
       setContextSummary(cleanSummary);
-      messagesRef.current = kept;
-      setMessages(kept);
+      compactedCountRef.current = newCompacted;
+      setCompactedCount(newCompacted);
+      // The thread is intentionally NOT modified - it stays fully visible.
       if (convId) {
-        const payload = buildConversationPayload(kept, cleanSummary);
+        const payload = buildConversationPayload(live, cleanSummary, newCompacted);
         const { error: compactErr } = await supabase
           .from("conversations")
           .update({
@@ -1233,7 +1279,7 @@ const ChatComponent = ({
           console.warn("Error persisting compaction:", compactErr);
       }
     } catch (e) {
-      console.warn("Compaction failed (keeping full thread):", e);
+      console.warn("Compaction failed (keeping full payload):", e);
     } finally {
       compactingRef.current = false;
     }
@@ -1450,10 +1496,16 @@ const ChatComponent = ({
         }
       };
 
-      // Build history array from prior messages so the model receives full context
+      // Build the history payload from the turns AFTER the compaction boundary
+      // (older ones are represented by the summary, prepended below). The full
+      // thread stays on screen; only what's sent to the model is bounded.
       const historyPayload: AIChatMessage[] = [];
 
-      for (const m of priorMessages) {
+      const sendFrom = Math.min(
+        Math.max(0, compactedCountRef.current),
+        priorMessages.length
+      );
+      for (const m of priorMessages.slice(sendFrom)) {
         if (!m || typeof m.content !== "string") continue;
         const trimmed = m.content.trim();
         if (!trimmed) continue;
@@ -1484,9 +1536,25 @@ const ChatComponent = ({
         }
       }
 
-      // Limit history to last N messages to avoid exceeding token limits
-      const MAX_HISTORY_MESSAGES = 20;
-      const trimmedHistory = historyPayload.slice(-MAX_HISTORY_MESSAGES);
+      // Bound the sent history by the context limit (a safety for when compaction
+      // hasn't caught up yet; normally the post-boundary window already fits).
+      // Walk newest-first keeping what fits - the summary (prepended below) is
+      // counted too, and at least the most recent turn is always kept.
+      let trimmedHistory = historyPayload;
+      if (historyPayload.length > 0) {
+        let acc = estimateTokens(contextSummaryRef.current);
+        const fit: AIChatMessage[] = [];
+        for (let i = historyPayload.length - 1; i >= 0; i--) {
+          const entry = historyPayload[i]!;
+          const t = estimateTokens(
+            typeof entry.content === "string" ? entry.content : ""
+          );
+          if (fit.length > 0 && acc + t > contextLimit) break;
+          acc += t;
+          fit.unshift(entry);
+        }
+        trimmedHistory = fit;
+      }
 
       // Replay the compaction summary (older turns folded away once this chat
       // passed the context limit) so the model keeps the full thread of the
@@ -1623,7 +1691,8 @@ const ChatComponent = ({
 
           const payload = buildConversationPayload(
             currentMessages,
-            contextSummaryRef.current
+            contextSummaryRef.current,
+            compactedCountRef.current
           );
           const allUserMessages = payload.question;
           const allAiResponses = payload.answer;
@@ -1969,12 +2038,13 @@ const ChatComponent = ({
 
     pinnedToBottom.current = true;
     setMessages(messageArray);
-    let sum = "";
-    for (const conv of sessionConversations) {
-      const s = summaryFromConv(conv);
-      if (s) sum = s;
+    if (sessionConversations.length === 1) {
+      setContextSummary(summaryFromConv(sessionConversations[0]));
+      setCompactedCount(compactedCountFromConv(sessionConversations[0]));
+    } else {
+      setContextSummary("");
+      setCompactedCount(0);
     }
-    setContextSummary(sum);
 
     if (conversationPair.context_classes) {
       setSelectedClasses(conversationPair.context_classes);
@@ -1996,6 +2066,8 @@ const ChatComponent = ({
     setMessages([]);
     setContextSummary("");
     contextSummaryRef.current = "";
+    setCompactedCount(0);
+    compactedCountRef.current = 0;
     setCurrentConversationId(null);
     setCurrentSessionId(`session-${Date.now()}`);
     setSelectedDocs([]);
@@ -2326,19 +2398,9 @@ const ChatComponent = ({
           )}
         </div>
 
-        {/* Daily budget on top, this chat's context gauge stacked beneath it.
-            A fixed label width lines the two tracks up vertically. */}
-        <div className="flex flex-col items-start gap-1.5">
-          <UsageBar variant="day" labelClassName="w-14" />
-          {messages.length > 0 && (
-            <ContextBar
-              used={contextUsed}
-              limit={contextLimit}
-              variant="day"
-              labelClassName="w-14"
-            />
-          )}
-        </div>
+        {/* Shared daily AI budget gauge. (The per-chat context gauge was removed -
+            compaction now runs silently behind the scenes.) */}
+        <UsageBar variant="day" />
 
         {/* Plate label - purely decorative observatory register. */}
         <p
@@ -2457,31 +2519,19 @@ const ChatComponent = ({
                   </p>
                 </div>
               ) : (
-                <>
-                  {contextSummary && (
-                    <div
-                      className="mx-auto mb-3 mt-1 flex items-center gap-2 self-center rounded-full border border-solid border-line bg-cream/60 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted"
-                      title="To keep this long chat fast and on-budget, Lumi summarized the earliest turns. It still remembers them."
-                    >
-                      <span aria-hidden="true">✦</span>
-                      Earlier conversation summarized
-                      <span aria-hidden="true">✦</span>
-                    </div>
-                  )}
-                  {messages.map((msg, i) => (
-                    <ChatMessage
-                      key={msg.id}
-                      message={msg.content}
-                      type={msg.type}
-                      isStreaming={!!msg.isStreaming}
-                      files={msg.files}
-                      contextFiles={msg.contextFiles}
-                      statusLabel={msg.statusLabel}
-                      isLast={i === messages.length - 1}
-                      onRetry={onRetryStable}
-                    />
-                  ))}
-                </>
+                messages.map((msg, i) => (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg.content}
+                    type={msg.type}
+                    isStreaming={!!msg.isStreaming}
+                    files={msg.files}
+                    contextFiles={msg.contextFiles}
+                    statusLabel={msg.statusLabel}
+                    isLast={i === messages.length - 1}
+                    onRetry={onRetryStable}
+                  />
+                ))
               )}
             </div>
           </motion.div>
