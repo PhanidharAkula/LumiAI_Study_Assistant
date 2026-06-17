@@ -76,43 +76,60 @@ export async function burstOk(userId: string, perMin: number): Promise<boolean> 
   }
 }
 
-// --- Admin-configurable daily limit (app_settings.daily_token_limit) ---
-let limitCache = { value: 0, at: 0 };
-const LIMIT_TTL_MS = 60_000;
+// --- Admin-configurable limits (app_settings, set via the admin sliders) ---
+const settingCache = new Map<string, { value: number; at: number }>();
+const SETTING_TTL_MS = 60_000;
 
-/**
- * The shared daily token limit: from app_settings (the admin slider), cached
- * 60s, falling back to LUMI_DAILY_TOKENS or 50000. Needs the caller's bearer
- * token because app_settings is authenticated-read.
- */
-export async function getDailyTokenLimit(userToken: string): Promise<number> {
-  const fallback = Number(process.env.LUMI_DAILY_TOKENS) || 50000;
+/** Read a positive numeric app_setting (admin slider), cached 60s per key,
+ *  falling back to `fallback`. Needs the caller's bearer token (app_settings is
+ *  authenticated-read). */
+async function getNumericSetting(
+  key: string,
+  fallback: number,
+  userToken: string
+): Promise<number> {
   const now = Date.now();
-  if (limitCache.value && now - limitCache.at < LIMIT_TTL_MS) {
-    return limitCache.value;
+  const cached = settingCache.get(key);
+  if (cached && now - cached.at < SETTING_TTL_MS) return cached.value;
+  if (!SUPABASE_URL || !SUPABASE_ANON || !userToken) {
+    return cached?.value ?? fallback;
   }
-  if (!SUPABASE_URL || !SUPABASE_ANON || !userToken) return fallback;
   try {
     const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.daily_token_limit&select=value`,
+      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.${key}&select=value`,
       {
         headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${userToken}` },
         signal: AbortSignal.timeout(2000),
       }
     );
-    if (!resp.ok) return limitCache.value || fallback;
+    if (!resp.ok) return cached?.value ?? fallback;
     const rows = (await resp.json()) as Array<{ value?: unknown }>;
     const n = Number(rows?.[0]?.value);
-    const limit = Number.isFinite(n) && n > 0 ? n : fallback;
-    limitCache = { value: limit, at: now };
-    return limit;
+    const value = Number.isFinite(n) && n > 0 ? n : fallback;
+    settingCache.set(key, { value, at: now });
+    return value;
   } catch (err) {
-    console.error(
-      "[budget] getDailyTokenLimit failed:",
-      (err as Error)?.message
-    );
-    return limitCache.value || fallback;
+    console.error(`[budget] getNumericSetting(${key}) failed:`, (err as Error)?.message);
+    return cached?.value ?? fallback;
   }
+}
+
+/** Shared daily token limit (admin slider; env LUMI_DAILY_TOKENS; default 50k). */
+export function getDailyTokenLimit(userToken: string): Promise<number> {
+  return getNumericSetting(
+    "daily_token_limit",
+    Number(process.env.LUMI_DAILY_TOKENS) || 50000,
+    userToken
+  );
+}
+
+/** Per-chat context limit before auto-compaction (admin slider; default 50k). */
+export function getContextLimit(userToken: string): Promise<number> {
+  return getNumericSetting(
+    "chat_context_limit",
+    Number(process.env.LUMI_CONTEXT_TOKENS) || 50000,
+    userToken
+  );
 }
 
 function kvHeaders(): Record<string, string> {

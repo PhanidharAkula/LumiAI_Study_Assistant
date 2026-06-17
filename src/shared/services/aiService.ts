@@ -316,6 +316,53 @@ export const fetchStreamingResponse = async (
   }
 };
 
+/**
+ * Compact the oldest part of a long chat into a dense summary so the
+ * conversation can keep its thread without replaying every token to the model.
+ * `priorSummary` (a previous compaction) is folded in so summaries chain instead
+ * of dropping older context. Returns "" on failure - the caller keeps the
+ * un-compacted thread (fail open).
+ */
+export const summarizeConversation = async (
+  turns: ChatMessage[],
+  priorSummary = ""
+): Promise<string> => {
+  try {
+    const transcript = turns
+      .map((m) => {
+        const who = m.role === "assistant" ? "Lumi" : "Student";
+        const text =
+          typeof m.content === "string"
+            ? m.content
+            : m.content
+                .map((p) => (p.type === "text" ? p.text : "[image]"))
+                .join("\n");
+        return `${who}: ${text}`;
+      })
+      .join("\n\n");
+
+    const system = `You compress an ongoing tutoring conversation into a compact running summary that lets the assistant continue seamlessly. Preserve: the student's goals and questions, key facts and definitions covered, decisions or conclusions reached, any specifics (names, numbers, formulas, file references) that later turns may rely on, and unresolved threads. Drop pleasantries and redundancy. Write tight third-person notes (not a transcript). Never use em dashes (the long dash); use commas, colons, or parentheses. Output ONLY the summary.`;
+
+    const user = priorSummary
+      ? `Summary so far:\n${priorSummary}\n\nNewer turns to fold in:\n${transcript}\n\nWrite the updated combined summary now.`
+      : `Conversation to summarize:\n${transcript}\n\nWrite the summary now.`;
+
+    const response = await postJson({
+      system,
+      messages: [{ role: "user", content: user }],
+      stream: false,
+      maxTokens: 1024,
+    });
+    if (!response.ok) return "";
+
+    const data = await response.json();
+    return (data.text || "").trim();
+  } catch (error) {
+    console.error("Error summarizing conversation:", error);
+    return "";
+  }
+};
+
 /** Generate a short conversation title from the first Q/A exchange. */
 export const generateConversationTitle = async (
   userMessage: string,

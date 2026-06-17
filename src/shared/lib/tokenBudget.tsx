@@ -12,6 +12,8 @@ export interface TokenBudget {
   used: number;
   limit: number;
   remaining: number;
+  /** Per-chat context limit (tokens) before auto-compaction kicks in. */
+  contextLimit: number;
 }
 
 interface BudgetContextValue {
@@ -56,6 +58,7 @@ export function TokenBudgetProvider({ children }: { children: ReactNode }) {
             typeof d.remaining === "number"
               ? d.remaining
               : Math.max(0, d.limit - used),
+          contextLimit: Number(d.contextLimit) || 50000,
         });
       }
     } catch {

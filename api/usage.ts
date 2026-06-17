@@ -7,7 +7,11 @@
  * enforce. Reads as the full budget (used 0) until a KV store is connected.
  */
 import { getAuthedUser } from "./_auth.js";
-import { getDailyTokens, getDailyTokenLimit } from "./_ratelimit.js";
+import {
+  getDailyTokens,
+  getDailyTokenLimit,
+  getContextLimit,
+} from "./_ratelimit.js";
 
 function sendJson(res: any, status: number, payload: unknown): void {
   res.statusCode = status;
@@ -29,14 +33,16 @@ export default async function handler(req: any, res: any): Promise<void> {
     });
   }
 
-  const [used, limit] = await Promise.all([
+  const [used, limit, contextLimit] = await Promise.all([
     getDailyTokens(auth.userId),
     getDailyTokenLimit(auth.token),
+    getContextLimit(auth.token),
   ]);
 
   return sendJson(res, 200, {
     used,
     limit,
     remaining: Math.max(0, limit - used),
+    contextLimit,
   });
 }

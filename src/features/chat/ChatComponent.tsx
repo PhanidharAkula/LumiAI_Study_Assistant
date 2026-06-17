@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
 import { getFilePublicUrl } from "@shared/utils/storageUtils";
@@ -12,12 +12,16 @@ import { Constellation, LumiStar, UI } from "@shared/components/atlas";
 import { CloseButton, IconButton, Spinner } from "@shared/components/controls";
 import { PageBackdrop } from "@shared/components/PageBackdrop";
 import { UsageBar } from "@shared/components/UsageBar";
+import { ContextBar } from "@shared/components/ContextBar";
+import { estimateTokens } from "@shared/lib/tokenEstimate";
+import { useTokenBudget } from "@shared/lib/tokenBudget";
 import { useLoadingSignal } from "@shared/lib/loadingSignal";
 import { scrimFade, spring } from "@shared/motion";
 import { useEscapeToClose, useScrollLock } from "@shared/hooks/overlay";
 import {
   fetchStreamingResponse,
   generateConversationTitle,
+  summarizeConversation,
   type ChatMessage as AIChatMessage,
 } from "@shared/services/aiService";
 
@@ -83,6 +87,11 @@ interface StoredMessageV2 {
 interface StoredMetaV2 {
   v: 2;
   messages: StoredMessageV2[];
+  // Running summary of turns that were compacted out of the live thread once the
+  // chat passed the context limit. Replayed to the model (and shown as a small
+  // "earlier conversation summarized" marker) so a long chat stays coherent
+  // without resending every token.
+  summary?: string;
 }
 
 interface ChatComponentProps {
@@ -106,6 +115,19 @@ const MAX_PERSISTED_CONTEXT = 120000;
 let messageIdSeq = 0;
 const nextMessageId = (prefix: string): string =>
   `${prefix}-${Date.now()}-${(messageIdSeq += 1)}`;
+
+// Estimated tokens one message would replay to the model: its text plus any
+// study-material context and uploaded-file text. Errors aren't replayed, so they
+// cost nothing. Drives the per-chat context gauge and the compaction trigger.
+const messageTokens = (m: ChatMsg): number => {
+  if (!m || typeof m.content !== "string" || m.type === "error") return 0;
+  let t = estimateTokens(m.content);
+  if (m.contextContent) t += estimateTokens(m.contextContent);
+  if (Array.isArray(m.files)) {
+    for (const f of m.files) if (f?.text) t += estimateTokens(f.text);
+  }
+  return t;
+};
 
 // Rotating labels for the thinking bubble so a wait never reads as frozen. The
 // label rotates every ~1.4s through one phase while tagged files are being read,
@@ -203,7 +225,8 @@ const splitConversationParts = (text: string | null | undefined): string[] => {
 // search, and pre-v2 fallback. The columns pair each user turn with the next
 // answer/error so the two stay index-aligned even across errored or empty turns.
 const buildConversationPayload = (
-  messages: ChatMsg[]
+  messages: ChatMsg[],
+  summary = ""
 ): { question: string; answer: string; messages_metadata: string } => {
   const ordered: StoredMessageV2[] = [];
   for (const msg of messages) {
@@ -253,11 +276,27 @@ const buildConversationPayload = (
   if (awaitingAnswer) answerParts.push("");
 
   const meta: StoredMetaV2 = { v: 2, messages: ordered };
+  if (summary && summary.trim()) meta.summary = summary.trim();
   return {
     question: questionParts.join(TURN_SEP),
     answer: answerParts.join(TURN_SEP),
     messages_metadata: JSON.stringify(meta),
   };
+};
+
+// Read the persisted compaction summary off a conversation row (v2 meta only).
+const summaryFromConv = (conv: any): string => {
+  try {
+    if (conv && conv.messages_metadata) {
+      const meta = JSON.parse(conv.messages_metadata);
+      if (meta && meta.v === 2 && typeof meta.summary === "string") {
+        return meta.summary;
+      }
+    }
+  } catch {
+    /* ignore - no summary */
+  }
+  return "";
 };
 
 // Reconstruct a conversation's messages for display. Prefers the v2 ordered
@@ -343,6 +382,18 @@ const ChatComponent = ({
 }: ChatComponentProps) => {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const messagesRef = useRef<ChatMsg[]>(messages);
+  // Running summary of turns compacted out of this chat once it passed the
+  // context limit (admin-set, default 50k). Carries the older context to the
+  // model + drives the "earlier conversation summarized" marker.
+  const [contextSummary, setContextSummary] = useState("");
+  const contextSummaryRef = useRef("");
+  // Guards the async summarize-and-trim pass so it can't run twice at once.
+  const compactingRef = useRef(false);
+  const { budget } = useTokenBudget();
+  const contextLimit =
+    budget?.contextLimit && budget.contextLimit > 0
+      ? budget.contextLimit
+      : 50000;
   const [loading, setLoading] = useState(false);
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
@@ -582,6 +633,21 @@ const ChatComponent = ({
     messagesRef.current = messages;
   }, [messages]);
 
+  // Mirror the compaction summary so the async send/compact paths read it fresh.
+  useEffect(() => {
+    contextSummaryRef.current = contextSummary;
+  }, [contextSummary]);
+
+  // Estimated tokens this chat would replay to the model: the running summary
+  // plus every live turn's text, materials, and uploaded-file text. Drives the
+  // per-chat context gauge and the auto-compaction trigger. (Errors aren't
+  // replayed, so they don't count.)
+  const contextUsed = useMemo(() => {
+    let total = estimateTokens(contextSummary);
+    for (const m of messages) total += messageTokens(m);
+    return total;
+  }, [messages, contextSummary]);
+
   // Mirror the abort controller so the unmount cleanup can reach it.
   useEffect(() => {
     abortControllerRef.current = abortController;
@@ -629,6 +695,7 @@ const ChatComponent = ({
             selectedFiles,
             sessionId: currentSessionId,
             conversationId: currentConversationId,
+            contextSummary,
             timestamp: Date.now(),
           })
         );
@@ -643,6 +710,7 @@ const ChatComponent = ({
     selectedFiles,
     currentSessionId,
     currentConversationId,
+    contextSummary,
   ]);
 
   useEffect(() => {
@@ -671,6 +739,7 @@ const ChatComponent = ({
             selectedFiles: savedFiles,
             sessionId: savedSessionId,
             conversationId: savedConversationId,
+            contextSummary: savedContextSummary,
             timestamp,
           } = JSON.parse(savedChat);
           if (
@@ -681,6 +750,7 @@ const ChatComponent = ({
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
+            setContextSummary(savedContextSummary || "");
             // Restore the session + conversation so a continued turn updates the
             // existing row instead of inserting a duplicate.
             if (savedSessionId) setCurrentSessionId(savedSessionId);
@@ -707,6 +777,7 @@ const ChatComponent = ({
             selectedFiles: savedFiles,
             sessionId: savedSessionId,
             conversationId: savedConversationId,
+            contextSummary: savedContextSummary,
             timestamp,
           } = JSON.parse(savedChat);
           if (
@@ -717,6 +788,7 @@ const ChatComponent = ({
             setMessages(savedMessages);
             setSelectedClasses(savedClasses);
             setSelectedFiles(savedFiles);
+            setContextSummary(savedContextSummary || "");
             // Restore the session + conversation so a continued turn updates the
             // existing row instead of inserting a duplicate.
             if (savedSessionId) setCurrentSessionId(savedSessionId);
@@ -793,8 +865,16 @@ const ChatComponent = ({
         );
 
         setMessages(formattedMessages);
+        // Restore the most recent compaction summary across the rows.
+        let sum = "";
+        for (const conv of conversations as any[]) {
+          const s = summaryFromConv(conv);
+          if (s) sum = s;
+        }
+        setContextSummary(sum);
       } else {
         setMessages([]);
+        setContextSummary("");
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -912,6 +992,12 @@ const ChatComponent = ({
         // turn immediately (no flash if the user had scrolled up earlier).
         pinnedToBottom.current = true;
         setMessages(messageArray);
+        let sum = "";
+        for (const conv of sessionConversations as any[]) {
+          const s = summaryFromConv(conv);
+          if (s) sum = s;
+        }
+        setContextSummary(sum);
         setCurrentConversationId(id);
         setCurrentSessionId(data.session_id || `session-${Date.now()}`);
 
@@ -1056,6 +1142,103 @@ const ChatComponent = ({
       return { text: "", images: [] as any[] };
     }
   };
+
+  // Auto-compaction: when this chat's replayed context passes the limit, fold the
+  // OLDEST turns into the running summary and drop them from the live thread, so
+  // the conversation can continue coherently without resending every token (and
+  // without blowing the daily budget). Runs after a turn is saved; fails open
+  // (keeps the full thread) on any error so a hiccup never loses messages.
+  const maybeCompact = useCallback(async () => {
+    if (compactingRef.current) return;
+    const limit = contextLimit;
+    const all = Array.isArray(messagesRef.current) ? messagesRef.current : [];
+    // The conversation we're compacting; if it changes during the async
+    // summarize (user opened another chat or started a new one) we bail.
+    const startConvId = currentConvIdRef.current ?? currentConversationId;
+
+    let total = estimateTokens(contextSummaryRef.current);
+    for (const m of all) total += messageTokens(m);
+    if (total <= limit) return;
+
+    // Keep the most recent turns that fit in ~55% of the limit; summarize the
+    // rest. The headroom (vs the full limit) means we don't recompact every turn.
+    const keepBudget = Math.floor(limit * 0.55);
+    let acc = 0;
+    let keepFrom = all.length;
+    for (let i = all.length - 1; i >= 0; i--) {
+      const mt = messageTokens(all[i]!);
+      if (acc + mt > keepBudget) break;
+      acc += mt;
+      keepFrom = i;
+    }
+    // Always keep at least the last two messages on screen; only compact when
+    // there are a couple of older ones worth folding into the summary.
+    keepFrom = Math.max(0, Math.min(keepFrom, all.length - 2));
+    const toCompact = all.slice(0, keepFrom);
+    if (toCompact.length < 2) return;
+
+    compactingRef.current = true;
+    try {
+      const turns: AIChatMessage[] = [];
+      for (const m of toCompact) {
+        if (!m || typeof m.content !== "string") continue;
+        const trimmed = m.content.trim();
+        if (!trimmed || m.type === "error") continue;
+        if (m.type === "user") {
+          let c = trimmed;
+          if (m.contextContent && m.contextContent.trim()) {
+            c = `[Study materials]\n${m.contextContent}\n\n${trimmed}`;
+          }
+          turns.push({ role: "user", content: c });
+        } else if (m.type === "assistant") {
+          turns.push({ role: "assistant", content: trimmed });
+        }
+      }
+      if (turns.length < 2) return;
+
+      const newSummary = await summarizeConversation(
+        turns,
+        contextSummaryRef.current
+      );
+      if (!newSummary) return; // fail open: keep the full thread
+
+      // Bail if the user switched/reset conversations while we summarized -
+      // applying this slice to a different thread would corrupt it.
+      const convId = currentConvIdRef.current ?? currentConversationId;
+      if (convId !== startConvId) return;
+      // Drop the oldest `keepFrom` turns from the LIVE thread (a stable prefix -
+      // turns only ever append), so a message sent while we were summarizing is
+      // preserved. Bail if the thread somehow shrank past that prefix.
+      const live = Array.isArray(messagesRef.current) ? messagesRef.current : all;
+      if (live.length < keepFrom + 1) return;
+
+      const cleanSummary = stripEmDash(newSummary);
+      const kept = live.slice(keepFrom);
+      contextSummaryRef.current = cleanSummary;
+      setContextSummary(cleanSummary);
+      messagesRef.current = kept;
+      setMessages(kept);
+      if (convId) {
+        const payload = buildConversationPayload(kept, cleanSummary);
+        const { error: compactErr } = await supabase
+          .from("conversations")
+          .update({
+            question: payload.question,
+            answer: payload.answer,
+            messages_metadata: payload.messages_metadata,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", convId);
+        if (compactErr)
+          console.warn("Error persisting compaction:", compactErr);
+      }
+    } catch (e) {
+      console.warn("Compaction failed (keeping full thread):", e);
+    } finally {
+      compactingRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextLimit, currentConversationId]);
 
   const handleSendMessage = async (
     message: string,
@@ -1305,6 +1488,21 @@ const ChatComponent = ({
       const MAX_HISTORY_MESSAGES = 20;
       const trimmedHistory = historyPayload.slice(-MAX_HISTORY_MESSAGES);
 
+      // Replay the compaction summary (older turns folded away once this chat
+      // passed the context limit) so the model keeps the full thread of the
+      // conversation. Prepend it to the earliest surviving user turn; if none
+      // survived, fold it into this outgoing message.
+      const summaryText = contextSummaryRef.current.trim();
+      if (summaryText) {
+        const block = `[Summary of earlier conversation - context only]\n${summaryText}\n[End of summary]\n\n`;
+        const firstUser = trimmedHistory.find((m) => m.role === "user");
+        if (firstUser && typeof firstUser.content === "string") {
+          firstUser.content = block + firstUser.content;
+        } else {
+          message = block + message;
+        }
+      }
+
       const response = await fetchStreamingResponse(
         message,
         context,
@@ -1423,7 +1621,10 @@ const ChatComponent = ({
             ? messagesRef.current
             : messages;
 
-          const payload = buildConversationPayload(currentMessages);
+          const payload = buildConversationPayload(
+            currentMessages,
+            contextSummaryRef.current
+          );
           const allUserMessages = payload.question;
           const allAiResponses = payload.answer;
           const messagesMetadataJson = payload.messages_metadata;
@@ -1563,6 +1764,10 @@ const ChatComponent = ({
 
           // Refresh chat history to show updated conversation
           fetchChatHistory();
+
+          // If this turn pushed the chat over the context limit, fold the
+          // oldest turns into the summary (async, fail-open - never blocks).
+          void maybeCompact();
         } catch (error) {
           console.error("Error handling conversation:", error);
         }
@@ -1764,6 +1969,12 @@ const ChatComponent = ({
 
     pinnedToBottom.current = true;
     setMessages(messageArray);
+    let sum = "";
+    for (const conv of sessionConversations) {
+      const s = summaryFromConv(conv);
+      if (s) sum = s;
+    }
+    setContextSummary(sum);
 
     if (conversationPair.context_classes) {
       setSelectedClasses(conversationPair.context_classes);
@@ -1783,6 +1994,8 @@ const ChatComponent = ({
 
     // Reset the chat state
     setMessages([]);
+    setContextSummary("");
+    contextSummaryRef.current = "";
     setCurrentConversationId(null);
     setCurrentSessionId(`session-${Date.now()}`);
     setSelectedDocs([]);
@@ -2113,7 +2326,19 @@ const ChatComponent = ({
           )}
         </div>
 
-        <UsageBar variant="day" className="max-md:hidden" />
+        {/* Daily budget on top, this chat's context gauge stacked beneath it.
+            A fixed label width lines the two tracks up vertically. */}
+        <div className="flex flex-col items-start gap-1.5 max-md:hidden">
+          <UsageBar variant="day" labelClassName="w-14" />
+          {messages.length > 0 && (
+            <ContextBar
+              used={contextUsed}
+              limit={contextLimit}
+              variant="day"
+              labelClassName="w-14"
+            />
+          )}
+        </div>
 
         {/* Plate label - purely decorative observatory register. */}
         <p
@@ -2232,19 +2457,31 @@ const ChatComponent = ({
                   </p>
                 </div>
               ) : (
-                messages.map((msg, i) => (
-                  <ChatMessage
-                    key={msg.id}
-                    message={msg.content}
-                    type={msg.type}
-                    isStreaming={!!msg.isStreaming}
-                    files={msg.files}
-                    contextFiles={msg.contextFiles}
-                    statusLabel={msg.statusLabel}
-                    isLast={i === messages.length - 1}
-                    onRetry={onRetryStable}
-                  />
-                ))
+                <>
+                  {contextSummary && (
+                    <div
+                      className="mx-auto mb-3 mt-1 flex items-center gap-2 self-center rounded-full border border-solid border-line bg-cream/60 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted"
+                      title="To keep this long chat fast and on-budget, Lumi summarized the earliest turns. It still remembers them."
+                    >
+                      <span aria-hidden="true">✦</span>
+                      Earlier conversation summarized
+                      <span aria-hidden="true">✦</span>
+                    </div>
+                  )}
+                  {messages.map((msg, i) => (
+                    <ChatMessage
+                      key={msg.id}
+                      message={msg.content}
+                      type={msg.type}
+                      isStreaming={!!msg.isStreaming}
+                      files={msg.files}
+                      contextFiles={msg.contextFiles}
+                      statusLabel={msg.statusLabel}
+                      isLast={i === messages.length - 1}
+                      onRetry={onRetryStable}
+                    />
+                  ))}
+                </>
               )}
             </div>
           </motion.div>

@@ -1,4 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { supabase } from "@shared/lib/supabaseClient";
 import type { Json } from "@shared/lib/database.types";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +27,24 @@ import {
   type SupportTicket,
   type TicketStatus,
 } from "@shared/services/supportService";
+
+// Range slider: white track with the filled (slid) portion gold, up to the
+// thumb. WebKit has no fill pseudo-element, so the track reads a gold/white
+// gradient from the `--track` var set inline per slider; Firefox uses the native
+// ::-moz-range-progress.
+const RANGE_SLIDER_CLS =
+  "w-full cursor-pointer appearance-none bg-transparent " +
+  "[&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:[background:var(--track)] " +
+  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gold-deep " +
+  "[&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-white " +
+  "[&::-moz-range-progress]:h-2 [&::-moz-range-progress]:rounded-full [&::-moz-range-progress]:bg-gold-deep " +
+  "[&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-gold-deep";
+
+// Gold-fill-then-white track gradient for a limit slider, split at its value.
+const sliderTrack = (value: number, min = 10000, max = 200000): string => {
+  const pct = `${((value - min) / (max - min)) * 100}%`;
+  return `linear-gradient(to right, var(--color-gold-deep) ${pct}, #fff ${pct})`;
+};
 
 // A row in the admin user list, derived from the admin_get_user_stats RPC.
 interface AdminUser {
@@ -246,6 +269,11 @@ export default function Admin() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [announcementDraft, setAnnouncementDraft] = useState("");
+  // AI usage limits (saved value + live slider draft, like the announcement).
+  const [dailyTokenLimit, setDailyTokenLimit] = useState(50000);
+  const [dailyTokenDraft, setDailyTokenDraft] = useState(50000);
+  const [contextLimit, setContextLimit] = useState(50000);
+  const [contextDraft, setContextDraft] = useState(50000);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketFilter, setTicketFilter] = useState("all");
@@ -483,6 +511,16 @@ export default function Admin() {
           typeof map.announcement === "string" ? map.announcement : "";
         setAnnouncement(ann);
         setAnnouncementDraft(ann);
+        const dtl = Number(map.daily_token_limit);
+        if (Number.isFinite(dtl) && dtl > 0) {
+          setDailyTokenLimit(dtl);
+          setDailyTokenDraft(dtl);
+        }
+        const ctx = Number(map.chat_context_limit);
+        if (Number.isFinite(ctx) && ctx > 0) {
+          setContextLimit(ctx);
+          setContextDraft(ctx);
+        }
       }
     } catch (e) {
       console.error("Error loading settings:", e);
@@ -545,6 +583,20 @@ export default function Admin() {
     const prev = announcement;
     setAnnouncement(next); // optimistic
     if (!(await updateSetting("announcement", next))) setAnnouncement(prev);
+  }
+
+  async function saveDailyTokenLimit() {
+    const prev = dailyTokenLimit;
+    setDailyTokenLimit(dailyTokenDraft); // optimistic
+    if (!(await updateSetting("daily_token_limit", dailyTokenDraft)))
+      setDailyTokenLimit(prev); // revert on failure
+  }
+
+  async function saveContextLimit() {
+    const prev = contextLimit;
+    setContextLimit(contextDraft); // optimistic
+    if (!(await updateSetting("chat_context_limit", contextDraft)))
+      setContextLimit(prev); // revert on failure
   }
 
   async function confirmToggleAdmin() {
@@ -1751,6 +1803,102 @@ export default function Admin() {
                           size="sm"
                           onClick={saveAnnouncement}
                           disabled={announcementDraft.trim() === announcement}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Daily AI token budget (shared across every AI feature) */}
+                    <div className="rounded-xl border border-solid border-line bg-cream/60 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink">
+                          Daily token limit
+                        </span>
+                        <span className="font-mono text-[13px] font-semibold tabular-nums text-gold-deep">
+                          {dailyTokenDraft.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="mb-3 mt-1 text-[12.5px] leading-relaxed text-muted">
+                        Shared AI tokens each user can spend per day across chat,
+                        quiz, flashcards, and voice.
+                      </p>
+                      <input
+                        type="range"
+                        min={10000}
+                        max={200000}
+                        step={5000}
+                        value={dailyTokenDraft}
+                        onChange={(e) =>
+                          setDailyTokenDraft(Number(e.target.value))
+                        }
+                        aria-label="Daily token limit"
+                        style={
+                          { "--track": sliderTrack(dailyTokenDraft) } as CSSProperties
+                        }
+                        className={RANGE_SLIDER_CLS}
+                      />
+                      <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted">
+                        <span>10k</span>
+                        <span>200k</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-end gap-2">
+                        {dailyTokenDraft !== dailyTokenLimit && (
+                          <span className="mr-auto self-center font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-gold-deep">
+                            Unsaved changes
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={saveDailyTokenLimit}
+                          disabled={dailyTokenDraft === dailyTokenLimit}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Per-chat context limit (auto-compaction threshold) */}
+                    <div className="rounded-xl border border-solid border-line bg-cream/60 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink">
+                          Chat context limit
+                        </span>
+                        <span className="font-mono text-[13px] font-semibold tabular-nums text-gold-deep">
+                          {contextDraft.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="mb-3 mt-1 text-[12.5px] leading-relaxed text-muted">
+                        When a single chat grows past this many tokens, older
+                        turns are summarized to keep replies fast and on-budget.
+                      </p>
+                      <input
+                        type="range"
+                        min={10000}
+                        max={200000}
+                        step={5000}
+                        value={contextDraft}
+                        onChange={(e) => setContextDraft(Number(e.target.value))}
+                        aria-label="Chat context limit"
+                        style={
+                          { "--track": sliderTrack(contextDraft) } as CSSProperties
+                        }
+                        className={RANGE_SLIDER_CLS}
+                      />
+                      <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted">
+                        <span>10k</span>
+                        <span>200k</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-end gap-2">
+                        {contextDraft !== contextLimit && (
+                          <span className="mr-auto self-center font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-gold-deep">
+                            Unsaved changes
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={saveContextLimit}
+                          disabled={contextDraft === contextLimit}
                         >
                           Save
                         </Button>
