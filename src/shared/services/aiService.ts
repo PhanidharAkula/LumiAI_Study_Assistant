@@ -357,6 +357,10 @@ export const summarizeConversation = async (
     if (!response.ok) return "";
 
     const data = await response.json();
+    // This call spent tokens server-side; nudge any open usage bars to refetch.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("lumi:usage"));
+    }
     return (data.text || "").trim();
   } catch (error) {
     console.error("Error summarizing conversation:", error);
@@ -390,6 +394,10 @@ Rules: under 7 words; natural capitalization (e.g. "Understanding React Hooks");
     if (!response.ok) return "New Conversation";
 
     const data = await response.json();
+    // Spent tokens server-side; nudge any open usage bars to refetch.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("lumi:usage"));
+    }
     const title = (data.text || "").trim().replace(/^["']|["']$/g, "");
     return title || "New Conversation";
   } catch (error) {

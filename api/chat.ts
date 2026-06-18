@@ -327,7 +327,10 @@ export default async function handler(req: any, res: any): Promise<void> {
         const u = (final as any)?.usage;
         await addDailyTokens(
           auth.userId,
-          (u?.input_tokens ?? 0) + (u?.output_tokens ?? 0)
+          (u?.input_tokens ?? 0) +
+          (u?.output_tokens ?? 0) +
+          (u?.cache_creation_input_tokens ?? 0) +
+          (u?.cache_read_input_tokens ?? 0)
         );
       } catch (err: any) {
         console.error("[chat] stream error:", err?.status, err?.message);
@@ -355,7 +358,10 @@ export default async function handler(req: any, res: any): Promise<void> {
       const u = (msg as any)?.usage;
       await addDailyTokens(
         auth.userId,
-        (u?.input_tokens ?? 0) + (u?.output_tokens ?? 0)
+        (u?.input_tokens ?? 0) +
+          (u?.output_tokens ?? 0) +
+          (u?.cache_creation_input_tokens ?? 0) +
+          (u?.cache_read_input_tokens ?? 0)
       );
       sendJson(res, 200, { text });
     }
