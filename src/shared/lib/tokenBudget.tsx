@@ -26,13 +26,46 @@ const BudgetContext = createContext<BudgetContextValue>({
   refresh: () => {},
 });
 
+// Cache the last-known budget so the gauge shows a value instantly on open
+// instead of popping in after /api/usage returns (refreshed in the background).
+const BUDGET_CACHE_KEY = "lumiBudget";
+
+function readBudgetCache(): TokenBudget | null {
+  try {
+    const raw = localStorage.getItem(BUDGET_CACHE_KEY);
+    if (!raw) return null;
+    const b = JSON.parse(raw);
+    if (
+      b &&
+      typeof b.used === "number" &&
+      typeof b.limit === "number" &&
+      b.limit > 0
+    ) {
+      return {
+        used: b.used,
+        limit: b.limit,
+        remaining:
+          typeof b.remaining === "number"
+            ? b.remaining
+            : Math.max(0, b.limit - b.used),
+        contextLimit: Number(b.contextLimit) || 50000,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 /**
  * One shared daily-token budget for the whole app. Fetches /api/usage on mount,
  * on auth change, and whenever a "lumi:usage" event fires (dispatched after each
  * AI call), so every <UsageBar> stays in sync from a single source of truth.
  */
 export function TokenBudgetProvider({ children }: { children: ReactNode }) {
-  const [budget, setBudget] = useState<TokenBudget | null>(null);
+  const [budget, setBudget] = useState<TokenBudget | null>(() =>
+    readBudgetCache()
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -88,6 +121,18 @@ export function TokenBudgetProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, [refresh]);
+
+  // Persist the budget so the next open seeds the gauge instantly; clear it on
+  // sign-out so a stale value never lingers.
+  useEffect(() => {
+    try {
+      if (budget)
+        localStorage.setItem(BUDGET_CACHE_KEY, JSON.stringify(budget));
+      else localStorage.removeItem(BUDGET_CACHE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, [budget]);
 
   return (
     <BudgetContext.Provider value={{ budget, refresh }}>

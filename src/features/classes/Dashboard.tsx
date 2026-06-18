@@ -78,7 +78,15 @@ const Dashboard = ({ session }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [dueCount, setDueCount] = useState(0);
+  const [dueCount, setDueCount] = useState(() => {
+    // Seed from cache so the Review badge shows its count instantly on open, then
+    // the fetch below refreshes it.
+    try {
+      return Number(localStorage.getItem("lumiDueCount")) || 0;
+    } catch {
+      return 0;
+    }
+  });
   const [announcement, setAnnouncement] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(false);
@@ -149,7 +157,13 @@ const Dashboard = ({ session }: Props) => {
   useEffect(() => {
     let active = true;
     getDueCount().then((n) => {
-      if (active) setDueCount(n);
+      if (!active) return;
+      setDueCount(n);
+      try {
+        localStorage.setItem("lumiDueCount", String(n));
+      } catch {
+        /* ignore - just lose the instant-load optimization */
+      }
     });
     return () => {
       active = false;
