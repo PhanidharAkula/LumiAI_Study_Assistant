@@ -171,13 +171,13 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
         );
       }
       if (!pdfUrl) return null; // fetching; the shared spinner covers the wait
-      // Frame the SAME-ORIGIN blob: URL (Supabase blocks cross-origin framing of
-      // the signed URL). The sandbox keeps a user PDF from touching the app; the
-      // blob is our own fetched bytes, so allow-same-origin is safe and needed.
+      // Frame the SAME-ORIGIN blob: URL. NO `sandbox`: a sandboxed iframe
+      // disables Chrome's built-in PDF viewer ("This page has been blocked by
+      // Chrome"). It's safe here - the src is our own fetched blob (not a remote
+      // page), and Chrome's PDF viewer isolates the PDF's own scripts from the app.
       return (
         <iframe
           src={`${pdfUrl}#toolbar=0`}
-          sandbox="allow-same-origin allow-scripts allow-popups allow-downloads"
           className="h-full w-full border-none"
           onLoad={() => setLoading(false)}
           title={file.name}
