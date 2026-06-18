@@ -339,10 +339,17 @@ const ClassDetails = ({ classData, onBack }: Props) => {
 
   const uploadSingleFile = async (file: File, user: User) => {
     try {
-      const filePath = `${classData!.id}/${Date.now()}-${file.name.replace(
-        /\s+/g,
-        "_"
-      )}`;
+      // Sanitize the filename for the storage KEY only: Supabase Storage rejects
+      // keys containing non-ASCII / special characters (e.g. an em-dash, emoji,
+      // or accents in the name), which is what made some uploads fail. Keep
+      // letters, digits, dot, underscore, hyphen; collapse everything else to
+      // "_". The DISPLAY name is stored unchanged below (`name: file.name`).
+      const safeName =
+        file.name
+          .replace(/[^a-zA-Z0-9._-]+/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_+|_+$/g, "") || "file";
+      const filePath = `${classData!.id}/${Date.now()}-${safeName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("files")
