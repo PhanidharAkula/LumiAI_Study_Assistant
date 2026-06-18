@@ -23,11 +23,12 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
   const [loading, setLoading] = useState(true);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState(false);
-  // PDFs are fetched into a SAME-ORIGIN blob and framed from a blob: URL.
-  // Supabase serves the signed URL with a header that blocks cross-origin
-  // framing ("This page has been blocked by Chrome"), so framing it directly is
-  // blank; a blob: URL is same-origin (and allowed by the CSP frame-src).
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  // PDFs are rendered to page IMAGES with pdf.js (no iframe). Framing a PDF is
+  // unreliable cross-browser: Chrome blocked the cross-origin/sandboxed iframe,
+  // and Safari won't render a PDF in an iframe at all. Canvas-rendered <img>
+  // pages work everywhere.
+  const [pdfPages, setPdfPages] = useState<string[] | null>(null);
+  const [pdfTruncated, setPdfTruncated] = useState(false);
   const [pdfError, setPdfError] = useState(false);
 
   // Fullscreen takeover: lock background scroll and close on Escape (shared,
@@ -47,9 +48,12 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
     : false;
 
   useEffect(() => {
+    // PDFs manage their own loading (rendered async via pdf.js below); this 1s
+    // fallback is only for previews with no load signal.
+    if (file?.type?.includes("pdf")) return;
     const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [file?.type]);
 
   // Fetch the text for text/code/data previews and render it (escaped) in a
   // <pre> - reliable regardless of the stored MIME, and safer than framing the
@@ -82,38 +86,39 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
     };
   }, [isText, url]);
 
-  // Fetch a PDF into a blob and frame a same-origin blob: URL (see note above).
+  // Render a PDF to page images with pdf.js (works in every browser, unlike an
+  // iframe): fetch the bytes, then rasterize up to the first N pages.
   useEffect(() => {
     if (!file?.type?.includes("pdf") || !url) return;
     let cancelled = false;
-    let objectUrl: string | null = null;
     setLoading(true);
-    setPdfUrl(null);
+    setPdfPages(null);
+    setPdfTruncated(false);
     setPdfError(false);
-    fetch(url)
-      .then((r) =>
-        r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))
-      )
-      .then((blob) => {
+    (async () => {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(String(resp.status));
+        const buf = await resp.arrayBuffer();
+        // Lazy import keeps the ~700KB pdf.js out of the dashboard bundle.
+        const { renderPdfToImages } = await import("@shared/lib/pdf");
+        const { images, truncated } = await renderPdfToImages(buf, {
+          maxPages: 30,
+          maxDim: 2000,
+        });
         if (cancelled) return;
-        // Force application/pdf so the browser renders inline even if the stored
-        // object came back as a generic type.
-        const pdf =
-          blob.type === "application/pdf"
-            ? blob
-            : new Blob([blob], { type: "application/pdf" });
-        objectUrl = URL.createObjectURL(pdf);
-        setPdfUrl(objectUrl);
+        if (!images.length) throw new Error("no renderable pages");
+        setPdfPages(images.map((i) => i.base64));
+        setPdfTruncated(truncated);
         setLoading(false);
-      })
-      .catch(() => {
+      } catch {
         if (cancelled) return;
         setPdfError(true);
         setLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [file?.type, url]);
 
@@ -170,18 +175,35 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
           </div>
         );
       }
-      if (!pdfUrl) return null; // fetching; the shared spinner covers the wait
-      // Frame the SAME-ORIGIN blob: URL. NO `sandbox`: a sandboxed iframe
-      // disables Chrome's built-in PDF viewer ("This page has been blocked by
-      // Chrome"). It's safe here - the src is our own fetched blob (not a remote
-      // page), and Chrome's PDF viewer isolates the PDF's own scripts from the app.
+      if (!pdfPages) return null; // rendering; the shared spinner covers the wait
       return (
-        <iframe
-          src={`${pdfUrl}#toolbar=0`}
-          className="h-full w-full border-none"
-          onLoad={() => setLoading(false)}
-          title={file.name}
-        />
+        <div className="h-full w-full overflow-auto bg-cream/30">
+          <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 p-4 max-md:gap-2.5 max-md:p-2">
+            {pdfPages.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={`Page ${i + 1}`}
+                className="w-full border border-solid border-line bg-white shadow-plate"
+              />
+            ))}
+            {pdfTruncated && (
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <p className="m-0 text-[13.5px] text-muted">
+                  Showing the first {pdfPages.length} pages. Download for the full
+                  document.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSmallButtonDownload}
+                  className={btnClass("gold")}
+                >
+                  Download PDF
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       );
     }
 
