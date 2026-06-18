@@ -23,6 +23,12 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
   const [loading, setLoading] = useState(true);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState(false);
+  // PDFs are fetched into a SAME-ORIGIN blob and framed from a blob: URL.
+  // Supabase serves the signed URL with a header that blocks cross-origin
+  // framing ("This page has been blocked by Chrome"), so framing it directly is
+  // blank; a blob: URL is same-origin (and allowed by the CSP frame-src).
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState(false);
 
   // Fullscreen takeover: lock background scroll and close on Escape (shared,
   // reference-counted/stacked so a dialog above it pops first).
@@ -76,6 +82,41 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
     };
   }, [isText, url]);
 
+  // Fetch a PDF into a blob and frame a same-origin blob: URL (see note above).
+  useEffect(() => {
+    if (!file?.type?.includes("pdf") || !url) return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setLoading(true);
+    setPdfUrl(null);
+    setPdfError(false);
+    fetch(url)
+      .then((r) =>
+        r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))
+      )
+      .then((blob) => {
+        if (cancelled) return;
+        // Force application/pdf so the browser renders inline even if the stored
+        // object came back as a generic type.
+        const pdf =
+          blob.type === "application/pdf"
+            ? blob
+            : new Blob([blob], { type: "application/pdf" });
+        objectUrl = URL.createObjectURL(pdf);
+        setPdfUrl(objectUrl);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPdfError(true);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [file?.type, url]);
+
   const handleSmallButtonDownload = async () => {
     if (!url || !file?.name) return;
     try {
@@ -113,13 +154,29 @@ const FileViewer = ({ file, url, onClose }: FileViewerProps) => {
     }
 
     if (file.type?.includes("pdf")) {
-      // Defense-in-depth for user-uploaded PDFs: the file is served from a
-      // cross-origin signed URL (already isolated from the app origin); the
-      // sandbox additionally blocks it from navigating/framing the parent while
-      // still allowing the browser's PDF viewer to run.
+      if (pdfError) {
+        return (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+            <p className="m-0 text-[15px] text-muted">
+              Couldn&rsquo;t load the preview.
+            </p>
+            <button
+              type="button"
+              onClick={handleSmallButtonDownload}
+              className={btnClass("gold")}
+            >
+              Download PDF
+            </button>
+          </div>
+        );
+      }
+      if (!pdfUrl) return null; // fetching; the shared spinner covers the wait
+      // Frame the SAME-ORIGIN blob: URL (Supabase blocks cross-origin framing of
+      // the signed URL). The sandbox keeps a user PDF from touching the app; the
+      // blob is our own fetched bytes, so allow-same-origin is safe and needed.
       return (
         <iframe
-          src={`${url}#toolbar=0`}
+          src={`${pdfUrl}#toolbar=0`}
           sandbox="allow-same-origin allow-scripts allow-popups allow-downloads"
           className="h-full w-full border-none"
           onLoad={() => setLoading(false)}
