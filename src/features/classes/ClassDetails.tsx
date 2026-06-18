@@ -830,7 +830,7 @@ const ClassDetails = ({ classData, onBack }: Props) => {
                   {files.map((file) => (
                     <motion.div
                       key={file.id}
-                      className="group relative flex w-full flex-row items-center gap-4 border-0 border-b border-solid border-line px-0 py-3.5 transition-colors duration-200 hover:bg-vellum/70 max-md:gap-3 max-md:py-3"
+                      className="group relative flex w-full flex-row items-center gap-4 border-0 border-b border-solid border-line px-3 py-3.5 transition-colors duration-200 hover:bg-vellum/70 max-md:gap-3 max-md:px-2.5 max-md:py-3"
                       variants={fadeRiseSoft}
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-solid border-line bg-cream/70 max-md:h-9 max-md:w-9">
