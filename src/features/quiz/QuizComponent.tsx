@@ -30,6 +30,10 @@ import { isSupportedForAI } from "@shared/lib/fileExtract";
 import GeneratingState from "@features/study/GeneratingState";
 import FileSelectionCard from "@features/study/FileSelectionCard";
 import HistoryDropdown from "@features/study/HistoryDropdown";
+import {
+  readHistoryCache,
+  writeHistoryCache,
+} from "@features/study/historyCache";
 import StudyErrorDialog, {
   type StudyErrorState,
 } from "@features/study/StudyErrorDialog";
@@ -374,7 +378,10 @@ const QuizComponent = ({
 
   useEffect(() => {
     if (isOpen && classData) {
-      // Load quiz history for this class
+      // Show the last-known history instantly from cache, then refresh from the
+      // server (which overwrites it) - so the count badge doesn't pop in late.
+      const cached = readHistoryCache<QuizHistoryItem>("quiz", classData.id);
+      if (cached) setQuizHistory(cached);
       loadQuizHistory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -411,6 +418,7 @@ const QuizComponent = ({
 
       if (!error && data) {
         setQuizHistory(data as unknown as QuizHistoryItem[]);
+        writeHistoryCache("quiz", classData.id, data);
       }
     } catch (error) {
       console.error("Error loading quiz history:", error);
