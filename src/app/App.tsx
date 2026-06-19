@@ -2,11 +2,11 @@ import { useState, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@shared/lib/supabaseClient";
+import { supabase, readStoredSession } from "@shared/lib/supabaseClient";
 import { isInAppBrowser } from "@shared/lib/inAppBrowser";
 import ProtectedRoute from "@shared/components/ProtectedRoute";
 import GlobalLoader from "@shared/components/GlobalLoader";
-import { useLoadingSignal, LoadingSignal } from "@shared/lib/loadingSignal";
+import { LoadingSignal } from "@shared/lib/loadingSignal";
 import { loaderLabel } from "@shared/lib/loaderLabel";
 import MaintenanceScreen from "@features/marketing/MaintenanceScreen";
 import "./App.css";
@@ -48,8 +48,14 @@ function ScrollToTop(): null {
 }
 
 function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Seed auth state synchronously from the persisted session so first paint
+  // reflects logged-in/out instantly and the SDK's async auth work never gates -
+  // or hangs - the boot (a stalled getSession/getUser on a cold tab used to pin
+  // the app on the loader until a manual refresh). The SDK validates + refreshes
+  // in the background and fires onAuthStateChange to correct this.
+  const [session, setSession] = useState<Session | null>(() =>
+    readStoredSession()
+  );
   // Admin "maintenance mode" gate (non-admins see a maintenance screen; admins
   // bypass). Both are best-effort and fail-open so a query error never locks
   // anyone out.
@@ -66,46 +72,30 @@ function App() {
       setSession(newSession);
     });
 
-    // Clear the boot loader exactly once. CRITICAL: the whole app is gated on
-    // `loading`, so a stalled auth network call on a fresh tab must never pin it
-    // on the loader forever (previously only a manual page refresh recovered it).
-    let booted = false;
-    const finishBoot = () => {
-      if (booted) return;
-      booted = true;
-      setLoading(false);
-    };
-
-    // Validate any stored session on load.
-    const setupAuth = async () => {
-      try {
-        const {
-          data: { session: activeSession },
-        } = await supabase.auth.getSession();
-        if (!activeSession) {
-          setSession(null);
-          finishBoot();
-          return;
-        }
-        // Render immediately from the stored session (also delivered via
-        // onAuthStateChange) - do NOT hold the loader on the getUser round-trip,
-        // which is the call that can hang on a cold mobile connection. The
-        // server-side validation + maintenance gate run right after, in the
-        // background, without blocking first paint.
-        setSession(activeSession);
-        finishBoot();
-
-        const {
-          data: { user },
-          error: getUserError,
-        } = await supabase.auth.getUser();
-        if (getUserError || !user) {
-          await supabase.auth.signOut();
-          setSession(null);
-          return;
-        }
-        // Best-effort maintenance gate + admin bypass (fail-open).
+    // First paint already rendered from the seeded session, so NOTHING below
+    // gates (or can hang) the UI. In the background: validate the stored token
+    // and read the maintenance/admin gates. The SDK refreshes the token and
+    // fires onAuthStateChange (incl. SIGNED_OUT) on its own; every request is
+    // RLS-gated, so optimistic render from the stored session is safe.
+    const stored = readStoredSession();
+    if (stored?.user?.id) {
+      (async () => {
         try {
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+          if (!user) {
+            // Sign out only on a definitive auth rejection (revoked/deleted),
+            // never on a transient network blip - keep the session otherwise.
+            const status = (error as { status?: number } | null)?.status;
+            if (typeof status === "number" && status >= 400 && status < 500) {
+              await supabase.auth.signOut();
+              setSession(null);
+            }
+            return;
+          }
+          // Best-effort maintenance gate + admin bypass (fail-open).
           const [settingsRes, profileRes] = await Promise.all([
             supabase
               .from("app_settings")
@@ -121,25 +111,12 @@ function App() {
           setMaintenance(settingsRes.data?.value === true);
           setIsAdminUser(profileRes.data?.is_admin === true);
         } catch {
-          /* leave the app live on any error */
+          /* offline / error - leave the app live with the stored session */
         }
-      } catch (err) {
-        console.warn("Error validating stored session:", err);
-        finishBoot();
-      }
-    };
+      })();
+    }
 
-    setupAuth();
-
-    // Backstop: if getSession itself stalls (e.g. the SDK's init-time token
-    // refresh hangs), clear the loader anyway so the app is usable; the session
-    // still arrives via onAuthStateChange, and RLS guards all data regardless.
-    const failsafe = setTimeout(finishBoot, 8000);
-
-    return () => {
-      clearTimeout(failsafe);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   // Name the screen the loader is fetching, from the URL, so every phase shows
@@ -147,15 +124,15 @@ function App() {
   const location = useLocation();
   const routeLabel = loaderLabel(location.pathname, location.search);
 
-  // One persistent loader (GlobalLoader, below) spans the whole startup - auth,
-  // then the route chunk, then page data - via the shared signal, so it never
-  // remounts and its spinner never restarts. Feed it (named) while auth resolves.
-  useLoadingSignal(loading, routeLabel);
+  // routeLabel names the route-chunk loader (the GlobalLoader, fed by the
+  // Suspense fallback below) from the URL. Auth no longer feeds the loader - it
+  // resolves synchronously from the seeded session, so there's no auth phase to
+  // span and nothing that can hang the loader.
 
   // Maintenance mode: a signed-in non-admin sees the maintenance screen on every
   // route. Admins bypass it (so they can reach /admin and turn it back off);
   // signed-out visitors aren't gated (they can't read the setting anyway).
-  const showMaintenance = !loading && session && maintenance && !isAdminUser;
+  const showMaintenance = session && maintenance && !isAdminUser;
 
   // Google OAuth is blocked inside embedded in-app browsers (LinkedIn,
   // Instagram, etc.). When detected, the sign-in entry points show a screen
@@ -170,7 +147,7 @@ function App() {
     // are disabled in index.css under the same media query).
     <MotionConfig reducedMotion="user">
       <GlobalLoader />
-      {loading ? null : showMaintenance ? (
+      {showMaintenance ? (
         <MaintenanceScreen />
       ) : (
       <Suspense fallback={<LoadingSignal label={routeLabel} />}>
