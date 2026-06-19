@@ -27,7 +27,10 @@ const LABEL_SEEDS: Record<string, string> = {
   "Opening the desk": "correspondence desk",
   "Gathering your cards": "review ritual",
   "Charting your progress": "your sky so far",
-  "Signing you in": "observatory entrance",
+  // Shares the dashboard's seed so the "Signing you in" loader draws the same
+  // top-right/bottom-left constellations as the "Charting your sky" loader it
+  // hands off to (no swap of the corner sky between the two).
+  "Signing you in": "atlas of classes",
   "Dealing the deck": "flashcard deck",
   "Plotting the quiz": "quiz expedition",
   "Opening the chat": "conversation desk",
