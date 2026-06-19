@@ -66,55 +66,80 @@ function App() {
       setSession(newSession);
     });
 
+    // Clear the boot loader exactly once. CRITICAL: the whole app is gated on
+    // `loading`, so a stalled auth network call on a fresh tab must never pin it
+    // on the loader forever (previously only a manual page refresh recovered it).
+    let booted = false;
+    const finishBoot = () => {
+      if (booted) return;
+      booted = true;
+      setLoading(false);
+    };
+
     // Validate any stored session on load.
     const setupAuth = async () => {
       try {
         const {
           data: { session: activeSession },
         } = await supabase.auth.getSession();
-        if (activeSession) {
-          const {
-            data: { user },
-            error: getUserError,
-          } = await supabase.auth.getUser();
-          if (getUserError || !user) {
-            await supabase.auth.signOut();
-            setSession(null);
-          } else {
-            setSession(activeSession);
-            // Best-effort maintenance gate + admin bypass (fail-open).
-            try {
-              const [settingsRes, profileRes] = await Promise.all([
-                supabase
-                  .from("app_settings")
-                  .select("value")
-                  .eq("key", "maintenance_mode")
-                  .maybeSingle(),
-                supabase
-                  .from("profiles")
-                  .select("is_admin")
-                  .eq("id", user.id)
-                  .maybeSingle(),
-              ]);
-              setMaintenance(settingsRes.data?.value === true);
-              setIsAdminUser(profileRes.data?.is_admin === true);
-            } catch {
-              /* leave the app live on any error */
-            }
-          }
-        } else {
+        if (!activeSession) {
           setSession(null);
+          finishBoot();
+          return;
+        }
+        // Render immediately from the stored session (also delivered via
+        // onAuthStateChange) - do NOT hold the loader on the getUser round-trip,
+        // which is the call that can hang on a cold mobile connection. The
+        // server-side validation + maintenance gate run right after, in the
+        // background, without blocking first paint.
+        setSession(activeSession);
+        finishBoot();
+
+        const {
+          data: { user },
+          error: getUserError,
+        } = await supabase.auth.getUser();
+        if (getUserError || !user) {
+          await supabase.auth.signOut();
+          setSession(null);
+          return;
+        }
+        // Best-effort maintenance gate + admin bypass (fail-open).
+        try {
+          const [settingsRes, profileRes] = await Promise.all([
+            supabase
+              .from("app_settings")
+              .select("value")
+              .eq("key", "maintenance_mode")
+              .maybeSingle(),
+            supabase
+              .from("profiles")
+              .select("is_admin")
+              .eq("id", user.id)
+              .maybeSingle(),
+          ]);
+          setMaintenance(settingsRes.data?.value === true);
+          setIsAdminUser(profileRes.data?.is_admin === true);
+        } catch {
+          /* leave the app live on any error */
         }
       } catch (err) {
         console.warn("Error validating stored session:", err);
-      } finally {
-        setLoading(false);
+        finishBoot();
       }
     };
 
     setupAuth();
 
-    return () => subscription.unsubscribe();
+    // Backstop: if getSession itself stalls (e.g. the SDK's init-time token
+    // refresh hangs), clear the loader anyway so the app is usable; the session
+    // still arrives via onAuthStateChange, and RLS guards all data regardless.
+    const failsafe = setTimeout(finishBoot, 8000);
+
+    return () => {
+      clearTimeout(failsafe);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Name the screen the loader is fetching, from the URL, so every phase shows
