@@ -83,6 +83,7 @@
 :root {
   --z-overlay: 1000; /* full-screen takeovers: chat, quiz, flashcards, file viewer */
   --z-talk: 1200; /* talk overlay (its controls/menus stack above this) */
+  --z-tour: 1500; /* first-run onboarding tour (welcome takeover) */
   --z-loader: 2000; /* global loading veil */
   --z-modal: 999990; /* floating Modal plates (create class, pickers, sheets) */
   --z-dialog: 999999; /* ConfirmDialog - top of everything */

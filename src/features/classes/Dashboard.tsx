@@ -6,6 +6,8 @@ import { supabase } from "@shared/lib/supabaseClient";
 import { detectRegion } from "@shared/utils/region";
 import ClassDetails from "./ClassDetails";
 import AddClassForm from "./AddClassForm";
+import OnboardingTour from "@features/onboarding/OnboardingTour";
+import { isTourSeen, markTourSeen } from "@features/onboarding/onboardingState";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { getDueCount } from "@shared/services/reviewService";
 import { useLoadingSignal, LoadingSignal } from "@shared/lib/loadingSignal";
@@ -191,6 +193,35 @@ const Dashboard = ({ session }: Props) => {
 
   // Escape closes the profile menu (stacked - overlays above it win first).
   useEscapeToClose(showMenu, () => setShowMenu(false));
+
+  // ── First-run onboarding tour ──────────────────────────────────────────
+  const userId = session?.user?.id;
+  const [tourSeen, setTourSeen] = useState(() => isTourSeen(session?.user?.id));
+  const [showTour, setShowTour] = useState(false);
+
+  // Re-check the seen flag if the signed-in account changes.
+  useEffect(() => {
+    setTourSeen(isTourSeen(userId));
+  }, [userId]);
+
+  // Auto-open once for a brand-new user: signed in, no classes yet, not seen.
+  useEffect(() => {
+    if (hasLoaded && classes.length === 0 && !tourSeen) setShowTour(true);
+  }, [hasLoaded, classes.length, tourSeen]);
+
+  const closeTour = () => {
+    setShowTour(false);
+    markTourSeen(userId);
+    setTourSeen(true);
+  };
+  const replayTour = () => {
+    setShowMenu(false);
+    setShowTour(true);
+  };
+  const startFirstClassFromTour = () => {
+    closeTour();
+    setShowAddForm(true);
+  };
 
   useEffect(() => {
     isMounted.current = true;
@@ -1158,6 +1189,29 @@ const Dashboard = ({ session }: Props) => {
                                 <p className={MENU_BTN_TEXT}>Support</p>
                               </motion.button>
 
+                              <motion.button
+                                className={MENU_BTN}
+                                onClick={replayTour}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                {/* Compass icon - replay the welcome tour */}
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="18"
+                                  height="18"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.75"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                                </svg>
+                                <p className={MENU_BTN_TEXT}>Tutorial</p>
+                              </motion.button>
+
                               <div className={`my-1 ${UI.rule}`} />
 
                               <motion.button
@@ -1261,6 +1315,15 @@ const Dashboard = ({ session }: Props) => {
           </Suspense>
         )}
       </AnimatePresence>
+
+      <OnboardingTour
+        open={showTour}
+        onClose={closeTour}
+        onCreateClass={startFirstClassFromTour}
+        userName={
+          user?.user_metadata?.full_name || user?.email?.split("@")[0] || null
+        }
+      />
 
       {!selectedClass && hasLoaded && (
         <motion.div
