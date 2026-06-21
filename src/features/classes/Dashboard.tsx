@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@shared/lib/supabaseClient";
+import { supabase, timeoutSignal } from "@shared/lib/supabaseClient";
 import { detectRegion } from "@shared/utils/region";
 import ClassDetails from "./ClassDetails";
 import AddClassForm from "./AddClassForm";
@@ -74,6 +74,9 @@ const Dashboard = ({ session }: Props) => {
   // exit otherwise leaves a gap going in and an empty flash coming back.
   const [swapping, setSwapping] = useState(false);
   const [loading, setLoading] = useState(true);
+  // True when every classes-fetch attempt failed (network) - surfaces a retry
+  // instead of the misleading "your sky is empty" state.
+  const [loadError, setLoadError] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   // Rename-in-place from a dashboard card (a Modal over the grid, like create).
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
@@ -205,9 +208,11 @@ const Dashboard = ({ session }: Props) => {
   }, [userId]);
 
   // Auto-open once for a brand-new user: signed in, no classes yet, not seen.
+  // Skip when the empty list is actually a load failure (a retry shows instead).
   useEffect(() => {
-    if (hasLoaded && classes.length === 0 && !tourSeen) setShowTour(true);
-  }, [hasLoaded, classes.length, tourSeen]);
+    if (hasLoaded && !loadError && classes.length === 0 && !tourSeen)
+      setShowTour(true);
+  }, [hasLoaded, loadError, classes.length, tourSeen]);
 
   const closeTour = () => {
     setShowTour(false);
@@ -274,31 +279,21 @@ const Dashboard = ({ session }: Props) => {
   }, [classes, classIdFromUrl, selectedClass]);
 
   const fetchClasses = async () => {
-    try {
-      setLoading(true);
-      if (classIdFromUrl) {
-        fetchingByUrlRef.current = true;
-      }
+    // Use the session we already hold - NO getUser() round-trip on the critical
+    // path. That call (and the token refresh it triggers) is exactly what hung
+    // the loader on a cold mobile tab; a revoked/deleted user is caught by App's
+    // background validation, and RLS guards every row regardless.
+    const sessionUser = session?.user;
+    if (!sessionUser) {
+      navigate("/login");
+      return;
+    }
+    setUser(sessionUser);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        // If the server no longer recognizes the user (deleted), clear
-        // any stale client session and force a full redirect to login.
-        try {
-          await supabase.auth.signOut();
-        } catch (signOutErr) {
-          console.warn("Error signing out stale session:", signOutErr);
-        }
-        navigate("/login");
-        return;
-      }
-
-      setUser(user);
-
-      // Global self-service account-deletion toggle (admin-controlled).
+    // Admin flag + account-deletion toggle + region backfill only feed the
+    // profile menu, so they load in the BACKGROUND and never gate the dashboard
+    // loader (a slow one here used to hold "Charting your sky" up).
+    void (async () => {
       try {
         const { data: setting } = await supabase
           .from("app_settings")
@@ -307,70 +302,88 @@ const Dashboard = ({ session }: Props) => {
           .maybeSingle();
         if (setting) setAccountDeletionEnabled(setting.value !== false);
       } catch {
-        // default to enabled
+        /* default to enabled */
       }
-
-      // fetch profile to determine admin flag
       try {
-        const { data: profile, error: profileErr } = await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .select("is_admin, region")
-          .eq("id", user.id)
+          .eq("id", sessionUser.id)
           .limit(1)
           .maybeSingle();
-        if (!profileErr && profile && profile.is_admin === true) {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
-        // Backfill region for users created before region capture existed:
-        // if it's still empty/Unknown, persist the browser-detected region.
-        // set_my_region() is a no-op when region is already set, so this is
-        // safe to fire on every load (and harmless if the RPC isn't deployed).
+        setIsAdmin(profile?.is_admin === true);
+        // Backfill region for users created before region capture existed (a
+        // no-op once set, harmless if the RPC isn't deployed).
         if (!profile?.region || profile.region === "Unknown") {
-          supabase.rpc("set_my_region", { p_region: detectRegion() }).then(
-            () => {},
-            () => {}
-          );
+          supabase
+            .rpc("set_my_region", { p_region: detectRegion() })
+            .then(
+              () => {},
+              () => {}
+            );
         }
       } catch {
         setIsAdmin(false);
       }
+    })();
 
-      const { data, error } = await supabase
-        .from("classes")
-        // include related files so callers (like ChatComponent -> TagSelector)
-        // have access to each class's files for tagging
-        .select("*, files(*)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+    if (classIdFromUrl) {
+      fetchingByUrlRef.current = true;
+    }
 
-      if (error) throw error;
-
-      if (isMounted.current) {
-        setClasses((data as ClassItem[]) || []);
-
-        if (classIdFromUrl && data) {
-          const classFromUrl = (data as ClassItem[]).find(
-            (c: ClassItem) => c.id.toString() === classIdFromUrl
-          );
-          if (classFromUrl) {
-            setSelectedClass(classFromUrl);
-            fetchingByUrlRef.current = false;
-          }
+    // Load classes with bounded retries so a transient first-request stall on a
+    // cold tab self-heals (what a manual refresh did) instead of needing one.
+    // The first attempt is short to detect a stall fast; retries get more
+    // headroom for the now-warmed connection. Each is also capped by the
+    // client-level request timeout as a final backstop.
+    setLoading(true);
+    setLoadError(false);
+    const ATTEMPT_TIMEOUTS = [9000, 18000, 18000];
+    let loaded: ClassItem[] | null = null;
+    for (let attempt = 0; attempt < ATTEMPT_TIMEOUTS.length; attempt++) {
+      if (!isMounted.current) return;
+      try {
+        const { data, error } = await supabase
+          .from("classes")
+          // include related files so callers (like ChatComponent -> TagSelector)
+          // have access to each class's files for tagging
+          .select("*, files(*)")
+          .eq("user_id", sessionUser.id)
+          .order("created_at", { ascending: false })
+          .abortSignal(timeoutSignal(ATTEMPT_TIMEOUTS[attempt]!));
+        if (error) throw error;
+        loaded = (data as ClassItem[]) || [];
+        break;
+      } catch (error) {
+        console.error(
+          `Error fetching classes (attempt ${attempt + 1}):`,
+          error instanceof Error ? error.message : error
+        );
+        if (attempt < ATTEMPT_TIMEOUTS.length - 1) {
+          await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
         }
       }
-    } catch (error) {
-      console.error(
-        "Error fetching classes:",
-        error instanceof Error ? error.message : error
-      );
-    } finally {
-      if (isMounted.current) {
-        setLoading(false);
-        setInitialLoading(false);
-      }
     }
+
+    if (!isMounted.current) return;
+    if (loaded) {
+      setClasses(loaded);
+      if (classIdFromUrl) {
+        const classFromUrl = loaded.find(
+          (c: ClassItem) => c.id.toString() === classIdFromUrl
+        );
+        if (classFromUrl) {
+          setSelectedClass(classFromUrl);
+          fetchingByUrlRef.current = false;
+        }
+      }
+    } else {
+      // Every attempt failed (loaded === null distinguishes this from a genuine
+      // empty result) - surface a retry instead of the empty-sky state.
+      setLoadError(true);
+    }
+    setLoading(false);
+    setInitialLoading(false);
   };
 
   const handleAddClass = (newClass: ClassItem) => {
@@ -669,6 +682,37 @@ const Dashboard = ({ session }: Props) => {
           exit={{ opacity: 0 }}
         >
           <Spinner label="Loading classes..." />
+        </motion.div>
+      );
+    }
+
+    if (!loading && loadError && classes.length === 0) {
+      return (
+        <motion.div
+          key="load-error"
+          className="flex h-[70dvh] w-full flex-col items-center justify-center gap-4 px-5 py-15 text-center"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 30 }}
+          transition={spring.gentle}
+        >
+          <div className="text-ink/25">
+            <Constellation
+              name="lost signal"
+              size={150}
+              className="max-[480px]:h-30 max-[480px]:w-30"
+            />
+          </div>
+          <p className={UI.overline}>Fig. 0 - Signal lost</p>
+          <h2 className="max-w-130 font-display text-[26px] font-semibold leading-tight tracking-[-0.01em] text-ink max-[480px]:text-[22px]">
+            We couldn&rsquo;t reach your sky.
+          </h2>
+          <p className="max-w-95 text-[14.5px] leading-[1.6] text-muted">
+            Check your connection and try again.
+          </p>
+          <Button variant="gold" className="mt-1" onClick={() => fetchClasses()}>
+            Try again
+          </Button>
         </motion.div>
       );
     }
