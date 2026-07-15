@@ -1,4 +1,6 @@
 {
+  "git": { "deploymentEnabled": { "mobile-app": false } },
+
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],

@@ -10,6 +10,7 @@
  */
 import AI from "@anthropic-ai/sdk";
 import { getAuthedUser } from "./_auth.js";
+import { handleCors } from "./_cors.js";
 import {
   getDailyTokens,
   addDailyTokens,
@@ -142,6 +143,8 @@ function friendlyError(status?: number, raw?: string): string {
 }
 
 export default async function handler(req: any, res: any): Promise<void> {
+  // Native-app callers are cross-origin; answer their preflights first.
+  if (handleCors(req, res)) return;
   if (req.method !== "POST") {
     return sendJson(res, 405, { error: "Method not allowed" });
   }

@@ -7,6 +7,7 @@
  * credits. All copy stays on-brand ("Lumi"), never naming the upstream service.
  */
 import { getAuthedUser } from "./_auth.js";
+import { handleCors } from "./_cors.js";
 import {
   getDailyTokens,
   addDailyTokens,
@@ -84,6 +85,8 @@ async function readBody(req: any): Promise<any> {
 }
 
 export default async function handler(req: any, res: any): Promise<void> {
+  // Native-app callers are cross-origin; answer their preflights first.
+  if (handleCors(req, res)) return;
   if (req.method !== "POST") {
     return sendJson(res, 405, { error: "Method not allowed" });
   }

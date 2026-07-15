@@ -7,6 +7,7 @@
  * enforce. Reads as the full budget (used 0) until a KV store is connected.
  */
 import { getAuthedUser } from "./_auth.js";
+import { handleCors } from "./_cors.js";
 import {
   getDailyTokens,
   getDailyTokenLimit,
@@ -21,6 +22,8 @@ function sendJson(res: any, status: number, payload: unknown): void {
 }
 
 export default async function handler(req: any, res: any): Promise<void> {
+  // Native-app callers are cross-origin; answer their preflights first.
+  if (handleCors(req, res)) return;
   if (req.method !== "GET") {
     return sendJson(res, 405, { error: "Method not allowed" });
   }

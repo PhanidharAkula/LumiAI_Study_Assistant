@@ -5,8 +5,9 @@
  * with the user's Supabase token and gets back an MP3 blob to play.
  */
 import { supabase } from "@shared/lib/supabaseClient";
+import { apiUrl } from "@shared/native/apiBase";
 
-const TTS_URL = "/api/tts";
+const TTS_URL = apiUrl("/api/tts");
 
 /** Fetch spoken audio for one line of text. Returns an MP3 Blob, or throws. */
 export async function fetchSpeech(

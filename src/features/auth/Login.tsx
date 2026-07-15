@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
 import { supabase } from "@shared/lib/supabaseClient";
+import { isNativeApp } from "@shared/native/platform";
 import {
   Constellation,
   LumiStar,
@@ -58,6 +59,19 @@ const Login = () => {
     setLoading(true);
 
     try {
+      if (isNativeApp()) {
+        // Packaged app: Google blocks OAuth inside embedded webviews, so the
+        // dance runs in the system browser and returns via deep link (see
+        // shared/native/googleSignIn). The web flow below is untouched.
+        const { signInWithGoogleNative } = await import(
+          "@shared/native/googleSignIn"
+        );
+        await signInWithGoogleNative();
+        // The browser sheet is up; re-arm the button so a cancelled sheet
+        // doesn't strand it on "Connecting…".
+        setLoading(false);
+        return;
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

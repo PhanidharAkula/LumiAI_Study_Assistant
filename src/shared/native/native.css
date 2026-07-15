@@ -1,0 +1,104 @@
+/*
+ * Native-shell-only layout, activated by the `is-native` class that
+ * shared/native/init.ts sets on <html> inside the packaged iOS/Android app.
+ * The website never gets these rules.
+ *
+ * The native webview is truly full-screen: the status bar, notch and home
+ * indicator float OVER the page (index.html already ships viewport-fit=cover,
+ * which is what makes env(safe-area-inset-*) non-zero in the app). Two layers
+ * of padding keep the UI out from under them:
+ *
+ *   1. In-flow pages: pad <body> top/bottom.
+ *   2. Pinned bars: Tailwind keeps utility class names literal (.fixed,
+ *      .top-0, .bottom-0, .sticky), so the fixed headers (chat/quiz/talk/
+ *      admin) and bottom input bars are padded generically. Their extra
+ *      padding matches the body padding, so in-flow content stays aligned
+ *      with the bars' bottom edges.
+ *
+ * FIRST PASS - pending on-device screenshot verification (needs Xcode). If a
+ * screen needs bespoke treatment, add a scoped rule HERE rather than touching
+ * the component (mobile-specific layout stays in this file by design).
+ */
+
+html.is-native {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* In-flow content: keep it below the status bar and above the home
+   indicator. Fixed/sticky elements don't respect body padding - handled
+   below. */
+html.is-native body {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+/* Pinned top bars: stay anchored to the physical screen top, but pad their
+   content down below the status bar. (Full-screen overlays use .inset-0, not
+   .top-0, so they're untouched.) */
+html.is-native .fixed.top-0 {
+  padding-top: var(--safe-top);
+}
+
+/* Sticky headers stick below the status bar instead of under it. */
+html.is-native .sticky.top-0 {
+  top: var(--safe-top);
+}
+
+/* Pinned bottom bars (chat input, talk controls): pad above the home
+   indicator. */
+html.is-native .fixed.bottom-0 {
+  padding-bottom: var(--safe-bottom);
+}
+
+/* ---- App feel -----------------------------------------------------------
+   Small platform behaviors that make the webview read as an app instead of
+   a web page. All scoped to .is-native; the website keeps browser defaults. */
+
+html.is-native {
+  /* Parchment behind rubber-band overscroll, and no pull-gesture chaining
+     to nonexistent browser chrome. */
+  background: #f3edde;
+  overscroll-behavior-y: none;
+  /* No long-press link-preview / image-save sheets on UI chrome. */
+  -webkit-touch-callout: none;
+  /* Keep text at authored size when the device rotates. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* No gray flash on every tap. */
+html.is-native * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* UI chrome shouldn't drag-select like a document... */
+html.is-native body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* ...but anything the user might genuinely copy - messages, study text,
+   form fields - opts back in. */
+html.is-native input,
+html.is-native textarea,
+html.is-native [contenteditable="true"],
+html.is-native p,
+html.is-native li,
+html.is-native blockquote,
+html.is-native pre,
+html.is-native code,
+html.is-native td,
+html.is-native th {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* iOS force-zooms the viewport when it focuses a form control set under
+   16px; pin controls to 16px in-app so the screen never jumps while typing. */
+html.is-native input,
+html.is-native textarea,
+html.is-native select {
+  font-size: max(16px, 1em);
+}

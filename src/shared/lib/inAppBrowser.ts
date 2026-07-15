@@ -4,6 +4,8 @@
 // so we can't let users reach the Google button there. Instead we detect the
 // webview up front and push them out to their real browser (see OpenInBrowser).
 
+import { isNativeApp } from "@shared/native/platform";
+
 export type MobilePlatform = "ios" | "android" | "other";
 
 export function getPlatform(): MobilePlatform {
@@ -15,6 +17,11 @@ export function getPlatform(): MobilePlatform {
 }
 
 export function isInAppBrowser(): boolean {
+  // The packaged Lumi app is technically a webview too - but our own, where
+  // sign-in is handled natively (system browser + deep link; see
+  // shared/native). Never flag it as a hostile in-app browser.
+  if (isNativeApp()) return false;
+
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
 

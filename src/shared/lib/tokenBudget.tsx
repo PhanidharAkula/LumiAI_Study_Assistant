@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "./supabaseClient";
+import { apiUrl } from "../native/apiBase";
 
 export interface TokenBudget {
   used: number;
@@ -77,7 +78,7 @@ export function TokenBudgetProvider({ children }: { children: ReactNode }) {
         setBudget(null);
         return;
       }
-      const resp = await fetch("/api/usage", {
+      const resp = await fetch(apiUrl("/api/usage"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return;

@@ -7,8 +7,9 @@
  */
 
 import { supabase } from "@shared/lib/supabaseClient";
+import { apiUrl } from "@shared/native/apiBase";
 
-const API_URL = "/api/chat";
+const API_URL = apiUrl("/api/chat");
 
 type Role = "user" | "assistant";
 type ContentPart =
