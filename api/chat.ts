@@ -16,6 +16,7 @@ import {
   addDailyTokens,
   burstOk,
   getDailyTokenLimit,
+  meteredTokens,
 } from "./_ratelimit.js";
 
 // The chat model id, supplied by the LUMI_MODEL env var.
@@ -326,15 +327,9 @@ export default async function handler(req: any, res: any): Promise<void> {
             })}\n\n`
           );
         }
-        // Meter the tokens this turn actually consumed against the daily budget.
-        const u = (final as any)?.usage;
-        await addDailyTokens(
-          auth.userId,
-          (u?.input_tokens ?? 0) +
-          (u?.output_tokens ?? 0) +
-          (u?.cache_creation_input_tokens ?? 0) +
-          (u?.cache_read_input_tokens ?? 0)
-        );
+        // Meter what this turn actually cost against the daily budget
+        // (cache reads/writes weighted by their real price - see meteredTokens).
+        await addDailyTokens(auth.userId, meteredTokens((final as any)?.usage));
       } catch (err: any) {
         console.error("[chat] stream error:", err?.status, err?.message);
         res.write(
@@ -358,14 +353,7 @@ export default async function handler(req: any, res: any): Promise<void> {
         .filter((b) => b.type === "text")
         .map((b) => b.text)
         .join("");
-      const u = (msg as any)?.usage;
-      await addDailyTokens(
-        auth.userId,
-        (u?.input_tokens ?? 0) +
-          (u?.output_tokens ?? 0) +
-          (u?.cache_creation_input_tokens ?? 0) +
-          (u?.cache_read_input_tokens ?? 0)
-      );
+      await addDailyTokens(auth.userId, meteredTokens((msg as any)?.usage));
       sendJson(res, 200, { text });
     }
   } catch (err: any) {

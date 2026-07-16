@@ -60,6 +60,35 @@ export async function addDailyTokens(
   }
 }
 
+/**
+ * Cost-weighted tokens for the daily budget. A raw sum of the usage buckets
+ * over-meters cached conversations badly: a cache READ is billed at ~10% of
+ * the base input price (that's the point of the prompt caching /api/chat sets
+ * up), but a raw sum counts it at 100% - so a long chat drains the budget
+ * 5-10x faster than its actual cost. Weight each bucket by its price relative
+ * to base input tokens (cache write 1.25x, cache read 0.1x) so the meter
+ * tracks what a turn really costs.
+ */
+export function meteredTokens(
+  u:
+    | {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
+      }
+    | null
+    | undefined
+): number {
+  if (!u) return 0;
+  return Math.ceil(
+    (u.input_tokens ?? 0) +
+      (u.output_tokens ?? 0) +
+      1.25 * (u.cache_creation_input_tokens ?? 0) +
+      0.1 * (u.cache_read_input_tokens ?? 0)
+  );
+}
+
 /** Anti-flood: true if the user is under `perMin` requests this minute. */
 export async function burstOk(userId: string, perMin: number): Promise<boolean> {
   if (!KV_CONFIGURED || !(perMin > 0)) return true;
