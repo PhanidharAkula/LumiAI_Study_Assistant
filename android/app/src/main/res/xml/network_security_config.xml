@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Allow cleartext http ONLY to local dev hosts: the CAP_SERVER_URL
+     live-reload shell loads http://10.0.2.2:5173 (the emulator's alias for
+     the host machine). Mirrors the iOS NSAllowsLocalNetworking exception;
+     all remote traffic stays HTTPS-only, in release builds too. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
