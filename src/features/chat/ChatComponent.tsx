@@ -450,6 +450,18 @@ const ChatComponent = ({
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTagSelector, setShowTagSelector] = useState(false);
+  // Web search (the globe key in the input row): opt-in per chat, default off -
+  // attaching the server-side search tool costs ~4.4k prompt tokens per request
+  // (see aiService), so it ships only when the student turns it on. The ref
+  // mirrors state so the long-lived send closure always reads the live value.
+  const [webSearchOn, setWebSearchOn] = useState(false);
+  const webSearchOnRef = useRef(false);
+  const toggleWebSearch = useCallback(() => {
+    setWebSearchOn((v) => {
+      webSearchOnRef.current = !v;
+      return !v;
+    });
+  }, []);
   const [selectedClasses, setSelectedClasses] = useState<any[]>(
     initialClassId ? [initialClassId] : []
   );
@@ -1609,7 +1621,9 @@ const ChatComponent = ({
         controller.signal,
         trimmedHistory,
         apiFiles, // uploaded files + any tagged images, as vision inputs
-        { mode: "chat" } // conversational study prompt; web search always available
+        // Conversational study prompt; web search only when the globe toggle
+        // is on (it costs ~4.4k prompt tokens per request).
+        { mode: "chat", webSearch: webSearchOnRef.current }
       );
 
       // Final clean: meta-preface trim, then strip any em dashes the model
@@ -2613,6 +2627,8 @@ const ChatComponent = ({
               isGenerating={!!abortController}
               uploadedFiles={uploadedLocalFiles}
               onUploadFiles={onUploadStable}
+              webSearchOn={webSearchOn}
+              onToggleWebSearch={toggleWebSearch}
             />
           </div>
         </motion.div>

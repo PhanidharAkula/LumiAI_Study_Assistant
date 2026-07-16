@@ -7,8 +7,11 @@ import {
   type KeyboardEvent,
   type FormEvent,
 } from "react";
+import { motion } from "framer-motion";
 import ConfirmDialog from "@shared/components/ConfirmDialog";
 import { IconButton } from "@shared/components/controls";
+import { spring } from "@shared/motion";
+import { useEscapeToClose } from "@shared/hooks/overlay";
 import type { UploadedFile } from "@shared/services/aiService";
 import { resolveFileForAI } from "@shared/lib/fileExtract";
 
@@ -30,6 +33,11 @@ interface ChatInputProps {
   /** Controlled list of attached files (owned by the parent, so removing a pill
    *  there actually removes it from what gets sent). */
   uploadedFiles?: LocalUploadedFile[];
+  /** Web-search toggle (the globe key): opt-in because the server-side search
+   *  tool costs ~4.4k prompt tokens per request. Owned by the parent so the
+   *  send path reads the same value. */
+  webSearchOn?: boolean;
+  onToggleWebSearch?: () => void;
 }
 
 interface FileSizeError {
@@ -45,6 +53,8 @@ const ChatInput = ({
   isGenerating = false,
   onUploadFiles = null,
   uploadedFiles = [],
+  webSearchOn = false,
+  onToggleWebSearch,
 }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +63,16 @@ const ChatInput = ({
     isOpen: false,
     message: "",
   });
+
+  // The + key's drop-up action menu (upload / tag context / web search).
+  // Rendered INLINE, absolutely anchored above the input row - deliberately
+  // NOT portaled to <body>: a body-level portal stacks AGAINST the chat
+  // takeover itself (z-overlay: 1000), so a Select-style z-901 panel paints
+  // BEHIND the chat's opaque sky and looks like it never opened. Anchoring in
+  // the input's own tree sidesteps the z war entirely, and tracks the input
+  // through keyboard show/hide for free - no rect math, no listeners.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEscapeToClose(menuOpen, () => setMenuOpen(false));
 
   // Load saved draft when component mounts
   useEffect(() => {
@@ -186,49 +206,163 @@ const ChatInput = ({
           style={{ display: "none" }}
         />
 
+        {/* The + key: one quiet trigger for the input's secondary actions
+            (upload / tag context / web search), so the row stays roomy on
+            phones. Rotates to a ✕ while its menu is up; the gold dot means
+            web search is armed even while the menu is closed. */}
         <IconButton
           variant="ghost"
-          label="Upload files"
-          onClick={openFilePicker}
+          label="Chat actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+          className="relative"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="19"
-            height="19"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+          {webSearchOn && (
+            <span
+              className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-gold-deep"
+              aria-hidden="true"
+            />
+          )}
+          <motion.span
+            className="flex items-center justify-center"
+            animate={{ rotate: menuOpen ? 45 : 0 }}
+            transition={spring.gentle}
           >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </motion.span>
         </IconButton>
 
-        <IconButton
-          variant="ghost"
-          label="Select context"
-          onClick={onShowTagSelector}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-            <path d="M7 7h.01"></path>
-          </svg>
-        </IconButton>
+        {menuOpen && (
+          <>
+            {/* Transparent click-away layer; fixed INSIDE the chat's stacking
+                context (not a body portal), so it can't lose the z war. */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setMenuOpen(false)}
+              aria-hidden="true"
+            />
+            <motion.div
+              role="menu"
+              aria-label="Chat actions"
+              className="absolute bottom-full left-2 z-50 mb-2 w-57 max-w-[calc(100vw-24px)] rounded-xl border border-solid border-line bg-vellum p-1 shadow-float"
+              initial={{ opacity: 0, y: 6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1, transition: spring.plate }}
+            >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openFilePicker();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-[13.5px] text-ink transition-colors hover:bg-cream/70"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0 text-ink/60"
+                    aria-hidden="true"
+                  >
+                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                  Upload files
+                </button>
+
+                {onShowTagSelector && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onShowTagSelector();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-[13.5px] text-ink transition-colors hover:bg-cream/70"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="shrink-0 text-ink/60"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+                      <path d="M7 7h.01"></path>
+                    </svg>
+                    Tag class files
+                  </button>
+                )}
+
+                {onToggleWebSearch && (
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={webSearchOn}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onToggleWebSearch();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-[13.5px] text-ink transition-colors hover:bg-cream/70"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`shrink-0 ${webSearchOn ? "text-gold-deep" : "text-ink/60"}`}
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                    <span className="flex-1">Web search</span>
+                    <span
+                      className={`shrink-0 rounded-full border border-solid px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] ${
+                        webSearchOn
+                          ? "border-gold-deep/40 bg-gold/15 text-gold-deep"
+                          : "border-line text-muted"
+                      }`}
+                    >
+                      {webSearchOn ? "On" : "Off"}
+                    </span>
+                  </button>
+                )}
+            </motion.div>
+          </>
+        )}
 
         <textarea
           ref={textareaRef}
